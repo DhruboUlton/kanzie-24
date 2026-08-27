@@ -1,186 +1,172 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { SITE_TAGLINE } from "@/lib/site-config";
+import { useEffect, useRef } from "react";
 
-const WATERMARKS = ["DIG", "HAUL", "PUSH", "BUILD"];
+// Frame sequence extracted from the source excavator clip (960x540, 12fps).
+// Frames 0..LOOP_START-1 are the approach and play once. From there playback
+// bounces between LOOP_START and the last frame — forward, then backward, then
+// forward again — so the loader keeps working its bucket and never jumps back
+// to the empty approach. Reversing also means there is no wrap seam to hide:
+// every step between two shown frames is an adjacent pair.
+const FRAME_COUNT = 93;
+const LOOP_START = 48;
+const FPS = 12;
+const REST_FRAME = 0;
+// The loader is not centred in the source frame — it sits at 68% across and 52%
+// down, holding within a hundredth of that for every frame of the loop. Cropping
+// around this point instead of the frame's centre keeps it on screen on phones
+// and tablets, where the hero is narrower than the 16:9 footage and the sides
+// are what get trimmed. On wide screens there is no width to trim, so the offset
+// clamps away and the framing is unchanged.
+const FOCUS_X = 0.68;
+const FOCUS_Y = 0.52;
+// Matches the render's flat backdrop, so the canvas has nothing to fade in from.
+const BACKDROP = "#dad3c8";
 
-// Decorative banner renders — not tied to the product catalog.
-const SLIDES = [
-  { src: "/hero/top-power-excavator.png", alt: "Top Power RC excavator" },
-  { src: "/hero/jcb-backhoe-loader-1.png", alt: "JCB RC backhoe loader" },
-  { src: "/hero/jcb-backhoe-loader-2.png", alt: "JCB RC backhoe loader, arm raised" },
-  { src: "/hero/jcb-220x-excavator.png", alt: "JCB 220X LC RC excavator" },
-];
-
-const n = SLIDES.length;
-const TRANSITION_MS = 500;
-
-// Shortest signed distance from `index` to `i` on a ring of size `n`.
-function ringOffset(i: number) {
-  let d = i % n;
-  if (d > n / 2) d -= n;
-  if (d < -n / 2) d += n;
-  return d;
-}
-
-// Recycle an offset by a full lap (±n) once it's drifted past the visible
-// window (center + 1 neighbor either side). Only ever applied to a slide
-// that has *already finished* fading to opacity 0 (see the deferred call
-// below) — recycling in the same update as the shift jumped a slide's
-// transform 3 slots while its opacity was still fading from visible,
-// which read as a reverse slide across the track.
-function recycle(o: number) {
-  if (o <= -n / 2) return o + n;
-  if (o > n / 2) return o - n;
-  return o;
-}
+const frameSrc = (i: number) =>
+  `/hero/frames/frame-${String(i).padStart(3, "0")}.webp`;
 
 export default function HeroSlider() {
-  const [offsets, setOffsets] = useState<number[]>(() =>
-    SLIDES.map((_, i) => ringOffset(i)),
-  );
-  const autoplayRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const recycleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const shift = useCallback((getDelta: (prev: number[]) => number[]) => {
-    setOffsets(getDelta);
-    if (recycleRef.current) clearTimeout(recycleRef.current);
-    recycleRef.current = setTimeout(() => {
-      setOffsets((prev) => prev.map(recycle));
-    }, TRANSITION_MS);
-  }, []);
-
-  const step = useCallback(
-    (direction: 1 | -1) => shift((prev) => prev.map((o) => o - direction)),
-    [shift],
-  );
-  const goToSlide = useCallback(
-    (i: number) => shift((prev) => prev.map((o) => o - prev[i])),
-    [shift],
-  );
-
-  const goPrev = useCallback(() => step(-1), [step]);
-  const goNext = useCallback(() => step(1), [step]);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    const frames: HTMLImageElement[] = [];
+    let current = REST_FRAME;
+    let direction = 1;
+    let rafId = 0;
+    let lastPaint = 0;
+    let ready = false;
+    let pageVisible = !document.hidden;
+    let onScreen = true;
+
+    // Cover-fit: fill the box on the constrained axis, then slide the overflow
+    // so FOCUS_X/FOCUS_Y lands in the middle of the box, clamped to the image
+    // edges so no blank ground is ever exposed.
+    const draw = (index: number) => {
+      const img = frames[index];
+      if (!img?.naturalWidth) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const cw = canvas.clientWidth;
+      const ch = canvas.clientHeight;
+      if (!cw || !ch) return;
+
+      if (canvas.width !== cw * dpr || canvas.height !== ch * dpr) {
+        canvas.width = cw * dpr;
+        canvas.height = ch * dpr;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const scale = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
+      const dw = img.naturalWidth * scale;
+      const dh = img.naturalHeight * scale;
+      const dx = Math.max(cw - dw, Math.min(0, cw / 2 - FOCUS_X * dw));
+      const dy = Math.max(ch - dh, Math.min(0, ch / 2 - FOCUS_Y * dh));
+      ctx.drawImage(img, dx, dy, dw, dh);
+    };
+
+    const tick = (now: number) => {
+      rafId = requestAnimationFrame(tick);
+      if (now - lastPaint < 1000 / FPS) return;
+      lastPaint = now;
+
+      let next = current + direction;
+      if (next > FRAME_COUNT - 1) {
+        direction = -1;
+        next = FRAME_COUNT - 2;
+      } else if (direction === -1 && next < LOOP_START) {
+        direction = 1;
+        next = LOOP_START + 1;
+      }
+      current = next;
+      draw(current);
+    };
+
+    const shouldRun = () => ready && !reduceMotion && pageVisible && onScreen;
+
+    const sync = () => {
+      if (shouldRun() && !rafId) {
+        lastPaint = 0;
+        rafId = requestAnimationFrame(tick);
+      } else if (!shouldRun() && rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+    };
+
+    // Frame 0 paints as soon as it lands; the loop waits for the full set so a
+    // half-loaded sequence never stutters.
+    let settled = 0;
+    const count = reduceMotion ? 1 : FRAME_COUNT;
+    // A frame that 404s still counts as settled — draw() skips it, so the loop
+    // runs a frame short rather than never starting.
+    const onSettled = () => {
+      if (++settled === count) {
+        ready = true;
+        sync();
+      }
+    };
+    for (let i = 0; i < count; i++) {
+      const img = new Image();
+      img.src = frameSrc(i);
+      frames[i] = img;
+      img.onload = () => {
+        if (i === REST_FRAME) draw(REST_FRAME);
+        onSettled();
+      };
+      img.onerror = onSettled;
+    }
+
+    const onResize = () => draw(current);
+    const onVisibility = () => {
+      pageVisible = !document.hidden;
+      sync();
+    };
+
+    const resizeObserver = new ResizeObserver(onResize);
+    resizeObserver.observe(canvas);
+
+    const intersectionObserver = new IntersectionObserver(
+      ([entry]) => {
+        onScreen = entry.isIntersecting;
+        sync();
+      },
+      { threshold: 0 },
+    );
+    intersectionObserver.observe(canvas);
+
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
-      if (recycleRef.current) clearTimeout(recycleRef.current);
+      if (rafId) cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+      intersectionObserver.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+      frames.forEach((img) => {
+        img.onload = null;
+        img.onerror = null;
+      });
     };
   }, []);
-
-  useEffect(() => {
-    if (n < 2) return;
-    autoplayRef.current = setInterval(goNext, 4500);
-    return () => {
-      if (autoplayRef.current) clearInterval(autoplayRef.current);
-    };
-  }, [goNext]);
-
-  const centerIndex = offsets.findIndex((o) => o === 0);
 
   return (
-    <section className="relative bg-paper overflow-hidden">
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
-        <span
-          key={centerIndex}
-          className="font-display text-[26vw] leading-none text-black/5 whitespace-nowrap"
-        >
-          {WATERMARKS[centerIndex % WATERMARKS.length]}
-        </span>
-      </div>
-
-      <div className="relative mx-auto max-w-7xl px-6 sm:px-10 py-16 sm:py-20">
-        <div className="relative h-80 sm:h-[30rem] max-w-sm sm:max-w-xl mx-auto">
-          {SLIDES.map((slide, i) => {
-            const offset = offsets[i];
-            const isCenter = offset === 0;
-            const abs = Math.abs(offset);
-
-            const scale = isCenter ? 1.25 : 0.5;
-            const opacity = abs > 1 ? 0 : isCenter ? 1 : 0.8;
-            const zIndex = 10 - abs;
-
-            return (
-              <button
-                key={slide.src}
-                type="button"
-                aria-label={`Show slide ${i + 1}`}
-                aria-hidden={!isCenter}
-                tabIndex={isCenter ? -1 : 0}
-                onClick={() => !isCenter && goToSlide(i)}
-                className="absolute inset-0 flex items-center justify-center"
-                style={{
-                  transform: `translateX(${offset * 46}%) scale(${scale})`,
-                  opacity,
-                  zIndex,
-                  cursor: isCenter ? "default" : "pointer",
-                  pointerEvents: abs > 1 ? "none" : "auto",
-                  transition: "transform 500ms ease-out, opacity 500ms ease-out",
-                }}
-              >
-                <div className="relative w-80 h-80 sm:w-[30rem] sm:h-[30rem] drop-shadow-xl">
-                  <Image
-                    src={slide.src}
-                    alt={slide.alt}
-                    fill
-                    sizes="(max-width: 640px) 320px, 480px"
-                    priority={isCenter}
-                    className="object-contain"
-                  />
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="relative z-20 flex flex-col items-center text-center gap-4 mt-2">
-          <h1 className="font-display text-3xl sm:text-5xl tracking-wide">
-            {SITE_TAGLINE}
-          </h1>
-          <Link
-            href="/products"
-            className="inline-block bg-accent hover:bg-accent-dark transition-colors text-white font-display tracking-wide px-8 py-3 rounded"
-          >
-            SHOP NOW
-          </Link>
-        </div>
-      </div>
-
-      {n > 1 && (
-        <>
-          <button
-            onClick={goPrev}
-            aria-label="Previous slide"
-            className="hidden sm:flex absolute left-4 top-[38%] -translate-y-1/2 z-30 w-10 h-10 items-center justify-center rounded-full bg-white/80 hover:bg-white shadow"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <button
-            onClick={goNext}
-            aria-label="Next slide"
-            className="hidden sm:flex absolute right-4 top-[38%] -translate-y-1/2 z-30 w-10 h-10 items-center justify-center rounded-full bg-white/80 hover:bg-white shadow"
-          >
-            <ChevronRight size={20} />
-          </button>
-
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 flex gap-2">
-            {SLIDES.map((slide, i) => (
-              <button
-                key={slide.src}
-                aria-label={`Go to slide ${i + 1}`}
-                onClick={() => goToSlide(i)}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === centerIndex ? "w-6 bg-accent" : "w-1.5 bg-black/20"
-                }`}
-              />
-            ))}
-          </div>
-        </>
-      )}
+    <section className="relative overflow-hidden h-[70vh] min-h-[420px] max-h-[720px]">
+      <canvas
+        ref={canvasRef}
+        role="img"
+        aria-label="RC backhoe loader raising and lowering its bucket"
+        className="absolute inset-0 w-full h-full block"
+        style={{ backgroundColor: BACKDROP }}
+      />
     </section>
   );
 }
