@@ -1,183 +1,111 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-// The hero is two clips rather than one looping file, because the motion is not
-// a loop: the camera pushes in through an approach that never comes back, then
-// the loader works its bucket in place. hero-intro plays the approach once and
-// hands over to hero-loop, which holds the bucket cycle forever.
-//
-// The bounce is baked into hero-loop rather than driven here. It runs frames
-// 91 down to 48 and back up to 92, so playing it end-to-end and repeating
-// continues the bounce across the wrap with no seam to hide, and the browser
-// loops it natively. It starts on frame 91 because the intro ends on 92 — the
-// swap lands on the next frame of the same motion.
-//
-// This replaced a 93-frame canvas sequence. Frames could not hold their detail
-// here: the hero is tall and narrow, so cover-fit scales by height and crops
-// ~60% of each frame's width away, which left phones upscaling 3-5x. Video
-// carries the full 1080 source height, decodes on the GPU for a fraction of the
-// memory, and streams instead of arriving as one burst of requests.
-const INTRO_SRC = "/hero/hero-intro.mp4";
-const LOOP_SRC = "/hero/hero-loop.mp4";
-const POSTER_SRC = "/hero/poster.webp";
+const WATERMARKS = ["DIG", "HAUL", "PUSH", "BUILD"];
 
-// The loader sits at 68% across and 52% down the frame, not at its centre.
-// Anchoring the crop there keeps it on screen where the sides get trimmed.
-const FOCUS_X = 0.68;
-const FOCUS_Y = 0.52;
-const VIDEO_W = 1920;
-const VIDEO_H = 1080;
-const BACKDROP = "#dad3c8";
+// Decorative banner renders — not tied to the product catalog. Each PNG has
+// a different amount of empty transparent space around the vehicle (measured
+// via each file's alpha bbox, as % of the 1400px canvas):
+//   - bottom: 12–24% → groundOffset pushes the box down so wheels/tracks
+//     line up instead of each vehicle's canvas edge.
+//   - left/right: 2–8% → leftGap/rightGap correct the side spacing the same
+//     way, applied inward-side-only (see sideGap below), so the *vehicle*,
+//     not its box, sits a consistent distance from center.
+const SLIDES = [
+  { src: "/hero/top-power-excavator.png", alt: "Top Power RC excavator", groundOffset: 2, leftGap: 7, rightGap: 6 },
+  { src: "/hero/jcb-backhoe-loader-1.png", alt: "JCB RC backhoe loader", groundOffset: 7, leftGap: 5, rightGap: 5 },
+  { src: "/hero/jcb-backhoe-loader-2.png", alt: "JCB RC backhoe loader, arm raised", groundOffset: 0, leftGap: 4, rightGap: 2 },
+  { src: "/hero/jcb-220x-excavator.png", alt: "JCB 220X LC RC excavator", groundOffset: 12, leftGap: 8, rightGap: 8 },
+];
+// Smallest inward gap across all four — the reference every other slide's
+// gap is measured against, so the tightest-cropped vehicle gets no push and
+// everything else nudges outward by exactly its excess padding.
+const REFERENCE_GAP = 2;
 
-// object-position percentages line the image's own n% mark up with the box's
-// n% mark — they do not centre that point. Writing "68%" therefore parks the
-// loader 68% across the box on every screen, which pushes it off the right edge
-// of a phone. The percentage that actually centres it depends on how much
-// overflow there is to slide, so it has to be solved per size: 79% on a 375px
-// phone, 95% on an iPad, 50% on a desktop where there is no width to trim.
-const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+const n = SLIDES.length;
+const TRANSITION_MS = 500;
 
-function focalPosition(boxW: number, boxH: number) {
-  const scale = Math.max(boxW / VIDEO_W, boxH / VIDEO_H);
-  const drawnW = VIDEO_W * scale;
-  const drawnH = VIDEO_H * scale;
-  const x = drawnW > boxW ? clamp01((boxW / 2 - FOCUS_X * drawnW) / (boxW - drawnW)) : 0.5;
-  const y = drawnH > boxH ? clamp01((boxH / 2 - FOCUS_Y * drawnH) / (boxH - drawnH)) : 0.5;
-  return `${(x * 100).toFixed(2)}% ${(y * 100).toFixed(2)}%`;
+// Shortest signed distance from `index` to `i` on a ring of size `n`.
+function ringOffset(i: number) {
+  let d = i % n;
+  if (d > n / 2) d -= n;
+  if (d < -n / 2) d += n;
+  return d;
+}
+
+// Recycle an offset by a full lap (±n) once it's drifted past the visible
+// window (center + 1 neighbor either side). Only ever applied to a slide
+// that has *already finished* fading to opacity 0 (see the deferred call
+// below) — recycling in the same update as the shift jumped a slide's
+// transform 3 slots while its opacity was still fading from visible,
+// which read as a reverse slide across the track.
+function recycle(o: number) {
+  if (o <= -n / 2) return o + n;
+  if (o > n / 2) return o - n;
+  return o;
 }
 
 export default function HeroSlider() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const introRef = useRef<HTMLVideoElement>(null);
-  const loopRef = useRef<HTMLVideoElement>(null);
-  const [loopVisible, setLoopVisible] = useState(false);
-  const [objectPosition, setObjectPosition] = useState("50% 50%");
+  const [offsets, setOffsets] = useState<number[]>(() =>
+    SLIDES.map((_, i) => ringOffset(i)),
+  );
+  const autoplayRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recycleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-
-    const measure = () =>
-      setObjectPosition(
-        focalPosition(section.clientWidth, section.clientHeight),
-      );
-
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(section);
-    return () => observer.disconnect();
+  const shift = useCallback((getDelta: (prev: number[]) => number[]) => {
+    setOffsets(getDelta);
+    if (recycleRef.current) clearTimeout(recycleRef.current);
+    recycleRef.current = setTimeout(() => {
+      setOffsets((prev) => prev.map(recycle));
+    }, TRANSITION_MS);
   }, []);
 
+  const step = useCallback(
+    (direction: 1 | -1) => shift((prev) => prev.map((o) => o - direction)),
+    [shift],
+  );
+  const goToSlide = useCallback(
+    (i: number) => shift((prev) => prev.map((o) => o - prev[i])),
+    [shift],
+  );
+
+  const goPrev = useCallback(() => step(-1), [step]);
+  const goNext = useCallback(() => step(1), [step]);
+
   useEffect(() => {
-    const intro = introRef.current;
-    const loop = loopRef.current;
-    if (!intro || !loop) return;
-
-    // iOS only allows inline autoplay on muted video, and setting it as a React
-    // prop alone does not always land the attribute before the first play call.
-    intro.muted = true;
-    loop.muted = true;
-
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-
-    let onScreen = true;
-    let pageVisible = !document.hidden;
-    let handedOver = false;
-
-    const active = () => (handedOver ? loop : intro);
-
-    // play() rejects when autoplay is blocked; the poster stays up in that case.
-    const attempt = (video: HTMLVideoElement) => {
-      const played = video.play();
-      if (played) played.catch(() => {});
-    };
-
-    const sync = () => {
-      if (reduceMotion) return;
-      const video = active();
-      if (onScreen && pageVisible) attempt(video);
-      else video.pause();
-    };
-
-    // Hand over only once the loop is actually rendering, so the intro's last
-    // frame stays up if the loop needs another moment to start.
-    const onIntroEnded = () => {
-      handedOver = true;
-      if (!reduceMotion) attempt(loop);
-    };
-    const onLoopPlaying = () => setLoopVisible(true);
-
-    intro.addEventListener("ended", onIntroEnded);
-    loop.addEventListener("playing", onLoopPlaying);
-
-    const onVisibility = () => {
-      pageVisible = !document.hidden;
-      sync();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        onScreen = entry.isIntersecting;
-        sync();
-      },
-      { threshold: 0 },
-    );
-    observer.observe(intro);
-
-    sync();
-
     return () => {
-      intro.removeEventListener("ended", onIntroEnded);
-      loop.removeEventListener("playing", onLoopPlaying);
-      document.removeEventListener("visibilitychange", onVisibility);
-      observer.disconnect();
+      if (recycleRef.current) clearTimeout(recycleRef.current);
     };
   }, []);
 
-  const videoClass = "absolute inset-0 w-full h-full object-cover";
+  useEffect(() => {
+    if (n < 2) return;
+    autoplayRef.current = setInterval(goNext, 4500);
+    return () => {
+      if (autoplayRef.current) clearInterval(autoplayRef.current);
+    };
+  }, [goNext]);
+
+  const centerIndex = offsets.findIndex((o) => o === 0);
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative overflow-hidden h-[70vh] min-h-[420px] max-h-[720px]"
-      style={{ backgroundColor: BACKDROP }}
-    >
-      <video
-        ref={introRef}
-        className={videoClass}
-        style={{ objectPosition }}
-        src={INTRO_SRC}
-        poster={POSTER_SRC}
-        muted
-        playsInline
-        preload="auto"
-        aria-label="RC backhoe loader driving into frame"
-      />
-      <video
-        ref={loopRef}
-        className={videoClass}
-        style={{ objectPosition, opacity: loopVisible ? 1 : 0 }}
-        src={LOOP_SRC}
-        muted
-        loop
-        playsInline
-        preload="auto"
-        aria-hidden="true"
-      />
+    <section className="relative bg-paper overflow-hidden">
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
+        <span
+          key={centerIndex}
+          className="font-display text-[26vw] leading-none text-black/5 whitespace-nowrap"
+        >
+          {WATERMARKS[centerIndex % WATERMARKS.length]}
+        </span>
+      </div>
 
-      {/* The loader is parked right-of-centre (FOCUS_X above) — this copy
-          lives in the clear space on the left, reading directly on the
-          video's own light backdrop. On narrow screens the loader's focal
-          point sits in the same vertical band as centred text, so the copy
-          pins to the top there instead, clearing it. */}
-      <div className="relative z-10 h-full flex items-start sm:items-center pt-10 sm:pt-0">
-        <div className="max-w-md sm:max-w-xl lg:max-w-2xl px-6 sm:px-10 lg:px-16 text-ink">
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-wide leading-[1.05]">
+      <div className="relative mx-auto max-w-7xl px-6 sm:px-10 py-16 sm:py-20">
+        <div className="relative z-20 text-center mb-4">
+          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-wide leading-[1.05] text-ink">
             REALISTIC <span className="text-accent">REMOTE CONTROL</span>
             <br />
             CONSTRUCTION TOYS
@@ -185,24 +113,105 @@ export default function HeroSlider() {
           <p className="mt-4 text-sm sm:text-lg text-ink/70">
             Big machines. Big fun. Built for little builders.
           </p>
+        </div>
+
+        <div className="relative h-80 sm:h-[30rem] max-w-sm sm:max-w-xl mx-auto">
+          {SLIDES.map((slide, i) => {
+            const offset = offsets[i];
+            const isCenter = offset === 0;
+            const abs = Math.abs(offset);
+
+            const scale = isCenter ? 1.25 : 0.5;
+            const opacity = abs > 1 ? 0 : isCenter ? 1 : 0.8;
+            const zIndex = 10 - abs;
+
+            // Gap facing the center: a left-side slide's inward edge is its
+            // right edge, and vice versa. Only push outward for whatever
+            // padding this slide has beyond the tightest-cropped image.
+            const sideGap = offset < 0 ? slide.rightGap : offset > 0 ? slide.leftGap : 0;
+            const sideCorrection = Math.sign(offset) * Math.max(0, sideGap - REFERENCE_GAP);
+
+            return (
+              <button
+                key={slide.src}
+                type="button"
+                aria-label={`Show slide ${i + 1}`}
+                aria-hidden={!isCenter}
+                tabIndex={isCenter ? -1 : 0}
+                onClick={() => !isCenter && goToSlide(i)}
+                className={`absolute inset-0 flex items-end justify-center ${
+                  isCenter ? "pb-0" : "pb-14 sm:pb-20"
+                }`}
+                style={{
+                  zIndex,
+                  cursor: isCenter ? "default" : "pointer",
+                  pointerEvents: abs > 1 ? "none" : "auto",
+                }}
+              >
+                <div
+                  className="relative w-80 h-80 sm:w-[30rem] sm:h-[30rem] drop-shadow-xl"
+                  style={{
+                    transform: `translateY(${slide.groundOffset + (isCenter ? 6 : 0)}%) translateX(${offset * 64 + sideCorrection}%) scale(${scale})`,
+                    transformOrigin: "bottom",
+                    opacity,
+                    transition: "transform 500ms ease-out, opacity 500ms ease-out",
+                  }}
+                >
+                  <Image
+                    src={slide.src}
+                    alt={slide.alt}
+                    fill
+                    sizes="(max-width: 640px) 320px, 480px"
+                    priority={isCenter}
+                    className="object-contain"
+                  />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="relative z-20 flex flex-col items-center text-center mt-2">
           <Link
             href="/products"
-            className="hidden sm:inline-block mt-6 bg-accent hover:bg-accent-dark transition-colors text-white font-display tracking-wide px-6 sm:px-8 py-3 rounded"
+            className="inline-block bg-accent hover:bg-accent-dark transition-colors text-white font-display tracking-wide px-8 py-3 rounded"
           >
             SHOP RC TOYS →
           </Link>
         </div>
       </div>
 
-      {/* Mobile only: the heading block pins to the top to clear the loader
-          (see note above), so the CTA moves down here instead, under the
-          loader near the bottom of the frame. */}
-      <Link
-        href="/products"
-        className="sm:hidden absolute z-10 bottom-8 left-6 bg-accent hover:bg-accent-dark transition-colors text-white font-display tracking-wide px-6 py-3 rounded"
-      >
-        SHOP RC TOYS →
-      </Link>
+      {n > 1 && (
+        <>
+          <button
+            onClick={goPrev}
+            aria-label="Previous slide"
+            className="hidden sm:flex absolute left-4 top-[38%] -translate-y-1/2 z-30 w-10 h-10 items-center justify-center rounded-full bg-white/80 hover:bg-white shadow"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <button
+            onClick={goNext}
+            aria-label="Next slide"
+            className="hidden sm:flex absolute right-4 top-[38%] -translate-y-1/2 z-30 w-10 h-10 items-center justify-center rounded-full bg-white/80 hover:bg-white shadow"
+          >
+            <ChevronRight size={20} />
+          </button>
+
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 flex gap-2">
+            {SLIDES.map((slide, i) => (
+              <button
+                key={slide.src}
+                aria-label={`Go to slide ${i + 1}`}
+                onClick={() => goToSlide(i)}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === centerIndex ? "w-6 bg-accent" : "w-1.5 bg-black/20"
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 }
