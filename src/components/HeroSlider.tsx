@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 // The hero is two clips rather than one looping file, because the motion is not
@@ -168,6 +169,40 @@ export default function HeroSlider() {
         preload="auto"
         aria-hidden="true"
       />
+
+      {/* The loader is parked right-of-centre (FOCUS_X above) — this copy
+          lives in the clear space on the left, reading directly on the
+          video's own light backdrop. On narrow screens the loader's focal
+          point sits in the same vertical band as centred text, so the copy
+          pins to the top there instead, clearing it. */}
+      <div className="relative z-10 h-full flex items-start sm:items-center pt-10 sm:pt-0">
+        <div className="max-w-md sm:max-w-xl lg:max-w-2xl px-6 sm:px-10 lg:px-16 text-ink">
+          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-wide leading-[1.05]">
+            REALISTIC <span className="text-accent">REMOTE CONTROL</span>
+            <br />
+            CONSTRUCTION TOYS
+          </h1>
+          <p className="mt-4 text-sm sm:text-lg text-ink/70">
+            Big machines. Big fun. Built for little builders.
+          </p>
+          <Link
+            href="/products"
+            className="hidden sm:inline-block mt-6 bg-accent hover:bg-accent-dark transition-colors text-white font-display tracking-wide px-6 sm:px-8 py-3 rounded"
+          >
+            SHOP RC TOYS →
+          </Link>
+        </div>
+      </div>
+
+      {/* Mobile only: the heading block pins to the top to clear the loader
+          (see note above), so the CTA moves down here instead, under the
+          loader near the bottom of the frame. */}
+      <Link
+        href="/products"
+        className="sm:hidden absolute z-10 bottom-8 left-6 bg-accent hover:bg-accent-dark transition-colors text-white font-display tracking-wide px-6 py-3 rounded"
+      >
+        SHOP RC TOYS →
+      </Link>
     </section>
   );
 }
