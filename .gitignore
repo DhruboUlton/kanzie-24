@@ -37,10 +37,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-# scraped placeholder photos — local preview only, never ship these.
-# swap for real supplier/product photography before deploying.
-/public/products-dev/
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts

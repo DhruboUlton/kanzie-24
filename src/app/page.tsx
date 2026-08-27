@@ -7,11 +7,17 @@ import CategoryTiles from "@/components/CategoryTiles";
 import BrandLogoStrip from "@/components/BrandLogoStrip";
 import ArticleTeasers from "@/components/ArticleTeasers";
 import Testimonials from "@/components/Testimonials";
-import { getFeaturedProducts, getProducts, getCategories } from "@/lib/products";
+import {
+  getFeaturedProducts,
+  getNewArrivals,
+  getProducts,
+  getCategories,
+} from "@/lib/products";
 
 export default async function Home() {
-  const [featured, allProducts, categories] = await Promise.all([
+  const [featured, newArrivals, allProducts, categories] = await Promise.all([
     getFeaturedProducts(),
+    getNewArrivals(),
     getProducts(),
     getCategories(),
   ]);
@@ -35,6 +41,17 @@ export default async function Home() {
 
       <UspStrip />
       <FeatureBanner />
+
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
+        <h2 className="font-display text-3xl sm:text-4xl tracking-wide text-center mb-10">
+          NEW ARRIVALS
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-8 sm:gap-y-10">
+          {newArrivals.map((product) => (
+            <ProductCard key={product.id} product={product} compact />
+          ))}
+        </div>
+      </section>
 
       <CategoryTiles categories={categories} products={allProducts} />
 

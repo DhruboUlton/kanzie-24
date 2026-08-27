@@ -29,6 +29,7 @@ export type Product = {
   specs: { label: string; value: string }[];
   images: string[];
   featured: boolean;
+  isNew?: boolean;
   inStock: boolean;
 };
 
@@ -100,6 +101,7 @@ const PRODUCTS: Product[] = [
     ],
     images: ["/products-dev/excavators/03.jpg", "/products-dev/excavators/04.jpg"],
     featured: true,
+    isNew: true,
     inStock: true,
   },
   {
@@ -333,6 +335,7 @@ const PRODUCTS: Product[] = [
       "/products-dev/dump-trucks/14.jpg",
     ],
     featured: false,
+    isNew: true,
     inStock: true,
   },
   {
@@ -509,6 +512,7 @@ const PRODUCTS: Product[] = [
       "/products-dev/bulldozers/14.jpg",
     ],
     featured: false,
+    isNew: true,
     inStock: true,
   },
   {
@@ -544,6 +548,7 @@ const PRODUCTS: Product[] = [
       "/products-dev/bulldozers/18.jpg",
     ],
     featured: false,
+    isNew: true,
     inStock: true,
   },
 ];
@@ -554,6 +559,10 @@ export async function getProducts(): Promise<Product[]> {
 
 export async function getFeaturedProducts(): Promise<Product[]> {
   return PRODUCTS.filter((p) => p.featured);
+}
+
+export async function getNewArrivals(): Promise<Product[]> {
+  return PRODUCTS.filter((p) => p.isNew);
 }
 
 export async function getProductsByCategory(
