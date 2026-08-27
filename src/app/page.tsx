@@ -1,0 +1,75 @@
+import Link from "next/link";
+import HeroSlider from "@/components/HeroSlider";
+import UspStrip from "@/components/UspStrip";
+import FeatureBanner from "@/components/FeatureBanner";
+import ProductCard from "@/components/ProductCard";
+import CategoryTiles from "@/components/CategoryTiles";
+import BrandLogoStrip from "@/components/BrandLogoStrip";
+import ArticleTeasers from "@/components/ArticleTeasers";
+import Testimonials from "@/components/Testimonials";
+import { getFeaturedProducts, getProducts, getCategories } from "@/lib/products";
+
+export default async function Home() {
+  const [featured, allProducts, categories] = await Promise.all([
+    getFeaturedProducts(),
+    getProducts(),
+    getCategories(),
+  ]);
+
+  return (
+    <>
+      <HeroSlider />
+
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
+        <h2 className="font-display text-3xl sm:text-4xl tracking-wide text-center mb-10">
+          FEATURED MACHINES
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-8 sm:gap-y-10">
+          {featured.map((product) => (
+            <ProductCard key={product.id} product={product} compact />
+          ))}
+        </div>
+      </section>
+
+      <BrandLogoStrip />
+
+      <UspStrip />
+      <FeatureBanner />
+
+      <CategoryTiles categories={categories} products={allProducts} />
+
+      {categories.map((category) => {
+        const categoryProducts = allProducts
+          .filter((p) => p.category === category.slug)
+          .slice(0, 4);
+        if (categoryProducts.length === 0) return null;
+        return (
+          <section
+            key={category.slug}
+            className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-16"
+          >
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="font-display text-2xl sm:text-3xl tracking-wide">
+                {category.name.toUpperCase()}
+              </h2>
+              <Link
+                href={`/products?category=${category.slug}`}
+                className="text-sm font-semibold text-accent hover:underline"
+              >
+                View all →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-8 sm:gap-y-10">
+              {categoryProducts.map((product) => (
+                <ProductCard key={product.id} product={product} compact />
+              ))}
+            </div>
+          </section>
+        );
+      })}
+
+      <ArticleTeasers />
+      <Testimonials />
+    </>
+  );
+}
