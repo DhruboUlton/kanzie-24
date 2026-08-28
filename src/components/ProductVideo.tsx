@@ -114,25 +114,29 @@ export default function ProductVideo({ product }: { product: Product }) {
           className={
             expanded
               ? "fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xs"
-              : "fixed z-40 bottom-4 right-4"
+              : "fixed z-40 bottom-3 right-3 sm:bottom-4 sm:right-4"
           }
           onClick={expanded ? close : undefined}
         >
           <div
-            className={expanded ? "relative w-full max-w-sm" : "relative group cursor-pointer"}
+            className={expanded ? "relative w-full max-w-xs sm:max-w-sm" : "relative group cursor-pointer"}
             onClick={expanded ? (e) => e.stopPropagation() : handleWidgetClick}
           >
             {/* Top control buttons on floating widget */}
             {!expanded && (
-              <div className="absolute top-2 right-2 z-30 flex items-center gap-1.5 pointer-events-auto">
+              <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-30 flex items-center gap-1 sm:gap-1.5 pointer-events-auto">
                 {isHtml5 && (
                   <button
                     type="button"
                     onClick={toggleMute}
                     aria-label={isMuted ? "Unmute" : "Mute"}
-                    className="w-7 h-7 flex items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90 transition-colors shadow-md cursor-pointer"
+                    className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90 transition-colors shadow-md cursor-pointer"
                   >
-                    {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                    {isMuted ? (
+                      <VolumeX className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    ) : (
+                      <Volume2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    )}
                   </button>
                 )}
                 <button
@@ -142,18 +146,18 @@ export default function ProductVideo({ product }: { product: Product }) {
                     close();
                   }}
                   aria-label="Close video"
-                  className="w-7 h-7 flex items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90 transition-colors shadow-md cursor-pointer"
+                  className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full bg-black/70 text-white hover:bg-black/90 transition-colors shadow-md cursor-pointer"
                 >
-                  <X size={14} />
+                  <X className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </button>
               </div>
             )}
 
             {/* Expand badge overlay on floating widget */}
             {!expanded && (
-              <div className="absolute bottom-2 left-2 z-30 flex items-center gap-1 bg-black/70 text-white text-[11px] font-medium px-2 py-1 rounded-md opacity-90 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md">
-                <Maximize2 size={12} />
-                <span>Tap to expand</span>
+              <div className="absolute bottom-1.5 left-1.5 sm:bottom-2 sm:left-2 z-30 flex items-center gap-1 bg-black/70 text-white text-[9px] sm:text-[11px] font-medium px-1.5 py-0.5 sm:px-2 sm:py-1 rounded sm:rounded-md opacity-90 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md">
+                <Maximize2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <span>Expand</span>
               </div>
             )}
 
@@ -163,19 +167,18 @@ export default function ProductVideo({ product }: { product: Product }) {
                 type="button"
                 onClick={close}
                 aria-label="Close video"
-                className="absolute -top-10 right-0 text-white/80 hover:text-white transition-colors cursor-pointer"
+                className="absolute -top-9 right-0 sm:-top-10 text-white/80 hover:text-white transition-colors cursor-pointer"
               >
-                <X size={28} />
+                <X size={26} />
               </button>
             )}
 
             <div
-              className="relative rounded-xl overflow-hidden bg-black shadow-2xl border border-white/10"
-              style={
+              className={`relative rounded-lg sm:rounded-xl overflow-hidden bg-black shadow-2xl border border-white/10 ${
                 expanded
-                  ? undefined
-                  : { width: WIDGET_WIDTH, height: (WIDGET_WIDTH * 16) / 9 }
-              }
+                  ? "w-full"
+                  : "w-[105px] h-[186px] sm:w-[160px] sm:h-[284px]"
+              }`}
             >
               <div className={expanded ? "aspect-[9/16] w-full h-full relative" : "w-full h-full relative"}>
                 {isHtml5 && videoSrc ? (
@@ -205,7 +208,7 @@ export default function ProductVideo({ product }: { product: Product }) {
                     />
                     {!isVideoLoaded && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
-                        <Loader2 className="animate-spin text-white" size={24} />
+                        <Loader2 className="animate-spin text-white w-4 h-4 sm:w-6 sm:h-6" />
                       </div>
                     )}
                   </>
@@ -227,11 +230,11 @@ export default function ProductVideo({ product }: { product: Product }) {
             </div>
 
             {expanded && (
-              <div className="bg-white rounded-lg shadow-2xl mt-3 p-3">
-                <div className="flex items-center gap-3">
+              <div className="bg-white rounded-lg shadow-2xl mt-2.5 sm:mt-3 p-2.5 sm:p-3">
+                <div className="flex items-center gap-2.5 sm:gap-3">
                   <Link
                     href={`/products/${product.slug}`}
-                    className="relative shrink-0 w-12 h-12 rounded overflow-hidden bg-paper"
+                    className="relative shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded overflow-hidden bg-paper"
                   >
                     <Image
                       src={product.images[0]}
@@ -244,21 +247,21 @@ export default function ProductVideo({ product }: { product: Product }) {
                   <div className="flex-1 min-w-0">
                     <Link
                       href={`/products/${product.slug}`}
-                      className="text-sm font-semibold text-ink line-clamp-1 hover:text-accent"
+                      className="text-xs sm:text-sm font-semibold text-ink line-clamp-1 hover:text-accent"
                     >
                       {product.name}
                     </Link>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-accent font-semibold text-sm">
+                    <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
+                      <span className="text-accent font-semibold text-xs sm:text-sm">
                         {formatPrice(product.priceCents)}
                       </span>
                       {compareAt && (
-                        <span className="text-xs text-black/40 line-through">
+                        <span className="text-[11px] sm:text-xs text-black/40 line-through">
                           {formatPrice(compareAt)}
                         </span>
                       )}
                       {discountPct !== null && (
-                        <span className="text-[10px] font-semibold bg-accent/10 text-accent px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] sm:text-[10px] font-semibold bg-accent/10 text-accent px-1 sm:px-1.5 py-0.5 rounded">
                           {discountPct}% OFF
                         </span>
                       )}
@@ -277,9 +280,9 @@ export default function ProductVideo({ product }: { product: Product }) {
                       image: product.images[0],
                     })
                   }
-                  className="mt-3 w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark disabled:bg-black/20 disabled:cursor-not-allowed transition-colors text-white font-display tracking-wide py-2.5 rounded cursor-pointer"
+                  className="mt-2.5 sm:mt-3 w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark disabled:bg-black/20 disabled:cursor-not-allowed transition-colors text-white font-display text-xs sm:text-sm tracking-wide py-2 sm:py-2.5 rounded cursor-pointer"
                 >
-                  <ShoppingCart size={16} />
+                  <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   {product.inStock ? "ADD TO CART" : "OUT OF STOCK"}
                 </button>
               </div>
