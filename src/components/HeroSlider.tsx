@@ -95,10 +95,7 @@ export default function HeroSlider() {
   return (
     <section className="relative bg-paper overflow-hidden">
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
-        <span
-          key={centerIndex}
-          className="font-display text-[26vw] leading-none text-black/5 whitespace-nowrap"
-        >
+        <span className="font-display text-[26vw] leading-none text-black/5 whitespace-nowrap">
           {WATERMARKS[centerIndex % WATERMARKS.length]}
         </span>
       </div>
@@ -139,9 +136,7 @@ export default function HeroSlider() {
                 aria-hidden={!isCenter}
                 tabIndex={isCenter ? -1 : 0}
                 onClick={() => !isCenter && goToSlide(i)}
-                className={`absolute inset-0 flex items-end justify-center ${
-                  isCenter ? "pb-0" : "pb-14 sm:pb-20"
-                }`}
+                className="absolute inset-0 flex items-end justify-center pb-14 sm:pb-20"
                 style={{
                   zIndex,
                   cursor: isCenter ? "default" : "pointer",
@@ -149,11 +144,19 @@ export default function HeroSlider() {
                 }}
               >
                 <div
-                  className="relative w-80 h-80 sm:w-[30rem] sm:h-[30rem] drop-shadow-xl"
+                  className={`relative w-80 h-80 sm:w-[30rem] sm:h-[30rem] ${
+                    isCenter ? "drop-shadow-xl" : ""
+                  }`}
                   style={{
-                    transform: `translateY(${slide.groundOffset + (isCenter ? 6 : 0)}%) translateX(${offset * 64 + sideCorrection}%) scale(${scale})`,
+                    // Flanks and center now share the same pb-14/20 anchor
+                    // (see className above) — center's extra drop is folded
+                    // in here instead of a separate padding class, so it's
+                    // part of the animated transform rather than an instant,
+                    // untransitioned jump the moment a slide becomes center.
+                    transform: `translateY(${slide.groundOffset + (isCenter ? 23 : 0)}%) translateX(${offset * 64 + sideCorrection}%) scale(${scale})`,
                     transformOrigin: "bottom",
                     opacity,
+                    willChange: "transform, opacity",
                     transition: "transform 500ms ease-out, opacity 500ms ease-out",
                   }}
                 >
