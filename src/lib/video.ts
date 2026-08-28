@@ -1,8 +1,29 @@
-// Converts a pasted YouTube or Google Drive share link into an embeddable
-// iframe src. Product owners paste whatever URL the site they got the link
-// from gives them (a "watch" page, a share link, an app-copied link) — this
-// is the one place that has to know every shape those take.
-export function getEmbedUrl(url: string): string | null {
+export type VideoInfo =
+  | {
+      type: "youtube";
+      id: string;
+      embedUrl: string;
+    }
+  | {
+      type: "direct";
+      src: string;
+    }
+  | {
+      type: "drive";
+      id: string;
+      directUrl: string;
+      fallbackEmbedUrl: string;
+    };
+
+// Converts a pasted YouTube, Google Drive share link, or direct video file into playable info.
+export function parseVideoUrl(url: string): VideoInfo | null {
+  if (!url) return null;
+
+  // Direct video file path or relative URL
+  if (url.startsWith("/") || /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(url)) {
+    return { type: "direct", src: url };
+  }
+
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -14,35 +35,59 @@ export function getEmbedUrl(url: string): string | null {
 
   if (host === "youtu.be") {
     const id = parsed.pathname.slice(1);
-    return id ? `https://www.youtube.com/embed/${id}` : null;
+    if (!id) return null;
+    return {
+      type: "youtube",
+      id,
+      embedUrl: `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${id}&enablejsapi=1`,
+    };
   }
 
   if (host === "youtube.com" || host === "m.youtube.com") {
+    let id: string | null = null;
     if (parsed.pathname === "/watch") {
-      const id = parsed.searchParams.get("v");
-      return id ? `https://www.youtube.com/embed/${id}` : null;
+      id = parsed.searchParams.get("v");
+    } else if (parsed.pathname.startsWith("/embed/")) {
+      id = parsed.pathname.split("/")[2];
+    } else if (parsed.pathname.startsWith("/shorts/")) {
+      id = parsed.pathname.split("/")[2];
     }
-    if (parsed.pathname.startsWith("/embed/")) {
-      return `https://www.youtube.com${parsed.pathname}`;
-    }
-    if (parsed.pathname.startsWith("/shorts/")) {
-      const id = parsed.pathname.split("/")[2];
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-    return null;
+    if (!id) return null;
+    return {
+      type: "youtube",
+      id,
+      embedUrl: `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${id}&enablejsapi=1`,
+    };
   }
 
   if (host === "drive.google.com") {
-    // /file/d/<ID>/view or /file/d/<ID>/preview
+    let id: string | null = null;
     const fileMatch = parsed.pathname.match(/\/file\/d\/([^/]+)/);
-    if (fileMatch) return `https://drive.google.com/file/d/${fileMatch[1]}/preview`;
-    // /open?id=<ID>
-    const openId = parsed.searchParams.get("id");
-    if (parsed.pathname === "/open" && openId) {
-      return `https://drive.google.com/file/d/${openId}/preview`;
+    if (fileMatch) {
+      id = fileMatch[1];
+    } else if (parsed.pathname === "/open") {
+      id = parsed.searchParams.get("id");
     }
-    return null;
+    if (!id) return null;
+    return {
+      type: "drive",
+      id,
+      directUrl: `/api/video?driveId=${id}`,
+      fallbackEmbedUrl: `https://drive.google.com/file/d/${id}/preview`,
+    };
+  }
+
+  if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(parsed.pathname)) {
+    return { type: "direct", src: url };
   }
 
   return null;
+}
+
+export function getEmbedUrl(url: string): string | null {
+  const info = parseVideoUrl(url);
+  if (!info) return null;
+  if (info.type === "youtube") return info.embedUrl;
+  if (info.type === "drive") return info.fallbackEmbedUrl;
+  return info.src;
 }

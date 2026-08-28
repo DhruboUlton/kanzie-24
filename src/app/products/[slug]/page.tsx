@@ -80,7 +80,7 @@ export default async function ProductPage(
           </ul>
 
           <div className="mt-5">
-            <ProductVideo videoUrl={product.videoUrl} />
+            <ProductVideo product={product} />
           </div>
 
           <div className="mt-8">

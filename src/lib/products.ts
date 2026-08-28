@@ -105,7 +105,7 @@ const PRODUCTS: Product[] = [
       { label: "Recommended age", value: "4+" },
     ],
     images: ["/products-dev/excavators/03.jpg", "/products-dev/excavators/04.jpg"],
-    videoUrl: "https://www.youtube.com/shorts/dqaWu4ZMGZ4",
+    videoUrl: "https://drive.google.com/file/d/1hzyuXhGJyUQpkeCuYbZNBg50GLlDVqyn/view?usp=drive_link",
     featured: true,
     isNew: true,
     inStock: true,
