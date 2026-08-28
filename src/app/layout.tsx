@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bebas_Neue, Lato } from "next/font/google";
+import { Poppins, Lato } from "next/font/google";
 import "./globals.css";
 import AnnouncementBar from "@/components/AnnouncementBar";
 import Header from "@/components/Header";
@@ -7,9 +7,9 @@ import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/site-config";
 
-const bebasNeue = Bebas_Neue({
-  variable: "--font-bebas",
-  weight: "400",
+const poppins = Poppins({
+  variable: "--font-heading",
+  weight: ["600", "700", "800"],
   subsets: ["latin"],
 });
 
@@ -28,7 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${bebasNeue.variable} ${lato.variable} h-full antialiased`}
+      className={`${poppins.variable} ${lato.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
         <AnnouncementBar />

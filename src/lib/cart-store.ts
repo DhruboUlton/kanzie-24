@@ -72,3 +72,23 @@ export function cartTotalItems(items: CartItem[]): number {
 export function cartTotalCents(items: CartItem[]): number {
   return items.reduce((sum, i) => sum + i.qty * i.priceCents, 0);
 }
+
+// "Buy now" hands a single item to /checkout without touching the persisted
+// cart — sessionStorage rather than the cart store so it survives the
+// navigation but is scoped to this tab and read exactly once.
+export const BUY_NOW_KEY = "kanzie-buy-now";
+
+export function setBuyNowItem(item: CartItem) {
+  sessionStorage.setItem(BUY_NOW_KEY, JSON.stringify(item));
+}
+
+export function takeBuyNowItem(): CartItem | null {
+  const raw = sessionStorage.getItem(BUY_NOW_KEY);
+  if (!raw) return null;
+  sessionStorage.removeItem(BUY_NOW_KEY);
+  try {
+    return JSON.parse(raw) as CartItem;
+  } catch {
+    return null;
+  }
+}

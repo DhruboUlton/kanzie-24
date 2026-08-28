@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCartStore, cartTotalCents } from "@/lib/cart-store";
+import { CartItem, useCartStore, cartTotalCents, takeBuyNowItem } from "@/lib/cart-store";
 import { formatPrice } from "@/lib/format";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -25,7 +25,10 @@ function CheckoutError() {
 }
 
 export default function CheckoutPage() {
-  const items = useCartStore((s) => s.items);
+  const cartItems = useCartStore((s) => s.items);
+  const [buyNowItem, setBuyNowItemState] = useState<CartItem | null | undefined>(
+    undefined,
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [customer, setCustomer] = useState({
@@ -35,6 +38,25 @@ export default function CheckoutPage() {
     address: "",
     city: "",
   });
+
+  // Read once on mount — a "buy now" click stashes a single item here so
+  // checkout can total just that item without touching the persisted cart.
+  // takeBuyNowItem() deletes the key as it reads it, so the ref guard
+  // matters: StrictMode double-invokes this effect in dev, and without it
+  // the second call finds the key already gone and overwrites the item
+  // with null.
+  const consumedRef = useRef(false);
+  useEffect(() => {
+    if (consumedRef.current) return;
+    consumedRef.current = true;
+    setBuyNowItemState(takeBuyNowItem());
+  }, []);
+
+  // undefined = still checking sessionStorage; render nothing until then so
+  // a real cart doesn't flash "nothing to check out" first.
+  if (buyNowItem === undefined) return null;
+
+  const items = buyNowItem ? [buyNowItem] : cartItems;
   const total = cartTotalCents(items);
 
   function updateField(field: keyof typeof customer) {

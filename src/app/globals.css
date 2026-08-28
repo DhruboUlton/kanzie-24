@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-display: var(--font-bebas);
+  --font-display: var(--font-heading);
   --font-sans: var(--font-lato);
 
   --color-accent: #c0282b;
@@ -21,5 +21,6 @@ body {
 }
 
 .font-display {
-  letter-spacing: 0.01em;
+  font-weight: 700;
+  letter-spacing: 0;
 }
