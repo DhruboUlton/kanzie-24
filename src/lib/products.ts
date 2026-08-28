@@ -31,6 +31,11 @@ export type Product = {
   featured: boolean;
   isNew?: boolean;
   inStock: boolean;
+  // A YouTube (watch/youtu.be/embed) or Google Drive (file/d/... or
+  // open?id=...) link. Optional — the product page only shows a video
+  // button when this is set. See src/lib/video.ts for the embed-URL
+  // conversion.
+  videoUrl?: string;
 };
 
 export const CATEGORIES: Category[] = [
@@ -100,6 +105,7 @@ const PRODUCTS: Product[] = [
       { label: "Recommended age", value: "4+" },
     ],
     images: ["/products-dev/excavators/03.jpg", "/products-dev/excavators/04.jpg"],
+    videoUrl: "https://www.youtube.com/shorts/dqaWu4ZMGZ4",
     featured: true,
     isNew: true,
     inStock: true,

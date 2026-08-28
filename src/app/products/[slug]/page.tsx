@@ -9,6 +9,7 @@ import {
 import { formatPrice } from "@/lib/format";
 import AddToCartButton from "@/components/AddToCartButton";
 import ProductCard from "@/components/ProductCard";
+import ProductVideo from "@/components/ProductVideo";
 
 export async function generateStaticParams() {
   const products = await getProducts();
@@ -77,6 +78,10 @@ export default async function ProductPage(
               </li>
             ))}
           </ul>
+
+          <div className="mt-5">
+            <ProductVideo videoUrl={product.videoUrl} />
+          </div>
 
           <div className="mt-8">
             <AddToCartButton product={product} />
