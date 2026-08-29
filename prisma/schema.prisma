@@ -1,0 +1,113 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  name      String
+  sortOrder Int       @default(0)
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id                  String      @id @default(cuid())
+  slug                String      @unique
+  name                String
+  brand               String
+  sku                 String      @unique
+  categoryId          String
+  category            Category    @relation(fields: [categoryId], references: [id])
+  priceCents          Int
+  compareAtPriceCents Int?
+  scale               String
+  shortDescription    String      @db.Text
+  description         String      @db.Text
+  features            Json        // Array of strings: ["feature 1", "feature 2"]
+  specs               Json        // Array of objects: [{"label": "Scale", "value": "1:14"}]
+  images              Json        // Array of strings: ["/img1.jpg", "/img2.jpg"]
+  featured            Boolean     @default(false)
+  isNew               Boolean     @default(false)
+  inStock             Boolean     @default(true)
+  stockQty            Int         @default(10)
+  videoUrl            String?     @db.VarChar(500)
+  archivedAt          DateTime?
+  orderItems          OrderItem[]
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([categoryId])
+}
+
+model Order {
+  id              String       @id @default(cuid())
+  tranId          String       @unique
+  valId           String?
+  bankTranId      String?
+  cardType        String?
+  status          String       @default("PENDING") // PENDING, PAID, FAILED, CANCELLED, PACKED, SHIPPED, DELIVERED
+  totalAmountCents Int
+  currency        String       @default("BDT")
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  customerAddress String       @db.Text
+  customerCity    String
+  trackingNumber  String?
+  adminNotes      String?      @db.Text
+  items           OrderItem[]
+  events          OrderEvent[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId       String?
+  product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName     String
+  productSku      String
+  productSlug     String
+  unitPriceCents  Int
+  qty             Int
+  totalPriceCents Int
+  createdAt       DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    String
+  note      String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model SiteSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}

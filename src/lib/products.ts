@@ -1,16 +1,10 @@
-// Placeholder product catalog. Ships as a hardcoded array so the storefront
-// has real data to render during development. Every read goes through the
-// async functions below (not the array directly) so swapping this for a
-// database call later (Postgres/Prisma on Hostinger) only touches this file.
-//
-// Photos in /public/products-dev/ are scraped local-preview placeholders
-// (gitignored — see .gitignore) pulled in to see the catalog populated at
-// localhost. They are NOT licensed for production use. Replace every
-// `images` array with real supplier/product photography before deploying.
+import { db } from "@/lib/db";
 
 export type Category = {
+  id?: string;
   slug: string;
   name: string;
+  sortOrder?: number;
 };
 
 export type Product = {
@@ -20,6 +14,7 @@ export type Product = {
   brand: string;
   sku: string;
   category: string; // Category["slug"]
+  categoryId?: string;
   priceCents: number;
   compareAtPriceCents?: number;
   scale: string;
@@ -31,21 +26,21 @@ export type Product = {
   featured: boolean;
   isNew?: boolean;
   inStock: boolean;
-  // A YouTube (watch/youtu.be/embed) or Google Drive (file/d/... or
-  // open?id=...) link. Optional — the product page only shows a video
-  // button when this is set. See src/lib/video.ts for the embed-URL
-  // conversion.
+  stockQty?: number;
   videoUrl?: string;
+  archivedAt?: Date | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 export const CATEGORIES: Category[] = [
-  { slug: "excavators", name: "Excavators" },
-  { slug: "dump-trucks", name: "Dump Trucks" },
-  { slug: "bulldozers", name: "Bulldozers" },
+  { slug: "excavators", name: "Excavators", sortOrder: 1 },
+  { slug: "dump-trucks", name: "Dump Trucks", sortOrder: 2 },
+  { slug: "bulldozers", name: "Bulldozers", sortOrder: 3 },
 ];
 
-const PRODUCTS: Product[] = [
-  // ── Excavators ──────────────────────────────────────────────
+export const FALLBACK_PRODUCTS: Product[] = [
+  // Excavators
   {
     id: "1",
     slug: "yg258c-rc-excavator",
@@ -77,6 +72,7 @@ const PRODUCTS: Product[] = [
     images: ["/products-dev/excavators/01.jpg", "/products-dev/excavators/02.jpg"],
     featured: true,
     inStock: true,
+    stockQty: 25,
   },
   {
     id: "4",
@@ -109,6 +105,7 @@ const PRODUCTS: Product[] = [
     featured: true,
     isNew: true,
     inStock: true,
+    stockQty: 18,
   },
   {
     id: "5",
@@ -140,6 +137,7 @@ const PRODUCTS: Product[] = [
     images: ["/products-dev/excavators/05.jpg", "/products-dev/excavators/06.jpg"],
     featured: true,
     inStock: true,
+    stockQty: 12,
   },
   {
     id: "6",
@@ -170,6 +168,7 @@ const PRODUCTS: Product[] = [
     images: ["/products-dev/excavators/07.jpg", "/products-dev/excavators/08.jpg"],
     featured: false,
     inStock: true,
+    stockQty: 30,
   },
   {
     id: "7",
@@ -200,9 +199,10 @@ const PRODUCTS: Product[] = [
     images: ["/products-dev/excavators/09.jpg"],
     featured: false,
     inStock: true,
+    stockQty: 15,
   },
 
-  // ── Dump Trucks ─────────────────────────────────────────────
+  // Dump Trucks
   {
     id: "2",
     slug: "yg258e-rc-dump-truck",
@@ -238,6 +238,7 @@ const PRODUCTS: Product[] = [
     ],
     featured: true,
     inStock: true,
+    stockQty: 22,
   },
   {
     id: "8",
@@ -273,6 +274,7 @@ const PRODUCTS: Product[] = [
     ],
     featured: true,
     inStock: true,
+    stockQty: 14,
   },
   {
     id: "9",
@@ -308,6 +310,7 @@ const PRODUCTS: Product[] = [
     ],
     featured: true,
     inStock: true,
+    stockQty: 19,
   },
   {
     id: "10",
@@ -343,6 +346,7 @@ const PRODUCTS: Product[] = [
     featured: false,
     isNew: true,
     inStock: true,
+    stockQty: 8,
   },
   {
     id: "11",
@@ -377,9 +381,10 @@ const PRODUCTS: Product[] = [
     ],
     featured: false,
     inStock: true,
+    stockQty: 25,
   },
 
-  // ── Bulldozers ──────────────────────────────────────────────
+  // Bulldozers
   {
     id: "3",
     slug: "yigong-rc-track-bulldozer",
@@ -415,6 +420,7 @@ const PRODUCTS: Product[] = [
     ],
     featured: true,
     inStock: true,
+    stockQty: 16,
   },
   {
     id: "12",
@@ -450,6 +456,7 @@ const PRODUCTS: Product[] = [
     ],
     featured: true,
     inStock: true,
+    stockQty: 20,
   },
   {
     id: "13",
@@ -485,6 +492,7 @@ const PRODUCTS: Product[] = [
     ],
     featured: false,
     inStock: true,
+    stockQty: 10,
   },
   {
     id: "14",
@@ -520,6 +528,7 @@ const PRODUCTS: Product[] = [
     featured: false,
     isNew: true,
     inStock: true,
+    stockQty: 14,
   },
   {
     id: "15",
@@ -556,34 +565,138 @@ const PRODUCTS: Product[] = [
     featured: false,
     isNew: true,
     inStock: true,
+    stockQty: 18,
   },
 ];
 
+// Helper to normalize Prisma Product record to our Product type
+function mapDbProduct(p: any): Product {
+  return {
+    id: p.id,
+    slug: p.slug,
+    name: p.name,
+    brand: p.brand,
+    sku: p.sku,
+    category: p.category?.slug ?? p.categoryId ?? "",
+    categoryId: p.categoryId,
+    priceCents: p.priceCents,
+    compareAtPriceCents: p.compareAtPriceCents ?? undefined,
+    scale: p.scale,
+    shortDescription: p.shortDescription,
+    description: p.description,
+    features: Array.isArray(p.features) ? p.features : JSON.parse(p.features || "[]"),
+    specs: Array.isArray(p.specs) ? p.specs : JSON.parse(p.specs || "[]"),
+    images: Array.isArray(p.images) ? p.images : JSON.parse(p.images || "[]"),
+    featured: Boolean(p.featured),
+    isNew: Boolean(p.isNew),
+    inStock: Boolean(p.inStock),
+    stockQty: p.stockQty ?? undefined,
+    videoUrl: p.videoUrl || undefined,
+    archivedAt: p.archivedAt,
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  };
+}
+
 export async function getProducts(): Promise<Product[]> {
-  return PRODUCTS;
+  try {
+    const products = await db.product.findMany({
+      where: { archivedAt: null },
+      include: { category: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (products.length > 0) {
+      return products.map(mapDbProduct);
+    }
+  } catch (error) {
+    console.warn("DB getProducts fallback:", error);
+  }
+  return FALLBACK_PRODUCTS;
 }
 
 export async function getFeaturedProducts(): Promise<Product[]> {
-  return PRODUCTS.filter((p) => p.featured);
+  try {
+    const products = await db.product.findMany({
+      where: { archivedAt: null, featured: true },
+      include: { category: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (products.length > 0) {
+      return products.map(mapDbProduct);
+    }
+  } catch (error) {
+    console.warn("DB getFeaturedProducts fallback:", error);
+  }
+  return FALLBACK_PRODUCTS.filter((p) => p.featured);
 }
 
 export async function getNewArrivals(): Promise<Product[]> {
-  return PRODUCTS.filter((p) => p.isNew);
+  try {
+    const products = await db.product.findMany({
+      where: { archivedAt: null, isNew: true },
+      include: { category: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (products.length > 0) {
+      return products.map(mapDbProduct);
+    }
+  } catch (error) {
+    console.warn("DB getNewArrivals fallback:", error);
+  }
+  return FALLBACK_PRODUCTS.filter((p) => p.isNew);
 }
 
-export async function getProductsByCategory(
-  categorySlug: string,
-): Promise<Product[]> {
-  if (categorySlug === "all") return PRODUCTS;
-  return PRODUCTS.filter((p) => p.category === categorySlug);
+export async function getProductsByCategory(categorySlug: string): Promise<Product[]> {
+  if (categorySlug === "all") return getProducts();
+
+  try {
+    const products = await db.product.findMany({
+      where: {
+        archivedAt: null,
+        category: { slug: categorySlug },
+      },
+      include: { category: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (products.length > 0) {
+      return products.map(mapDbProduct);
+    }
+  } catch (error) {
+    console.warn("DB getProductsByCategory fallback:", error);
+  }
+  return FALLBACK_PRODUCTS.filter((p) => p.category === categorySlug);
 }
 
-export async function getProductBySlug(
-  slug: string,
-): Promise<Product | undefined> {
-  return PRODUCTS.find((p) => p.slug === slug);
+export async function getProductBySlug(slug: string): Promise<Product | undefined> {
+  try {
+    const product = await db.product.findUnique({
+      where: { slug },
+      include: { category: true },
+    });
+    if (product && !product.archivedAt) {
+      return mapDbProduct(product);
+    }
+  } catch (error) {
+    console.warn("DB getProductBySlug fallback:", error);
+  }
+  return FALLBACK_PRODUCTS.find((p) => p.slug === slug);
 }
 
 export async function getCategories(): Promise<Category[]> {
+  try {
+    const categories = await db.category.findMany({
+      orderBy: { sortOrder: "asc" },
+    });
+    if (categories.length > 0) {
+      return categories.map((c) => ({
+        id: c.id,
+        slug: c.slug,
+        name: c.name,
+        sortOrder: c.sortOrder,
+      }));
+    }
+  } catch (error) {
+    console.warn("DB getCategories fallback:", error);
+  }
   return CATEGORIES;
 }

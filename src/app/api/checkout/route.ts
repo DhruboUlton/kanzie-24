@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createSSLCommerzSession } from "@/lib/sslcommerz";
 import { getProductBySlug } from "@/lib/products";
+import { createPendingOrder } from "@/lib/orders";
 
 const bodySchema = z.object({
   items: z
@@ -49,6 +50,13 @@ export async function POST(req: NextRequest) {
 
   const origin = req.nextUrl.origin;
   const tran_id = `KZ-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
+
+  // Snapshot pending order in database
+  await createPendingOrder({
+    tranId: tran_id,
+    customer: parsed.data.customer,
+    items: parsed.data.items,
+  });
 
   try {
     const session = await createSSLCommerzSession({

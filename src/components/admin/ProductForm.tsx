@@ -1,0 +1,736 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import {
+  Plus,
+  Trash2,
+  Upload,
+  Video,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  ArrowLeft,
+  Image as ImageIcon,
+  Sparkles,
+} from "lucide-react";
+import { parseVideoUrl } from "@/lib/video";
+import { createProductAction, updateProductAction } from "@/lib/actions/product";
+
+export type CategoryOption = {
+  id?: string;
+  slug: string;
+  name: string;
+};
+
+type ProductFormProps = {
+  initialData?: any;
+  categories: CategoryOption[];
+  isEdit?: boolean;
+};
+
+export default function ProductForm({
+  initialData,
+  categories,
+  isEdit,
+}: ProductFormProps) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Form Fields
+  const [name, setName] = useState(initialData?.name || "");
+  const [slug, setSlug] = useState(initialData?.slug || "");
+  const [autoSlug, setAutoSlug] = useState(!isEdit);
+  const [brand, setBrand] = useState(initialData?.brand || "YIGONG");
+  const [sku, setSku] = useState(initialData?.sku || "");
+  const [categoryId, setCategoryId] = useState(
+    initialData?.categoryId || categories[0]?.id || ""
+  );
+
+  const [priceTaka, setPriceTaka] = useState<number>(
+    initialData?.priceCents ? initialData.priceCents / 100 : 9999
+  );
+  const [compareAtPriceTaka, setCompareAtPriceTaka] = useState<number | string>(
+    initialData?.compareAtPriceCents ? initialData.compareAtPriceCents / 100 : ""
+  );
+  const [scale, setScale] = useState(initialData?.scale || "1:16");
+  const [shortDescription, setShortDescription] = useState(
+    initialData?.shortDescription || ""
+  );
+  const [description, setDescription] = useState(
+    initialData?.description || ""
+  );
+
+  // Repeatable Features
+  const [features, setFeatures] = useState<string[]>(
+    Array.isArray(initialData?.features) && initialData.features.length > 0
+      ? initialData.features
+      : ["2.4GHz remote control", "Rechargeable battery pack included"]
+  );
+
+  // Repeatable Specs
+  const [specs, setSpecs] = useState<{ label: string; value: string }[]>(
+    Array.isArray(initialData?.specs) && initialData.specs.length > 0
+      ? initialData.specs
+      : [
+          { label: "Scale", value: "1:16" },
+          { label: "Control", value: "2.4GHz remote, 4-channel" },
+          { label: "Material", value: "ABS body, die-cast accents" },
+          { label: "Recommended age", value: "6+" },
+        ]
+  );
+
+  // Images
+  const [images, setImages] = useState<string[]>(
+    Array.isArray(initialData?.images) && initialData.images.length > 0
+      ? initialData.images
+      : ["/products-dev/excavators/01.jpg"]
+  );
+  const [newImageUrl, setNewImageUrl] = useState("");
+
+  // Video
+  const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || "");
+
+  // Flags & Stock
+  const [featured, setFeatured] = useState<boolean>(
+    initialData?.featured ?? false
+  );
+  const [isNew, setIsNew] = useState<boolean>(initialData?.isNew ?? false);
+  const [inStock, setInStock] = useState<boolean>(initialData?.inStock ?? true);
+  const [stockQty, setStockQty] = useState<number>(
+    initialData?.stockQty ?? 10
+  );
+
+  // Auto-slug sync
+  const handleNameChange = (val: string) => {
+    setName(val);
+    if (autoSlug) {
+      const generated = val
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-");
+      setSlug(generated);
+    }
+  };
+
+  // Image Upload handler
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Image upload failed");
+      }
+
+      setImages((prev) => [...prev, data.url]);
+    } catch (err: any) {
+      setError(err.message || "Failed to upload image.");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleAddImageUrl = () => {
+    if (newImageUrl.trim()) {
+      setImages((prev) => [...prev, newImageUrl.trim()]);
+      setNewImageUrl("");
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Video validation
+  const parsedVideo = videoUrl ? parseVideoUrl(videoUrl) : null;
+
+  // Submit Handler
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const payload = {
+      name,
+      slug,
+      brand,
+      sku,
+      categoryId,
+      priceTaka: Number(priceTaka),
+      compareAtPriceTaka: compareAtPriceTaka ? Number(compareAtPriceTaka) : null,
+      scale,
+      shortDescription,
+      description,
+      features: features.filter((f) => f.trim().length > 0),
+      specs: specs.filter((s) => s.label.trim() && s.value.trim()),
+      images: images.filter((img) => img.trim().length > 0),
+      featured,
+      isNew,
+      inStock,
+      stockQty: Number(stockQty),
+      videoUrl: videoUrl.trim() || null,
+    };
+
+    if (payload.images.length === 0) {
+      setError("Please add at least one product photo.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      let res;
+      if (isEdit && initialData?.id) {
+        res = await updateProductAction(initialData.id, payload);
+      } else {
+        res = await createProductAction(payload);
+      }
+
+      if (res.success) {
+        router.push("/admin/products");
+        router.refresh();
+      } else {
+        setError(res.error || "Failed to save product.");
+      }
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-8 max-w-5xl">
+      {/* Header Bar */}
+      <div className="flex items-center justify-between pb-6 border-b border-gray-200">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              {isEdit ? `Edit: ${name}` : "Create New RC Vehicle"}
+            </h2>
+            <p className="text-xs text-gray-500">
+              Changes sync instantly to the live storefront
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.push("/admin/products")}
+            className="px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading || uploading}
+            className="px-5 py-2.5 bg-[#c0282b] hover:bg-[#8f1e20] text-white text-sm font-semibold rounded-lg shadow-sm flex items-center gap-2 disabled:opacity-50 transition-colors"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            <span>{isEdit ? "Update Product" : "Publish Product"}</span>
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Grid: 2 Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Col (2 span): Main info, descriptions, features, specs */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* General Info */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+              General Information
+            </h3>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Product Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                placeholder="e.g. YG258C RC Hydraulic Excavator"
+                className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b] focus:ring-1 focus:ring-[#c0282b]"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    URL Slug *
+                  </label>
+                  <label className="text-[11px] text-gray-400 flex items-center gap-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={autoSlug}
+                      onChange={(e) => setAutoSlug(e.target.checked)}
+                      className="rounded text-accent focus:ring-0"
+                    />
+                    <span>Auto-sync</span>
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={slug}
+                  onChange={(e) => {
+                    setAutoSlug(false);
+                    setSlug(e.target.value);
+                  }}
+                  placeholder="yg258c-rc-excavator"
+                  className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm font-mono text-gray-800 focus:outline-none focus:border-[#c0282b]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  SKU Identifier *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                  placeholder="YG258C"
+                  className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm font-mono uppercase focus:outline-none focus:border-[#c0282b]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Brand *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  placeholder="YIGONG, TOPRACE, DIGMASTER"
+                  className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Scale *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={scale}
+                  onChange={(e) => setScale(e.target.value)}
+                  placeholder="1:16, 1:14, 1:20"
+                  className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Short Description (Card summary) *
+              </label>
+              <textarea
+                rows={2}
+                required
+                value={shortDescription}
+                onChange={(e) => setShortDescription(e.target.value)}
+                placeholder="One or two sentences highlighting main vehicle capability..."
+                className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Full Description *
+              </label>
+              <textarea
+                rows={4}
+                required
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Detailed description of features, chassis, play experience..."
+                className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+              />
+            </div>
+          </div>
+
+          {/* Key Features Bullet List */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+                Key Features (Bullet points)
+              </h3>
+              <button
+                type="button"
+                onClick={() => setFeatures((prev) => [...prev, ""])}
+                className="text-xs font-semibold text-[#c0282b] hover:text-[#8f1e20] flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Feature</span>
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              {features.map((feat, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className="w-5 text-center text-xs font-bold text-gray-400">
+                    {idx + 1}.
+                  </span>
+                  <input
+                    type="text"
+                    value={feat}
+                    onChange={(e) => {
+                      const updated = [...features];
+                      updated[idx] = e.target.value;
+                      setFeatures(updated);
+                    }}
+                    placeholder="e.g. Full hydraulic boom & bucket control"
+                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+                  />
+                  {features.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFeatures((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      className="p-1.5 text-gray-400 hover:text-red-500 rounded transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Technical Specifications */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+                Technical Specifications Table
+              </h3>
+              <button
+                type="button"
+                onClick={() =>
+                  setSpecs((prev) => [...prev, { label: "", value: "" }])
+                }
+                className="text-xs font-semibold text-[#c0282b] hover:text-[#8f1e20] flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Spec Row</span>
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              {specs.map((spec, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={spec.label}
+                    onChange={(e) => {
+                      const updated = [...specs];
+                      updated[idx] = { ...updated[idx], label: e.target.value };
+                      setSpecs(updated);
+                    }}
+                    placeholder="Spec Label (e.g. Material)"
+                    className="w-1/3 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+                  />
+                  <input
+                    type="text"
+                    value={spec.value}
+                    onChange={(e) => {
+                      const updated = [...specs];
+                      updated[idx] = { ...updated[idx], value: e.target.value };
+                      setSpecs(updated);
+                    }}
+                    placeholder="Spec Value (e.g. ABS body, die-cast)"
+                    className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+                  />
+                  {specs.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSpecs((prev) => prev.filter((_, i) => i !== idx))
+                      }
+                      className="p-1.5 text-gray-400 hover:text-red-500 rounded transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Col (1 span): Pricing, Category, Media, Video, Stock */}
+        <div className="space-y-6">
+          {/* Pricing & Category Card */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+              Pricing & Classification
+            </h3>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Category *
+              </label>
+              <select
+                required
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:border-[#c0282b]"
+              >
+                {categories.map((c) => (
+                  <option key={c.id || c.slug} value={c.id || c.slug}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Regular Price (৳ Taka) *
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 font-bold text-sm">
+                  ৳
+                </span>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  step="any"
+                  value={priceTaka}
+                  onChange={(e) => setPriceTaka(parseFloat(e.target.value) || 0)}
+                  placeholder="9999"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-[#c0282b]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Compare At / Discount Original (৳ Taka)
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 font-bold text-sm">
+                  ৳
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={compareAtPriceTaka}
+                  onChange={(e) => setCompareAtPriceTaka(e.target.value)}
+                  placeholder="Optional original price"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Inventory Stock Count
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={stockQty}
+                onChange={(e) => setStockQty(parseInt(e.target.value) || 0)}
+                className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+              />
+            </div>
+
+            <div className="pt-2 border-t border-gray-100 space-y-3">
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={inStock}
+                  onChange={(e) => setInStock(e.target.checked)}
+                  className="w-4 h-4 text-accent rounded focus:ring-0"
+                />
+                <span className="text-xs font-semibold text-gray-800">
+                  Available in Stock
+                </span>
+              </label>
+
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={featured}
+                  onChange={(e) => setFeatured(e.target.checked)}
+                  className="w-4 h-4 text-accent rounded focus:ring-0"
+                />
+                <span className="text-xs font-semibold text-gray-800">
+                  Featured on Homepage
+                </span>
+              </label>
+
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isNew}
+                  onChange={(e) => setIsNew(e.target.checked)}
+                  className="w-4 h-4 text-accent rounded focus:ring-0"
+                />
+                <span className="text-xs font-semibold text-gray-800">
+                  New Arrival Badge
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Product Photos Upload & List */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+                Product Photos ({images.length})
+              </h3>
+            </div>
+
+            {/* Direct Upload Button */}
+            <div>
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-[#c0282b] bg-gray-50/70 hover:bg-gray-50 rounded-xl p-4 cursor-pointer transition-colors">
+                <Upload className="w-5 h-5 text-gray-400 mb-1" />
+                <span className="text-xs font-semibold text-gray-700">
+                  {uploading ? "Uploading..." : "Click to Upload Photo"}
+                </span>
+                <span className="text-[10px] text-gray-400 mt-0.5">
+                  JPEG, PNG, WebP (Max 10MB)
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Add by URL input */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newImageUrl}
+                onChange={(e) => setNewImageUrl(e.target.value)}
+                placeholder="/products-dev/... or https://..."
+                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-[#c0282b]"
+              />
+              <button
+                type="button"
+                onClick={handleAddImageUrl}
+                className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-semibold hover:bg-black transition-colors"
+              >
+                Add URL
+              </button>
+            </div>
+
+            {/* Thumbnails grid */}
+            <div className="grid grid-cols-3 gap-2.5 pt-2">
+              {images.map((img, i) => (
+                <div
+                  key={i}
+                  className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200"
+                >
+                  <Image
+                    src={img}
+                    alt={`Photo ${i + 1}`}
+                    fill
+                    className="object-cover"
+                  />
+                  {i === 0 && (
+                    <span className="absolute bottom-1 left-1 bg-black/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                      Primary
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImage(i)}
+                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Video Integration Card */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-3">
+            <div className="flex items-center gap-2 text-gray-900 font-bold text-sm">
+              <Video className="w-4 h-4 text-accent" />
+              <span>Product Video Integration</span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Paste a Google Drive view link or YouTube link for automatic floating autoplay video on the product page.
+            </p>
+
+            <input
+              type="text"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://drive.google.com/file/d/... or YouTube"
+              className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-[#c0282b]"
+            />
+
+            {videoUrl && (
+              <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-xs">
+                {parsedVideo ? (
+                  <div className="flex items-center gap-2 text-emerald-700 font-medium">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>Valid video detected ({parsedVideo.type.toUpperCase()})</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-amber-700 font-medium">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>Unrecognized link (Drive / YouTube supported)</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </form>
+  );
+}
