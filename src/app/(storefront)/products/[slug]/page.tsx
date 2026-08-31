@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -9,6 +8,7 @@ import {
 import { formatPrice } from "@/lib/format";
 import AddToCartButton from "@/components/AddToCartButton";
 import ProductCard from "@/components/ProductCard";
+import ProductGallery from "@/components/ProductGallery";
 import ProductVideo from "@/components/ProductVideo";
 
 export const dynamic = "force-dynamic";
@@ -34,15 +34,7 @@ export default async function ProductPage(
       </nav>
 
       <div className="grid lg:grid-cols-2 gap-12">
-        <div className="relative aspect-square bg-paper rounded-lg overflow-hidden">
-          <Image
-            src={product.images[0]}
-            alt={product.name}
-            fill
-            priority
-            className="object-cover"
-          />
-        </div>
+        <ProductGallery images={product.images} name={product.name} />
 
         <div>
           <p className="text-xs uppercase tracking-wide text-black/40">
