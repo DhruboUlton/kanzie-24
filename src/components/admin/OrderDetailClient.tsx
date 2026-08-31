@@ -16,7 +16,7 @@ import {
   MapPin,
   Mail,
   Phone,
-  CreditCard,
+  PhoneCall,
 } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { updateOrderStatusAction, addOrderNoteAction } from "@/lib/actions/order";
@@ -72,12 +72,11 @@ export default function OrderDetailClient({ order }: { order: any }) {
   };
 
   const statusStyles: Record<string, string> = {
-    PAID: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    CONFIRMED: "bg-emerald-50 text-emerald-700 border-emerald-200",
     PENDING: "bg-amber-50 text-amber-700 border-amber-200",
     PACKED: "bg-blue-50 text-blue-700 border-blue-200",
     SHIPPED: "bg-indigo-50 text-indigo-700 border-indigo-200",
     DELIVERED: "bg-green-50 text-green-700 border-green-200",
-    FAILED: "bg-red-50 text-red-700 border-red-200",
     CANCELLED: "bg-gray-100 text-gray-700 border-gray-200",
   };
 
@@ -144,15 +143,15 @@ export default function OrderDetailClient({ order }: { order: any }) {
                 <button
                   type="button"
                   disabled={loading}
-                  onClick={() => handleStatusChange("PAID")}
+                  onClick={() => handleStatusChange("CONFIRMED")}
                   className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Mark as Paid</span>
+                  <PhoneCall className="w-3.5 h-3.5" />
+                  <span>Confirm Order (Called Customer)</span>
                 </button>
               )}
 
-              {order.status === "PAID" && (
+              {order.status === "CONFIRMED" && (
                 <button
                   type="button"
                   disabled={loading}
@@ -164,7 +163,7 @@ export default function OrderDetailClient({ order }: { order: any }) {
                 </button>
               )}
 
-              {(order.status === "PACKED" || order.status === "PAID") && (
+              {(order.status === "PACKED" || order.status === "CONFIRMED") && (
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -359,37 +358,23 @@ export default function OrderDetailClient({ order }: { order: any }) {
             </div>
           </div>
 
-          {/* Payment & Gateway Card */}
+          {/* Order Confirmation Card */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-accent" />
-              <span>SSLCommerz Gateway</span>
+              <PhoneCall className="w-4 h-4 text-accent" />
+              <span>Order Confirmation</span>
             </h3>
 
             <div className="space-y-2.5 text-xs">
               <div className="flex justify-between py-1 border-b border-gray-100">
-                <span className="text-gray-500">Gateway Status:</span>
+                <span className="text-gray-500">Status:</span>
                 <span className="font-bold text-gray-900">{order.status}</span>
               </div>
 
               <div className="flex justify-between py-1 border-b border-gray-100">
-                <span className="text-gray-500">Method / Card:</span>
+                <span className="text-gray-500">Confirmed By Call:</span>
                 <span className="font-semibold text-gray-900">
-                  {order.cardType || "Digital Gateway"}
-                </span>
-              </div>
-
-              <div className="flex justify-between py-1 border-b border-gray-100">
-                <span className="text-gray-500">Validation ID:</span>
-                <span className="font-mono text-gray-800 truncate max-w-[150px]">
-                  {order.valId || "N/A"}
-                </span>
-              </div>
-
-              <div className="flex justify-between py-1 border-b border-gray-100">
-                <span className="text-gray-500">Bank Tran ID:</span>
-                <span className="font-mono text-gray-800">
-                  {order.bankTranId || "N/A"}
+                  {order.status === "PENDING" ? "Not yet — call customer" : "Yes"}
                 </span>
               </div>
 

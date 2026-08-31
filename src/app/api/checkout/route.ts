@@ -1,7 +1,6 @@
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createSSLCommerzSession } from "@/lib/sslcommerz";
 import { getProductBySlug } from "@/lib/products";
 import { createPendingOrder } from "@/lib/orders";
 
@@ -32,10 +31,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid checkout payload." }, { status: 400 });
   }
 
-  let totalCents = 0;
-  let numOfItem = 0;
-  const productNames: string[] = [];
-  for (const { slug, qty } of parsed.data.items) {
+  for (const { slug } of parsed.data.items) {
     const product = await getProductBySlug(slug);
     if (!product) {
       return NextResponse.json(
@@ -43,39 +39,27 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    totalCents += product.priceCents * qty;
-    numOfItem += qty;
-    productNames.push(product.name);
   }
 
-  const origin = req.nextUrl.origin;
   const tran_id = `KZ-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
 
-  // Snapshot pending order in database
-  await createPendingOrder({
+  // No online payment — the order is recorded as PENDING and an admin
+  // calls the customer to confirm it (see /admin/orders). tran_id doubles
+  // as the order's unique ID, shown to the customer on success and to the
+  // admin in the dashboard. Prices are re-looked-up from the catalog
+  // inside createPendingOrder itself, never trusted from the client.
+  const order = await createPendingOrder({
     tranId: tran_id,
     customer: parsed.data.customer,
     items: parsed.data.items,
   });
 
-  try {
-    const session = await createSSLCommerzSession({
-      tran_id,
-      totalAmountTaka: totalCents / 100,
-      success_url: `${origin}/api/checkout/sslcommerz/success`,
-      fail_url: `${origin}/api/checkout/sslcommerz/fail`,
-      cancel_url: `${origin}/api/checkout/sslcommerz/cancel`,
-      ipn_url: `${origin}/api/checkout/sslcommerz/ipn`,
-      productName: productNames.join(", ").slice(0, 255),
-      numOfItem,
-      customer: parsed.data.customer,
-    });
-    return NextResponse.json({ url: session.GatewayPageURL });
-  } catch (err) {
-    const message =
-      err instanceof Error && err.message.includes("SSLCOMMERZ_")
-        ? "Checkout isn't configured yet. Add SSLCommerz credentials to your environment to enable payments."
-        : "Couldn't start checkout. Please try again.";
-    return NextResponse.json({ error: message }, { status: 502 });
+  if (!order) {
+    return NextResponse.json(
+      { error: "Couldn't place your order right now. Please try again or contact us." },
+      { status: 502 },
+    );
   }
+
+  return NextResponse.json({ orderId: order.tranId });
 }

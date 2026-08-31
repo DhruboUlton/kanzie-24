@@ -65,12 +65,12 @@ export default function PackingSlip({ order }: { order: any }) {
               {order.trackingNumber || "N/A"}
             </p>
             <p>
-              <span className="font-semibold">Payment Gateway:</span>{" "}
-              SSLCommerz ({order.cardType || "Digital Payment"})
+              <span className="font-semibold">Payment Method:</span> Cash on
+              Delivery
             </p>
             <p>
-              <span className="font-semibold">Bank Tran ID:</span>{" "}
-              {order.bankTranId || "N/A"}
+              <span className="font-semibold">Confirmed by Call:</span>{" "}
+              {order.status === "PENDING" ? "No" : "Yes"}
             </p>
           </div>
         </div>

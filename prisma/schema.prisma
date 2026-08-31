@@ -61,7 +61,7 @@ model Order {
   valId           String?
   bankTranId      String?
   cardType        String?
-  status          String       @default("PENDING") // PENDING, PAID, FAILED, CANCELLED, PACKED, SHIPPED, DELIVERED
+  status          String       @default("PENDING") // PENDING, CONFIRMED, CANCELLED, PACKED, SHIPPED, DELIVERED — no payment gateway; CONFIRMED means an admin called and verified the order
   totalAmountCents Int
   currency        String       @default("BDT")
   customerName    String

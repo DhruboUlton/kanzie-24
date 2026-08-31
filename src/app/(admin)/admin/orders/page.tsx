@@ -49,22 +49,20 @@ export default async function AdminOrdersPage(props: {
 
   const statuses = [
     { label: "All Orders", value: "ALL" },
-    { label: "Paid", value: "PAID" },
-    { label: "Pending", value: "PENDING" },
+    { label: "Pending Call", value: "PENDING" },
+    { label: "Confirmed", value: "CONFIRMED" },
     { label: "Packed", value: "PACKED" },
     { label: "Shipped", value: "SHIPPED" },
     { label: "Delivered", value: "DELIVERED" },
     { label: "Cancelled", value: "CANCELLED" },
-    { label: "Failed", value: "FAILED" },
   ];
 
   const statusStyles: Record<string, string> = {
-    PAID: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    CONFIRMED: "bg-emerald-50 text-emerald-700 border-emerald-200",
     PENDING: "bg-amber-50 text-amber-700 border-amber-200",
     PACKED: "bg-blue-50 text-blue-700 border-blue-200",
     SHIPPED: "bg-indigo-50 text-indigo-700 border-indigo-200",
     DELIVERED: "bg-green-50 text-green-700 border-green-200",
-    FAILED: "bg-red-50 text-red-700 border-red-200",
     CANCELLED: "bg-gray-100 text-gray-700 border-gray-200",
   };
 

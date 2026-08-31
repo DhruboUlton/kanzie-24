@@ -32,7 +32,7 @@ export default async function AdminOrderDetailPage(props: {
     order = {
       id: id,
       tranId: id.startsWith("KZ-") ? id : `KZ-DEMO-${id.slice(0, 6)}`,
-      status: "PAID",
+      status: "CONFIRMED",
       totalAmountCents: 1899900,
       currency: "BDT",
       customerName: "Mohammad Tanvir",
@@ -40,9 +40,6 @@ export default async function AdminOrderDetailPage(props: {
       customerPhone: "+880 1712-345678",
       customerAddress: "House 24, Road 7, Block C, Banani",
       customerCity: "Dhaka",
-      cardType: "bKash Online",
-      valId: "VAL_678912345",
-      bankTranId: "BANK_TX_987654",
       trackingNumber: "STEADFAST-998822",
       createdAt: new Date(),
       items: [
@@ -59,8 +56,8 @@ export default async function AdminOrderDetailPage(props: {
       events: [
         {
           id: "ev-1",
-          status: "PAID",
-          note: "Payment received via bKash gateway",
+          status: "CONFIRMED",
+          note: "Order confirmed by phone call",
           createdAt: new Date(),
         },
         {

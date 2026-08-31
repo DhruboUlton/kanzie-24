@@ -21,7 +21,7 @@ export default async function AdminDashboardPage() {
   // Aggregate Metrics safely (with fallback if DB empty)
   let totalRevenueCents = 0;
   let totalOrdersCount = 0;
-  let paidOrdersCount = 0;
+  let confirmedOrdersCount = 0;
   let pendingOrdersCount = 0;
   let recentOrders: any[] = [];
   let totalProductsCount = 0;
@@ -39,9 +39,14 @@ export default async function AdminDashboardPage() {
     recentOrders = orders.slice(0, 5);
 
     for (const ord of orders) {
-      if (ord.status === "PAID" || ord.status === "PACKED" || ord.status === "SHIPPED" || ord.status === "DELIVERED") {
+      if (
+        ord.status === "CONFIRMED" ||
+        ord.status === "PACKED" ||
+        ord.status === "SHIPPED" ||
+        ord.status === "DELIVERED"
+      ) {
         totalRevenueCents += ord.totalAmountCents;
-        paidOrdersCount++;
+        confirmedOrdersCount++;
       } else if (ord.status === "PENDING") {
         pendingOrdersCount++;
       }
@@ -63,7 +68,7 @@ export default async function AdminDashboardPage() {
     {
       title: "Total Revenue",
       value: formatPrice(totalRevenueCents),
-      subtitle: `${paidOrdersCount} completed orders`,
+      subtitle: `${confirmedOrdersCount} confirmed orders`,
       icon: TrendingUp,
       iconBg: "bg-emerald-50 text-emerald-600",
       border: "border-emerald-100",
@@ -176,7 +181,7 @@ export default async function AdminDashboardPage() {
                 <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                 <p className="text-sm">No orders recorded yet.</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Orders completed via SSLCommerz checkout will appear here in real-time.
+                  Orders completed at checkout will appear here in real-time.
                 </p>
               </div>
             ) : (
@@ -193,12 +198,11 @@ export default async function AdminDashboardPage() {
                 <tbody className="divide-y divide-gray-100">
                   {recentOrders.map((order) => {
                     const statusColors: Record<string, string> = {
-                      PAID: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                      CONFIRMED: "bg-emerald-50 text-emerald-700 border-emerald-200",
                       PENDING: "bg-amber-50 text-amber-700 border-amber-200",
                       PACKED: "bg-blue-50 text-blue-700 border-blue-200",
                       SHIPPED: "bg-indigo-50 text-indigo-700 border-indigo-200",
                       DELIVERED: "bg-green-50 text-green-700 border-green-200",
-                      FAILED: "bg-red-50 text-red-700 border-red-200",
                       CANCELLED: "bg-gray-100 text-gray-700 border-gray-200",
                     };
 

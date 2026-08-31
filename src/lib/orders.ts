@@ -83,78 +83,6 @@ export async function createPendingOrder(params: {
   }
 }
 
-export async function recordPaymentSuccess(params: {
-  tranId: string;
-  valId?: string;
-  bankTranId?: string;
-  cardType?: string;
-  paidAmountTaka?: number;
-  currency?: string;
-}) {
-  try {
-    const existingOrder = await db.order.findUnique({
-      where: { tranId: params.tranId },
-      include: { items: true },
-    });
-
-    if (!existingOrder) return null;
-
-    // Idempotency: if already marked PAID or later stage, return without re-applying
-    if (existingOrder.status !== "PENDING" && existingOrder.status !== "FAILED") {
-      return existingOrder;
-    }
-
-    // Verify amount if provided
-    if (params.paidAmountTaka !== undefined) {
-      const expectedTaka = existingOrder.totalAmountCents / 100;
-      if (Math.abs(expectedTaka - params.paidAmountTaka) > 0.5) {
-        console.error(
-          `Amount mismatch for ${params.tranId}: Expected ${expectedTaka}, received ${params.paidAmountTaka}`
-        );
-      }
-    }
-
-    // Update order status
-    const updatedOrder = await db.order.update({
-      where: { tranId: params.tranId },
-      data: {
-        status: "PAID",
-        valId: params.valId ?? existingOrder.valId,
-        bankTranId: params.bankTranId ?? existingOrder.bankTranId,
-        cardType: params.cardType ?? existingOrder.cardType,
-        events: {
-          create: {
-            status: "PAID",
-            note: `Payment verified (${params.cardType || "Gateway"}) - ValID: ${params.valId || "N/A"}`,
-          },
-        },
-      },
-      include: { items: true },
-    });
-
-    // Decrement stock for purchased products
-    for (const item of existingOrder.items) {
-      if (item.productId) {
-        try {
-          await db.product.update({
-            where: { id: item.productId },
-            data: {
-              stockQty: { decrement: item.qty },
-            },
-          });
-        } catch {
-          // ignore if product is unlinked
-        }
-      }
-    }
-
-    return updatedOrder;
-  } catch (error) {
-    console.warn("DB recordPaymentSuccess error:", error);
-    return null;
-  }
-}
-
 export async function updateOrderStatus(
   orderId: string,
   status: string,
@@ -162,6 +90,14 @@ export async function updateOrderStatus(
   trackingNumber?: string
 ) {
   try {
+    const existing = await db.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+    if (!existing) {
+      throw new Error("Order not found");
+    }
+
     const data: any = {
       status,
       events: {
@@ -176,11 +112,31 @@ export async function updateOrderStatus(
       data.trackingNumber = trackingNumber;
     }
 
-    return await db.order.update({
+    const updated = await db.order.update({
       where: { id: orderId },
       data,
       include: { items: true, events: true },
     });
+
+    // Stock commits the moment an admin confirms the order by phone call —
+    // guarded on the order's previous status so re-confirming (or any
+    // later status change) never decrements twice.
+    if (status === "CONFIRMED" && existing.status !== "CONFIRMED") {
+      for (const item of existing.items) {
+        if (item.productId) {
+          try {
+            await db.product.update({
+              where: { id: item.productId },
+              data: { stockQty: { decrement: item.qty } },
+            });
+          } catch {
+            // ignore if product is unlinked/archived
+          }
+        }
+      }
+    }
+
+    return updated;
   } catch (error) {
     console.error("DB updateOrderStatus error:", error);
     throw error;
