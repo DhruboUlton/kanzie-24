@@ -19,9 +19,13 @@ import { logoutAdminAction } from "@/lib/actions/auth";
 export default function AdminSidebar({
   adminName,
   adminEmail,
+  open = false,
+  onNavigate,
 }: {
   adminName?: string;
   adminEmail?: string;
+  open?: boolean;
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
 
@@ -35,7 +39,11 @@ export default function AdminSidebar({
   ];
 
   return (
-    <aside className="w-64 bg-[#121212] border-r border-white/10 flex flex-col justify-between shrink-0 text-white select-none">
+    <aside
+      className={`w-64 bg-[#121212] border-r border-white/10 flex flex-col justify-between shrink-0 text-white select-none overflow-y-auto fixed lg:static inset-y-0 left-0 z-50 transition-transform duration-300 lg:translate-x-0 ${
+        open ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
       {/* Brand Header */}
       <div>
         <div className="h-16 px-6 flex items-center justify-between border-b border-white/10">
@@ -69,6 +77,7 @@ export default function AdminSidebar({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={onNavigate}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   isActive
                     ? "bg-[#c0282b] text-white shadow-sm font-semibold"

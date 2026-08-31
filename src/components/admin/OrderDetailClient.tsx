@@ -217,7 +217,8 @@ export default function OrderDetailClient({ order }: { order: any }) {
                 Purchased Items ({order.items?.length || 0})
               </h3>
             </div>
-            <table className="w-full text-left text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[36rem] text-left text-sm">
               <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b border-gray-100">
                 <tr>
                   <th className="px-6 py-3">Product</th>
@@ -255,6 +256,7 @@ export default function OrderDetailClient({ order }: { order: any }) {
                 ))}
               </tbody>
             </table>
+            </div>
 
             {/* Total Footer */}
             <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
