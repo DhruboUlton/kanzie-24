@@ -676,6 +676,9 @@ export default function ProductForm({
                     src={img}
                     alt={`Photo ${i + 1}`}
                     fill
+                    // Uploads are streamed from outside the app root, so the
+                    // image optimizer can't resolve them — load them directly.
+                    unoptimized={img.startsWith("/api/uploads/")}
                     className="object-cover"
                   />
                   {i === 0 && (

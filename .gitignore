@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Locally-uploaded product media (dev only; production writes to UPLOAD_DIR
+# outside the app directory — see src/lib/uploads.ts)
+/public/uploads
