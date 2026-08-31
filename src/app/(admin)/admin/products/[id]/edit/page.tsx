@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { getCategories, getProductBySlug } from "@/lib/products";
+import { getCategories, getProducts } from "@/lib/products";
 import ProductForm from "@/components/admin/ProductForm";
 
 export const dynamic = "force-dynamic";
@@ -51,8 +51,11 @@ export default async function EditProductPage(props: {
       };
     }
   } catch {
-    // fallback lookup
-    const fallback = await getProductBySlug(id);
+    // DB unreachable — fall back to the hardcoded catalog, matched by
+    // either id or slug (the list page links to whichever one the
+    // current data source assigned, so both have to resolve here too).
+    const fallbackProducts = await getProducts();
+    const fallback = fallbackProducts.find((p) => p.id === id || p.slug === id);
     if (fallback) {
       product = {
         ...fallback,
