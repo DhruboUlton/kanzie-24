@@ -1,6 +1,6 @@
 import ProductCard from "@/components/ProductCard";
 import CategoryFilter from "@/components/CategoryFilter";
-import { getCategories, getProductsByCategory } from "@/lib/products";
+import { getCategoryTree, getProductsByCategory } from "@/lib/products";
 
 export default async function ProductsPage(props: PageProps<"/products">) {
   const searchParams = await props.searchParams;
@@ -8,8 +8,8 @@ export default async function ProductsPage(props: PageProps<"/products">) {
   const active =
     typeof categoryParam === "string" ? categoryParam : "all";
 
-  const [categories, products] = await Promise.all([
-    getCategories(),
+  const [tree, products] = await Promise.all([
+    getCategoryTree(),
     getProductsByCategory(active),
   ]);
 
@@ -20,7 +20,7 @@ export default async function ProductsPage(props: PageProps<"/products">) {
       </h1>
 
       <div className="flex justify-center mb-10">
-        <CategoryFilter categories={categories} active={active} />
+        <CategoryFilter tree={tree} active={active} />
       </div>
 
       {products.length === 0 ? (

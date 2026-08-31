@@ -4,10 +4,48 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 
-export async function createCategoryAction(name: string, slug: string, sortOrder: number = 0) {
+function normalizeSlug(slug: string) {
+  return slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+}
+
+// Categories nest exactly one level: a parent groups subcategories, and
+// products are filed on the leaves. Rejects anything that would create a
+// deeper tree or a cycle.
+async function validateParent(
+  parentId: string | null,
+  selfId?: string,
+): Promise<string | null> {
+  if (!parentId) return null;
+  if (selfId && parentId === selfId) return "A category can't be its own parent.";
+
+  const parent = await db.category.findUnique({
+    where: { id: parentId },
+    select: { id: true, parentId: true },
+  });
+  if (!parent) return "Selected parent category no longer exists.";
+  if (parent.parentId) {
+    return "Subcategories can only go one level deep — pick a top-level category as the parent.";
+  }
+
+  if (selfId) {
+    const childCount = await db.category.count({ where: { parentId: selfId } });
+    if (childCount > 0) {
+      return "This category already has subcategories, so it can't become one itself.";
+    }
+  }
+
+  return null;
+}
+
+export async function createCategoryAction(
+  name: string,
+  slug: string,
+  sortOrder: number = 0,
+  parentId: string | null = null,
+) {
   await requireAdmin();
 
-  const formattedSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+  const formattedSlug = normalizeSlug(slug);
   if (!name.trim() || !formattedSlug) {
     return { success: false, error: "Name and slug are required" };
   }
@@ -18,26 +56,37 @@ export async function createCategoryAction(name: string, slug: string, sortOrder
       return { success: false, error: "Category slug already exists" };
     }
 
+    const parentError = await validateParent(parentId);
+    if (parentError) return { success: false, error: parentError };
+
     const category = await db.category.create({
       data: {
         name: name.trim(),
         slug: formattedSlug,
         sortOrder,
+        parentId: parentId || null,
       },
     });
 
     revalidatePath("/products");
     revalidatePath("/admin/categories");
+    revalidatePath("/", "layout");
     return { success: true, category };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to create category" };
   }
 }
 
-export async function updateCategoryAction(id: string, name: string, slug: string, sortOrder: number) {
+export async function updateCategoryAction(
+  id: string,
+  name: string,
+  slug: string,
+  sortOrder: number,
+  parentId: string | null = null,
+) {
   await requireAdmin();
 
-  const formattedSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
+  const formattedSlug = normalizeSlug(slug);
   if (!name.trim() || !formattedSlug) {
     return { success: false, error: "Name and slug are required" };
   }
@@ -53,17 +102,22 @@ export async function updateCategoryAction(id: string, name: string, slug: strin
       return { success: false, error: "Category slug already exists" };
     }
 
+    const parentError = await validateParent(parentId, id);
+    if (parentError) return { success: false, error: parentError };
+
     const category = await db.category.update({
       where: { id },
       data: {
         name: name.trim(),
         slug: formattedSlug,
         sortOrder,
+        parentId: parentId || null,
       },
     });
 
     revalidatePath("/products");
     revalidatePath("/admin/categories");
+    revalidatePath("/", "layout");
     return { success: true, category };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to update category" };
@@ -82,9 +136,18 @@ export async function deleteCategoryAction(id: string) {
       };
     }
 
+    const childCount = await db.category.count({ where: { parentId: id } });
+    if (childCount > 0) {
+      return {
+        success: false,
+        error: `Cannot delete a category with ${childCount} subcategories. Delete or move them first.`,
+      };
+    }
+
     await db.category.delete({ where: { id } });
     revalidatePath("/products");
     revalidatePath("/admin/categories");
+    revalidatePath("/", "layout");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to delete category" };

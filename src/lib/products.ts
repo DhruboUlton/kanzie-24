@@ -5,7 +5,14 @@ export type Category = {
   slug: string;
   name: string;
   sortOrder?: number;
+  // Set when this category is a subcategory. Categories nest one level:
+  // a parent groups subcategories, and products live on the leaves.
+  parentId?: string | null;
+  parentSlug?: string | null;
 };
+
+// A parent with its subcategories attached, for nav and filter rendering.
+export type CategoryNode = Category & { children: Category[] };
 
 export type Product = {
   id: string;
@@ -650,10 +657,15 @@ export async function getProductsByCategory(categorySlug: string): Promise<Produ
   if (categorySlug === "all") return getProducts();
 
   try {
+    // A parent category shows everything filed under its subcategories,
+    // since products live on the leaves.
     const products = await db.product.findMany({
       where: {
         archivedAt: null,
-        category: { slug: categorySlug },
+        OR: [
+          { category: { slug: categorySlug } },
+          { category: { parent: { slug: categorySlug } } },
+        ],
       },
       include: { category: true },
       orderBy: { createdAt: "desc" },
@@ -686,6 +698,7 @@ export async function getCategories(): Promise<Category[]> {
   try {
     const categories = await db.category.findMany({
       orderBy: { sortOrder: "asc" },
+      include: { parent: { select: { slug: true } } },
     });
     if (categories.length > 0) {
       return categories.map((c) => ({
@@ -693,10 +706,31 @@ export async function getCategories(): Promise<Category[]> {
         slug: c.slug,
         name: c.name,
         sortOrder: c.sortOrder,
+        parentId: c.parentId,
+        parentSlug: c.parent?.slug ?? null,
       }));
     }
   } catch (error) {
     console.warn("DB getCategories fallback:", error);
   }
   return CATEGORIES;
+}
+
+// Top-level categories with their subcategories nested, ordered by
+// sortOrder at both levels. Used by the header nav and the shop filter.
+export async function getCategoryTree(): Promise<CategoryNode[]> {
+  const categories = await getCategories();
+
+  const byOrder = (a: Category, b: Category) =>
+    (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+
+  return categories
+    .filter((c) => !c.parentId)
+    .sort(byOrder)
+    .map((parent) => ({
+      ...parent,
+      children: categories
+        .filter((c) => c.parentId && c.parentId === parent.id)
+        .sort(byOrder),
+    }));
 }

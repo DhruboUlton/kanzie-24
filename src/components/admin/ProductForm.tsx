@@ -518,11 +518,34 @@ export default function ProductForm({
                 onChange={(e) => setCategoryId(e.target.value)}
                 className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:border-[#c0282b]"
               >
-                {categories.map((c) => (
-                  <option key={c.id || c.slug} value={c.id || c.slug}>
-                    {c.name}
-                  </option>
-                ))}
+                {/* Products are filed on leaves: a category that has
+                    subcategories becomes a grouping label, not a choice. */}
+                {categories
+                  .filter((c: any) => !c.parentId)
+                  .map((parent: any) => {
+                    const children = categories.filter(
+                      (c: any) => c.parentId && c.parentId === parent.id,
+                    );
+                    if (children.length === 0) {
+                      return (
+                        <option
+                          key={parent.id || parent.slug}
+                          value={parent.id || parent.slug}
+                        >
+                          {parent.name}
+                        </option>
+                      );
+                    }
+                    return (
+                      <optgroup key={parent.id || parent.slug} label={parent.name}>
+                        {children.map((c: any) => (
+                          <option key={c.id || c.slug} value={c.id || c.slug}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
               </select>
             </div>
 

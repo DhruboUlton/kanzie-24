@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Edit2, Trash2, FolderTree, Loader2, Check } from "lucide-react";
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  FolderTree,
+  CornerDownRight,
+  Loader2,
+} from "lucide-react";
 import {
   createCategoryAction,
   updateCategoryAction,
@@ -19,14 +26,39 @@ export default function CategoryManagerClient({
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [sortOrder, setSortOrder] = useState<number>(1);
+  const [parentId, setParentId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const startCreate = () => {
+  // Nesting is one level deep, so only categories that aren't already a
+  // subcategory can be picked as a parent.
+  const parentOptions = categories.filter(
+    (c) => c.id && !c.parentId && c.id !== editingId,
+  );
+
+  // Parents first, each immediately followed by its own subcategories.
+  const orderedRows: { cat: any; isChild: boolean }[] = [];
+  for (const parent of categories.filter((c) => !c.parentId)) {
+    orderedRows.push({ cat: parent, isChild: false });
+    for (const child of categories.filter(
+      (c) => c.parentId && c.parentId === parent.id,
+    )) {
+      orderedRows.push({ cat: child, isChild: true });
+    }
+  }
+  // Any subcategory whose parent is missing from this list still shows.
+  for (const orphan of categories.filter(
+    (c) => c.parentId && !categories.some((p) => p.id === c.parentId),
+  )) {
+    orderedRows.push({ cat: orphan, isChild: true });
+  }
+
+  const startCreate = (presetParentId = "") => {
     setEditingId("new");
     setName("");
     setSlug("");
     setSortOrder((categories.length || 0) + 1);
+    setParentId(presetParentId);
     setError(null);
   };
 
@@ -35,6 +67,7 @@ export default function CategoryManagerClient({
     setName(cat.name);
     setSlug(cat.slug);
     setSortOrder(cat.sortOrder || 0);
+    setParentId(cat.parentId || "");
     setError(null);
   };
 
@@ -42,6 +75,7 @@ export default function CategoryManagerClient({
     setEditingId(null);
     setName("");
     setSlug("");
+    setParentId("");
     setError(null);
   };
 
@@ -65,7 +99,7 @@ export default function CategoryManagerClient({
 
     try {
       if (editingId === "new") {
-        const res = await createCategoryAction(name, slug, sortOrder);
+        const res = await createCategoryAction(name, slug, sortOrder, parentId || null);
         if (res.success) {
           cancelEdit();
           router.refresh();
@@ -73,7 +107,13 @@ export default function CategoryManagerClient({
           setError(res.error || "Failed to create category");
         }
       } else if (editingId) {
-        const res = await updateCategoryAction(editingId, name, slug, sortOrder);
+        const res = await updateCategoryAction(
+          editingId,
+          name,
+          slug,
+          sortOrder,
+          parentId || null,
+        );
         if (res.success) {
           cancelEdit();
           router.refresh();
@@ -117,7 +157,7 @@ export default function CategoryManagerClient({
         {editingId !== "new" && (
           <button
             type="button"
-            onClick={startCreate}
+            onClick={() => startCreate()}
             className="inline-flex items-center gap-2 px-4 py-2 bg-[#c0282b] hover:bg-[#8f1e20] text-white text-sm font-semibold rounded-lg shadow-sm transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -141,6 +181,28 @@ export default function CategoryManagerClient({
           <h3 className="text-sm font-bold text-gray-900 uppercase">
             {editingId === "new" ? "New Category" : "Edit Category"}
           </h3>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              Parent Category
+            </label>
+            <select
+              value={parentId}
+              onChange={(e) => setParentId(e.target.value)}
+              className="w-full sm:w-1/2 px-3 py-1.5 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:border-[#c0282b]"
+            >
+              <option value="">None — top-level category</option>
+              {parentOptions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-gray-400 mt-1">
+              Pick a parent to make this a subcategory. Products are assigned to
+              subcategories; a parent shows everything filed beneath it.
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
@@ -216,11 +278,28 @@ export default function CategoryManagerClient({
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {categories.map((cat) => (
+            {orderedRows.map(({ cat, isChild }) => (
               <tr key={cat.id || cat.slug} className="hover:bg-gray-50/70">
-                <td className="px-6 py-4 font-bold text-gray-900 flex items-center gap-2.5">
-                  <FolderTree className="w-4 h-4 text-accent" />
-                  <span>{cat.name}</span>
+                <td className="px-6 py-4 font-bold text-gray-900">
+                  <div
+                    className={`flex items-center gap-2.5 ${isChild ? "pl-6" : ""}`}
+                  >
+                    {isChild ? (
+                      <CornerDownRight className="w-4 h-4 text-gray-300 shrink-0" />
+                    ) : (
+                      <FolderTree className="w-4 h-4 text-accent shrink-0" />
+                    )}
+                    <span className={isChild ? "font-semibold" : ""}>{cat.name}</span>
+                    {!isChild && (
+                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                        {categories.filter((c) => c.parentId === cat.id).length ||
+                          ""}
+                        {categories.filter((c) => c.parentId === cat.id).length
+                          ? " sub"
+                          : ""}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 font-mono text-xs text-gray-600">
                   {cat.slug}
@@ -230,6 +309,16 @@ export default function CategoryManagerClient({
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
+                    {!isChild && cat.id && (
+                      <button
+                        type="button"
+                        onClick={() => startCreate(cat.id)}
+                        title="Add subcategory"
+                        className="p-1.5 text-gray-400 hover:text-accent hover:bg-gray-100 rounded-md transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => startEdit(cat)}

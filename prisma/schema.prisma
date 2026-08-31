@@ -17,13 +17,22 @@ model AdminUser {
 }
 
 model Category {
-  id        String    @id @default(cuid())
-  slug      String    @unique
+  id        String     @id @default(cuid())
+  slug      String     @unique
   name      String
-  sortOrder Int       @default(0)
+  sortOrder Int        @default(0)
+  // Self-relation, one level deep: a category with a parent is a
+  // subcategory and cannot itself have children (enforced in
+  // src/lib/actions/category.ts). Parents act as groupings — products are
+  // assigned to leaf categories.
+  parentId  String?
+  parent    Category?  @relation("CategoryChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Category[] @relation("CategoryChildren")
   products  Product[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([parentId])
 }
 
 model Product {
