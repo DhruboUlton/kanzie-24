@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
+    "build": "prisma generate && next build --webpack",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
-    "@prisma/client": "^7.10.0",
+    "@prisma/client": "6.4.1",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "embla-carousel-react": "^8.6.0",
@@ -30,7 +30,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
-    "prisma": "^8.0.0-rc.12",
+    "prisma": "6.4.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.12",
     "typescript": "^5"
