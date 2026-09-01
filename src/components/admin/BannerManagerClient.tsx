@@ -15,8 +15,10 @@ import {
   AlertCircle,
   Type,
   MousePointerClick,
+  Eye,
 } from "lucide-react";
 import { updateHeroAction } from "@/lib/actions/hero";
+import HeroSlider from "@/components/HeroSlider";
 import { HeroContent, HeroSlide } from "@/lib/hero";
 
 function isUpload(src: string) {
@@ -146,6 +148,25 @@ export default function BannerManagerClient({
         </div>
       )}
 
+      {/* Live preview — the real storefront component, driven by the values
+          being edited, so alignment nudges are visible before saving. */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+          <Eye className="w-4 h-4 text-accent" />
+          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+            Live Preview
+          </h3>
+          <span className="text-[11px] text-gray-400 ml-1">
+            exactly how the homepage renders these values
+          </span>
+        </div>
+        <div className="relative h-[26rem] overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-0 origin-top-left scale-[0.55] w-[181.8%]">
+            <HeroSlider content={content} />
+          </div>
+        </div>
+      </div>
+
       {/* Headline */}
       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
@@ -205,18 +226,6 @@ export default function BannerManagerClient({
           />
         </div>
 
-        {/* Live preview of the headline exactly as the storefront renders it */}
-        <div className="bg-paper rounded-lg px-4 py-6 text-center">
-          <p className="font-display text-2xl sm:text-3xl tracking-wide leading-[1.05] text-ink">
-            {content.headingLead}{" "}
-            <span className="text-accent">{content.headingAccent}</span>
-            <br />
-            {content.headingTail}
-          </p>
-          <p className="mt-2 text-xs sm:text-sm text-ink/70">
-            {content.subheading}
-          </p>
-        </div>
       </div>
 
       {/* CTA */}

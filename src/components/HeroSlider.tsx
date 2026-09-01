@@ -45,13 +45,6 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
   const SLIDES = content.slides;
   const n = SLIDES.length;
 
-  // The tightest-cropped slide is the reference: it gets no push, and every
-  // other slide nudges outward by exactly its excess padding.
-  const REFERENCE_GAP = Math.min(
-    ...SLIDES.flatMap((s) => [s.leftGap, s.rightGap]),
-    0,
-  );
-
   const [offsets, setOffsets] = useState<number[]>(() =>
     SLIDES.map((_, i) => ringOffset(i, SLIDES.length)),
   );
@@ -129,7 +122,9 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
             // right edge, and vice versa. Only push outward for whatever
             // padding this slide has beyond the tightest-cropped image.
             const sideGap = offset < 0 ? slide.rightGap : offset > 0 ? slide.leftGap : 0;
-            const sideCorrection = Math.sign(offset) * Math.max(0, sideGap - REFERENCE_GAP);
+            // Each slide's nudge stands alone — no cross-slide reference, so
+            // editing one slide in /admin/banner never moves the others.
+            const sideCorrection = Math.sign(offset) * sideGap;
 
             return (
               <button
