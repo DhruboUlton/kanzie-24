@@ -1,6 +1,7 @@
 import Link from "next/link";
 import HeroSlider from "@/components/HeroSlider";
 import { getHeroContent } from "@/lib/hero";
+import { getBodyBannerContent } from "@/lib/body-banner";
 import UspStrip from "@/components/UspStrip";
 import FeatureBanner from "@/components/FeatureBanner";
 import ProductCard from "@/components/ProductCard";
@@ -16,13 +17,14 @@ import {
 } from "@/lib/products";
 
 export default async function Home() {
-  const [featured, newArrivals, allProducts, categories, heroContent] =
+  const [featured, newArrivals, allProducts, categories, heroContent, bodyBanner] =
     await Promise.all([
       getFeaturedProducts(),
       getNewArrivals(),
       getProducts(),
       getCategories(),
       getHeroContent(),
+      getBodyBannerContent(),
     ]);
 
   return (
@@ -43,7 +45,7 @@ export default async function Home() {
       <BrandLogoStrip />
 
       <UspStrip />
-      <FeatureBanner />
+      <FeatureBanner content={bodyBanner} />
 
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
         <h2 className="font-display text-3xl sm:text-4xl tracking-wide text-center mb-10">
