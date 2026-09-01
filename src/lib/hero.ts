@@ -10,6 +10,9 @@ export const HERO_KEYS = {
   subheading: "hero_subheading",
   headingColor: "hero_heading_color",
   headingAccentColor: "hero_heading_accent_color",
+  backgroundColor: "hero_background_color",
+  watermarks: "hero_watermarks",
+  watermarkColor: "hero_watermark_color",
   ctaLabel: "hero_cta_label",
   ctaHref: "hero_cta_href",
   slides: "hero_slides",
@@ -39,6 +42,11 @@ export type HeroContent = {
   // the brand palette.
   headingColor: string;
   headingAccentColor: string;
+  // Section background, plus the oversized words that cycle behind the
+  // slider (one per slide position, wrapping if there are fewer words).
+  backgroundColor: string;
+  watermarks: string[];
+  watermarkColor: string;
   ctaLabel: string;
   ctaHref: string;
   slides: HeroSlide[];
@@ -51,6 +59,9 @@ export const DEFAULT_HERO: HeroContent = {
   subheading: "Big machines. Big fun. Built for little builders.",
   headingColor: "#282828",
   headingAccentColor: "#c0282b",
+  backgroundColor: "#d5d2c7",
+  watermarks: ["DIG", "HAUL", "PUSH", "BUILD"],
+  watermarkColor: "#000000",
   ctaLabel: "SHOP RC TOYS →",
   ctaHref: "/products",
   slides: [
@@ -74,6 +85,20 @@ export function normalizeHex(value: string | undefined, fallback: string): strin
   if (typeof value !== "string") return fallback;
   const v = value.trim();
   return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v) ? v : fallback;
+}
+
+function parseWatermarks(raw: string | undefined): string[] | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const words = parsed
+      .map((w) => String(w).trim())
+      .filter((w) => w.length > 0);
+    return words.length > 0 ? words : null;
+  } catch {
+    return null;
+  }
 }
 
 function parseSlides(raw: string | undefined): HeroSlide[] | null {
@@ -114,6 +139,15 @@ export async function getHeroContent(): Promise<HeroContent> {
       headingAccentColor: normalizeHex(
         map[HERO_KEYS.headingAccentColor],
         DEFAULT_HERO.headingAccentColor,
+      ),
+      backgroundColor: normalizeHex(
+        map[HERO_KEYS.backgroundColor],
+        DEFAULT_HERO.backgroundColor,
+      ),
+      watermarks: parseWatermarks(map[HERO_KEYS.watermarks]) ?? DEFAULT_HERO.watermarks,
+      watermarkColor: normalizeHex(
+        map[HERO_KEYS.watermarkColor],
+        DEFAULT_HERO.watermarkColor,
       ),
       ctaLabel: map[HERO_KEYS.ctaLabel] ?? DEFAULT_HERO.ctaLabel,
       ctaHref: map[HERO_KEYS.ctaHref] ?? DEFAULT_HERO.ctaHref,

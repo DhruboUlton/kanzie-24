@@ -6,8 +6,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { HeroContent } from "@/lib/hero";
 
-const WATERMARKS = ["DIG", "HAUL", "PUSH", "BUILD"];
-
 // Slides, headline and CTA come from /admin/banner (see src/lib/hero.ts);
 // DEFAULT_HERO is what ships if nothing has been saved yet.
 //
@@ -86,14 +84,25 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
   }, [goNext]);
 
   const centerIndex = offsets.findIndex((o) => o === 0);
+  // Filter here rather than trusting the input: the admin field keeps raw
+  // comma splits while typing, so an empty box arrives as [""].
+  const watermarks = (content.watermarks ?? []).filter((w) => w.trim().length > 0);
 
   return (
-    <section className="relative bg-paper overflow-hidden">
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
-        <span className="font-display text-[26vw] leading-none text-black/5 whitespace-nowrap">
-          {WATERMARKS[centerIndex % WATERMARKS.length]}
-        </span>
-      </div>
+    <section
+      className="relative overflow-hidden"
+      style={{ backgroundColor: content.backgroundColor }}
+    >
+      {watermarks.length > 0 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
+          <span
+            className="font-display text-[26vw] leading-none whitespace-nowrap"
+            style={{ color: content.watermarkColor, opacity: 0.05 }}
+          >
+            {watermarks[((centerIndex % watermarks.length) + watermarks.length) % watermarks.length]}
+          </span>
+        </div>
+      )}
 
       <div className="relative mx-auto max-w-7xl px-6 sm:px-10 py-16 sm:py-20">
         <div className="relative z-20 text-center mb-4">

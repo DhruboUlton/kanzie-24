@@ -17,6 +17,7 @@ import {
   MousePointerClick,
   Eye,
   RotateCcw,
+  Palette,
 } from "lucide-react";
 import { updateHeroAction } from "@/lib/actions/hero";
 import HeroSlider from "@/components/HeroSlider";
@@ -301,6 +302,55 @@ export default function BannerManagerClient({
           />
         </div>
 
+      </div>
+
+      {/* Background */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+          <Palette className="w-4 h-4 text-accent" />
+          <span>Background</span>
+        </h3>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+            Background words
+          </label>
+          <input
+            type="text"
+            value={content.watermarks.join(", ")}
+            onChange={(e) =>
+              setField(
+                "watermarks",
+                e.target.value.split(",").map((w) => w.trimStart()),
+              )
+            }
+            placeholder="DIG, HAUL, PUSH, BUILD"
+            className={inputClass}
+          />
+          <p className="text-[11px] text-gray-400 mt-1">
+            Separate with commas. One shows behind each slide, cycling as the
+            slider moves — leave empty for no word at all.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <ColorField
+            label="Background colour"
+            value={content.backgroundColor}
+            fallback={DEFAULT_HERO.backgroundColor}
+            onChange={(v) => setField("backgroundColor", v)}
+          />
+          <ColorField
+            label="Background word colour"
+            value={content.watermarkColor}
+            fallback={DEFAULT_HERO.watermarkColor}
+            onChange={(v) => setField("watermarkColor", v)}
+          />
+        </div>
+        <p className="text-[11px] text-gray-400 -mt-1">
+          The word sits at 5% opacity, so pick something with contrast against
+          the background — white reads on a dark banner, black on a light one.
+        </p>
       </div>
 
       {/* CTA */}

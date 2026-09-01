@@ -39,6 +39,17 @@ export async function updateHeroAction(
       content.headingAccentColor,
       DEFAULT_HERO.headingAccentColor,
     ),
+    [HERO_KEYS.backgroundColor]: normalizeHex(
+      content.backgroundColor,
+      DEFAULT_HERO.backgroundColor,
+    ),
+    [HERO_KEYS.watermarkColor]: normalizeHex(
+      content.watermarkColor,
+      DEFAULT_HERO.watermarkColor,
+    ),
+    [HERO_KEYS.watermarks]: JSON.stringify(
+      content.watermarks.map((w) => w.trim()).filter(Boolean),
+    ),
     [HERO_KEYS.ctaLabel]: content.ctaLabel.trim(),
     [HERO_KEYS.ctaHref]: content.ctaHref.trim() || "/products",
     [HERO_KEYS.slides]: JSON.stringify(
