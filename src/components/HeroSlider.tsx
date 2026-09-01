@@ -119,7 +119,8 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
             const isCenter = offset === 0;
             const abs = Math.abs(offset);
 
-            const scale = isCenter ? 1.25 : 0.5;
+            // Per-slide zoom rides on top of the coverflow scaling.
+            const scale = (isCenter ? 1.25 : 0.5) * ((slide.zoom ?? 100) / 100);
             const opacity = abs > 1 ? 0 : isCenter ? 1 : 0.8;
             const zIndex = 10 - abs;
 

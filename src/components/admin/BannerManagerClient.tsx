@@ -135,7 +135,7 @@ export default function BannerManagerClient({
           ...c,
           slides: [
             ...c.slides,
-            { src: data.url, alt: "", groundOffset: 0, leftGap: 0, rightGap: 0 },
+            { src: data.url, alt: "", groundOffset: 0, leftGap: 0, rightGap: 0, zoom: 100 },
           ],
         }));
       }
@@ -407,7 +407,7 @@ export default function BannerManagerClient({
                   className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-[#c0282b]"
                 />
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {(
                     [
                       ["groundOffset", "Down"],
@@ -429,10 +429,39 @@ export default function BannerManagerClient({
                       />
                     </div>
                   ))}
+
+                  <div>
+                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                      Zoom %
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={10}
+                        max={300}
+                        step={5}
+                        value={slide.zoom ?? 100}
+                        onChange={(e) =>
+                          setSlide(i, { zoom: Number(e.target.value) || 100 })
+                        }
+                        className="w-full min-w-0 px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:border-[#c0282b]"
+                      />
+                      {(slide.zoom ?? 100) !== 100 && (
+                        <button
+                          type="button"
+                          onClick={() => setSlide(i, { zoom: 100 })}
+                          title="Reset zoom to 100%"
+                          className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded shrink-0"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <p className="text-[10px] text-gray-400">
-                  Alignment nudges in % — only needed if this image sits higher
-                  or wider than the others. Leave at 0 to start.
+                  Nudges in % to line this image up with the others, plus zoom
+                  to match its size. Defaults: 0 nudge, 100% zoom.
                 </p>
               </div>
 

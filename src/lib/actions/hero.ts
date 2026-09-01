@@ -9,6 +9,7 @@ import {
   HeroContent,
   getHeroContent,
   normalizeHex,
+  clampZoom,
 } from "@/lib/hero";
 
 export async function getHeroContentAction(): Promise<HeroContent> {
@@ -49,6 +50,7 @@ export async function updateHeroAction(
           groundOffset: Number(s.groundOffset) || 0,
           leftGap: Number(s.leftGap) || 0,
           rightGap: Number(s.rightGap) || 0,
+          zoom: clampZoom(s.zoom),
         })),
     ),
   };

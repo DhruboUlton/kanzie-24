@@ -24,6 +24,9 @@ export type HeroSlide = {
   groundOffset: number;
   leftGap: number;
   rightGap: number;
+  // Per-slide size as a percentage of the slider's own scaling, so one
+  // oversized or undersized PNG can be matched to the rest. 100 = as-is.
+  zoom: number;
 };
 
 export type HeroContent = {
@@ -51,12 +54,20 @@ export const DEFAULT_HERO: HeroContent = {
   ctaLabel: "SHOP RC TOYS →",
   ctaHref: "/products",
   slides: [
-    { src: "/hero/top-power-excavator.png", alt: "Top Power RC excavator", groundOffset: 2, leftGap: 5, rightGap: 4 },
-    { src: "/hero/jcb-backhoe-loader-1.png", alt: "JCB RC backhoe loader", groundOffset: 7, leftGap: 3, rightGap: 3 },
-    { src: "/hero/jcb-backhoe-loader-2.png", alt: "JCB RC backhoe loader, arm raised", groundOffset: 0, leftGap: 2, rightGap: 0 },
-    { src: "/hero/jcb-220x-excavator.png", alt: "JCB 220X LC RC excavator", groundOffset: 12, leftGap: 6, rightGap: 6 },
+    { src: "/hero/top-power-excavator.png", alt: "Top Power RC excavator", groundOffset: 2, leftGap: 5, rightGap: 4, zoom: 100 },
+    { src: "/hero/jcb-backhoe-loader-1.png", alt: "JCB RC backhoe loader", groundOffset: 7, leftGap: 3, rightGap: 3, zoom: 100 },
+    { src: "/hero/jcb-backhoe-loader-2.png", alt: "JCB RC backhoe loader, arm raised", groundOffset: 0, leftGap: 2, rightGap: 0, zoom: 100 },
+    { src: "/hero/jcb-220x-excavator.png", alt: "JCB 220X LC RC excavator", groundOffset: 12, leftGap: 6, rightGap: 6, zoom: 100 },
   ],
 };
+
+// Slides saved before zoom existed have no value; treat those as 100 and
+// keep the rest inside a range that can't collapse or explode the slider.
+export function clampZoom(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 100;
+  return Math.min(300, Math.max(10, n));
+}
 
 // Only ever let a real hex colour reach an inline style attribute.
 export function normalizeHex(value: string | undefined, fallback: string): string {
@@ -78,6 +89,7 @@ function parseSlides(raw: string | undefined): HeroSlide[] | null {
         groundOffset: Number(s.groundOffset) || 0,
         leftGap: Number(s.leftGap) || 0,
         rightGap: Number(s.rightGap) || 0,
+        zoom: clampZoom(s.zoom),
       }));
     return slides.length > 0 ? slides : null;
   } catch {
