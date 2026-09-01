@@ -11,7 +11,6 @@ export const HERO_KEYS = {
   headingColor: "hero_heading_color",
   headingAccentColor: "hero_heading_accent_color",
   backgroundColor: "hero_background_color",
-  watermarks: "hero_watermarks",
   watermarkColor: "hero_watermark_color",
   ctaLabel: "hero_cta_label",
   ctaHref: "hero_cta_href",
@@ -30,6 +29,9 @@ export type HeroSlide = {
   // Per-slide size as a percentage of the slider's own scaling, so one
   // oversized or undersized PNG can be matched to the rest. 100 = as-is.
   zoom: number;
+  // The oversized word shown behind this slide while it's centred. Empty
+  // means no word for this one.
+  word: string;
 };
 
 export type HeroContent = {
@@ -42,10 +44,9 @@ export type HeroContent = {
   // the brand palette.
   headingColor: string;
   headingAccentColor: string;
-  // Section background, plus the oversized words that cycle behind the
-  // slider (one per slide position, wrapping if there are fewer words).
+  // Section background. The word behind the slider belongs to whichever
+  // slide is centred (see HeroSlide.word); this is just its colour.
   backgroundColor: string;
-  watermarks: string[];
   watermarkColor: string;
   ctaLabel: string;
   ctaHref: string;
@@ -60,15 +61,14 @@ export const DEFAULT_HERO: HeroContent = {
   headingColor: "#282828",
   headingAccentColor: "#c0282b",
   backgroundColor: "#d5d2c7",
-  watermarks: ["DIG", "HAUL", "PUSH", "BUILD"],
   watermarkColor: "#000000",
   ctaLabel: "SHOP RC TOYS →",
   ctaHref: "/products",
   slides: [
-    { src: "/hero/top-power-excavator.png", alt: "Top Power RC excavator", groundOffset: 2, leftGap: 5, rightGap: 4, zoom: 100 },
-    { src: "/hero/jcb-backhoe-loader-1.png", alt: "JCB RC backhoe loader", groundOffset: 7, leftGap: 3, rightGap: 3, zoom: 100 },
-    { src: "/hero/jcb-backhoe-loader-2.png", alt: "JCB RC backhoe loader, arm raised", groundOffset: 0, leftGap: 2, rightGap: 0, zoom: 100 },
-    { src: "/hero/jcb-220x-excavator.png", alt: "JCB 220X LC RC excavator", groundOffset: 12, leftGap: 6, rightGap: 6, zoom: 100 },
+    { src: "/hero/top-power-excavator.png", alt: "Top Power RC excavator", groundOffset: 2, leftGap: 5, rightGap: 4, zoom: 100, word: "DIG" },
+    { src: "/hero/jcb-backhoe-loader-1.png", alt: "JCB RC backhoe loader", groundOffset: 7, leftGap: 3, rightGap: 3, zoom: 100, word: "HAUL" },
+    { src: "/hero/jcb-backhoe-loader-2.png", alt: "JCB RC backhoe loader, arm raised", groundOffset: 0, leftGap: 2, rightGap: 0, zoom: 100, word: "PUSH" },
+    { src: "/hero/jcb-220x-excavator.png", alt: "JCB 220X LC RC excavator", groundOffset: 12, leftGap: 6, rightGap: 6, zoom: 100, word: "BUILD" },
   ],
 };
 
@@ -87,20 +87,6 @@ export function normalizeHex(value: string | undefined, fallback: string): strin
   return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v) ? v : fallback;
 }
 
-function parseWatermarks(raw: string | undefined): string[] | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return null;
-    const words = parsed
-      .map((w) => String(w).trim())
-      .filter((w) => w.length > 0);
-    return words.length > 0 ? words : null;
-  } catch {
-    return null;
-  }
-}
-
 function parseSlides(raw: string | undefined): HeroSlide[] | null {
   if (!raw) return null;
   try {
@@ -115,6 +101,7 @@ function parseSlides(raw: string | undefined): HeroSlide[] | null {
         leftGap: Number(s.leftGap) || 0,
         rightGap: Number(s.rightGap) || 0,
         zoom: clampZoom(s.zoom),
+        word: typeof s.word === "string" ? s.word : "",
       }));
     return slides.length > 0 ? slides : null;
   } catch {
@@ -144,7 +131,6 @@ export async function getHeroContent(): Promise<HeroContent> {
         map[HERO_KEYS.backgroundColor],
         DEFAULT_HERO.backgroundColor,
       ),
-      watermarks: parseWatermarks(map[HERO_KEYS.watermarks]) ?? DEFAULT_HERO.watermarks,
       watermarkColor: normalizeHex(
         map[HERO_KEYS.watermarkColor],
         DEFAULT_HERO.watermarkColor,

@@ -47,9 +47,6 @@ export async function updateHeroAction(
       content.watermarkColor,
       DEFAULT_HERO.watermarkColor,
     ),
-    [HERO_KEYS.watermarks]: JSON.stringify(
-      content.watermarks.map((w) => w.trim()).filter(Boolean),
-    ),
     [HERO_KEYS.ctaLabel]: content.ctaLabel.trim(),
     [HERO_KEYS.ctaHref]: content.ctaHref.trim() || "/products",
     [HERO_KEYS.slides]: JSON.stringify(
@@ -62,6 +59,7 @@ export async function updateHeroAction(
           leftGap: Number(s.leftGap) || 0,
           rightGap: Number(s.rightGap) || 0,
           zoom: clampZoom(s.zoom),
+          word: s.word.trim(),
         })),
     ),
   };

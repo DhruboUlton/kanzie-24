@@ -136,7 +136,15 @@ export default function BannerManagerClient({
           ...c,
           slides: [
             ...c.slides,
-            { src: data.url, alt: "", groundOffset: 0, leftGap: 0, rightGap: 0, zoom: 100 },
+            {
+              src: data.url,
+              alt: "",
+              groundOffset: 0,
+              leftGap: 0,
+              rightGap: 0,
+              zoom: 100,
+              word: "",
+            },
           ],
         }));
       }
@@ -311,28 +319,6 @@ export default function BannerManagerClient({
           <span>Background</span>
         </h3>
 
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-            Background words
-          </label>
-          <input
-            type="text"
-            value={content.watermarks.join(", ")}
-            onChange={(e) =>
-              setField(
-                "watermarks",
-                e.target.value.split(",").map((w) => w.trimStart()),
-              )
-            }
-            placeholder="DIG, HAUL, PUSH, BUILD"
-            className={inputClass}
-          />
-          <p className="text-[11px] text-gray-400 mt-1">
-            Separate with commas. One shows behind each slide, cycling as the
-            slider moves — leave empty for no word at all.
-          </p>
-        </div>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <ColorField
             label="Background colour"
@@ -348,8 +334,9 @@ export default function BannerManagerClient({
           />
         </div>
         <p className="text-[11px] text-gray-400 -mt-1">
-          The word sits at 5% opacity, so pick something with contrast against
-          the background — white reads on a dark banner, black on a light one.
+          Each slide carries its own backdrop word (set it with the image
+          below). It sits at 5% opacity, so pick a colour with contrast —
+          white reads on a dark banner, black on a light one.
         </p>
       </div>
 
@@ -449,13 +436,23 @@ export default function BannerManagerClient({
               </div>
 
               <div className="flex-1 min-w-0 space-y-2.5">
-                <input
-                  type="text"
-                  value={slide.alt}
-                  onChange={(e) => setSlide(i, { alt: e.target.value })}
-                  placeholder="Describe the image (for accessibility & SEO)"
-                  className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-[#c0282b]"
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-2">
+                  <input
+                    type="text"
+                    value={slide.alt}
+                    onChange={(e) => setSlide(i, { alt: e.target.value })}
+                    placeholder="Describe the image (for accessibility & SEO)"
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-[#c0282b]"
+                  />
+                  <input
+                    type="text"
+                    value={slide.word ?? ""}
+                    onChange={(e) => setSlide(i, { word: e.target.value })}
+                    placeholder="Backdrop word"
+                    title="The oversized word shown behind this image"
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase tracking-wide focus:outline-none focus:border-[#c0282b]"
+                  />
+                </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {(
