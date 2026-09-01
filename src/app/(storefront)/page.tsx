@@ -1,5 +1,6 @@
 import Link from "next/link";
 import HeroSlider from "@/components/HeroSlider";
+import { getHeroContent } from "@/lib/hero";
 import UspStrip from "@/components/UspStrip";
 import FeatureBanner from "@/components/FeatureBanner";
 import ProductCard from "@/components/ProductCard";
@@ -15,16 +16,18 @@ import {
 } from "@/lib/products";
 
 export default async function Home() {
-  const [featured, newArrivals, allProducts, categories] = await Promise.all([
-    getFeaturedProducts(),
-    getNewArrivals(),
-    getProducts(),
-    getCategories(),
-  ]);
+  const [featured, newArrivals, allProducts, categories, heroContent] =
+    await Promise.all([
+      getFeaturedProducts(),
+      getNewArrivals(),
+      getProducts(),
+      getCategories(),
+      getHeroContent(),
+    ]);
 
   return (
     <>
-      <HeroSlider />
+      <HeroSlider content={heroContent} />
 
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
         <h2 className="font-display text-3xl sm:text-4xl tracking-wide text-center mb-10">

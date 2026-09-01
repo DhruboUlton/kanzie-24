@@ -4,33 +4,25 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { HeroContent } from "@/lib/hero";
 
 const WATERMARKS = ["DIG", "HAUL", "PUSH", "BUILD"];
 
-// Decorative banner renders — not tied to the product catalog. Each PNG has
-// a different amount of empty transparent space around the vehicle (measured
-// via each file's alpha bbox, as % of the 1400px canvas):
-//   - bottom: 12–24% → groundOffset pushes the box down so wheels/tracks
-//     line up instead of each vehicle's canvas edge.
-//   - left/right: 2–8% → leftGap/rightGap correct the side spacing the same
-//     way, applied inward-side-only (see sideGap below), so the *vehicle*,
-//     not its box, sits a consistent distance from center.
-const SLIDES = [
-  { src: "/hero/top-power-excavator.png", alt: "Top Power RC excavator", groundOffset: 2, leftGap: 7, rightGap: 6 },
-  { src: "/hero/jcb-backhoe-loader-1.png", alt: "JCB RC backhoe loader", groundOffset: 7, leftGap: 5, rightGap: 5 },
-  { src: "/hero/jcb-backhoe-loader-2.png", alt: "JCB RC backhoe loader, arm raised", groundOffset: 0, leftGap: 4, rightGap: 2 },
-  { src: "/hero/jcb-220x-excavator.png", alt: "JCB 220X LC RC excavator", groundOffset: 12, leftGap: 8, rightGap: 8 },
-];
-// Smallest inward gap across all four — the reference every other slide's
-// gap is measured against, so the tightest-cropped vehicle gets no push and
-// everything else nudges outward by exactly its excess padding.
-const REFERENCE_GAP = 2;
+// Slides, headline and CTA come from /admin/banner (see src/lib/hero.ts);
+// DEFAULT_HERO is what ships if nothing has been saved yet.
+//
+// Each transparent PNG carries a different amount of empty space around the
+// vehicle, so per-slide nudges (as % of the frame) line the machines up
+// with each other rather than with their canvas edges:
+//   - groundOffset pushes the box down so wheels/tracks align.
+//   - leftGap/rightGap correct side spacing, applied inward-side-only (see
+//     sideGap below), so the *vehicle* sits a consistent distance from
+//     centre regardless of how tightly it was cropped.
 
-const n = SLIDES.length;
 const TRANSITION_MS = 500;
 
 // Shortest signed distance from `index` to `i` on a ring of size `n`.
-function ringOffset(i: number) {
+function ringOffset(i: number, n: number) {
   let d = i % n;
   if (d > n / 2) d -= n;
   if (d < -n / 2) d += n;
@@ -43,15 +35,25 @@ function ringOffset(i: number) {
 // below) — recycling in the same update as the shift jumped a slide's
 // transform 3 slots while its opacity was still fading from visible,
 // which read as a reverse slide across the track.
-function recycle(o: number) {
+function recycle(o: number, n: number) {
   if (o <= -n / 2) return o + n;
   if (o > n / 2) return o - n;
   return o;
 }
 
-export default function HeroSlider() {
+export default function HeroSlider({ content }: { content: HeroContent }) {
+  const SLIDES = content.slides;
+  const n = SLIDES.length;
+
+  // The tightest-cropped slide is the reference: it gets no push, and every
+  // other slide nudges outward by exactly its excess padding.
+  const REFERENCE_GAP = Math.min(
+    ...SLIDES.flatMap((s) => [s.leftGap, s.rightGap]),
+    0,
+  );
+
   const [offsets, setOffsets] = useState<number[]>(() =>
-    SLIDES.map((_, i) => ringOffset(i)),
+    SLIDES.map((_, i) => ringOffset(i, SLIDES.length)),
   );
   const autoplayRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recycleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -60,7 +62,7 @@ export default function HeroSlider() {
     setOffsets(getDelta);
     if (recycleRef.current) clearTimeout(recycleRef.current);
     recycleRef.current = setTimeout(() => {
-      setOffsets((prev) => prev.map(recycle));
+      setOffsets((prev) => prev.map((o) => recycle(o, n)));
     }, TRANSITION_MS);
   }, []);
 
@@ -103,12 +105,13 @@ export default function HeroSlider() {
       <div className="relative mx-auto max-w-7xl px-6 sm:px-10 py-16 sm:py-20">
         <div className="relative z-20 text-center mb-4">
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-wide leading-[1.05] text-ink">
-            REALISTIC <span className="text-accent">REMOTE CONTROL</span>
+            {content.headingLead}{" "}
+            <span className="text-accent">{content.headingAccent}</span>
             <br />
-            CONSTRUCTION TOYS
+            {content.headingTail}
           </h1>
           <p className="mt-4 text-sm sm:text-lg text-ink/70">
-            Big machines. Big fun. Built for little builders.
+            {content.subheading}
           </p>
         </div>
 
@@ -166,6 +169,7 @@ export default function HeroSlider() {
                     fill
                     sizes="(max-width: 640px) 320px, 480px"
                     priority={isCenter}
+                    unoptimized={slide.src.startsWith("/api/uploads/")}
                     className="object-contain"
                   />
                 </div>
@@ -176,10 +180,10 @@ export default function HeroSlider() {
 
         <div className="relative z-20 flex flex-col items-center text-center mt-2">
           <Link
-            href="/products"
+            href={content.ctaHref || "/products"}
             className="inline-block bg-accent hover:bg-accent-dark transition-colors text-white font-display tracking-wide px-8 py-3 rounded"
           >
-            SHOP RC TOYS →
+            {content.ctaLabel}
           </Link>
         </div>
       </div>

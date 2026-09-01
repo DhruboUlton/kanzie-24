@@ -13,6 +13,7 @@ import {
   Truck,
   Layers,
   ShieldAlert,
+  Images,
 } from "lucide-react";
 import { logoutAdminAction } from "@/lib/actions/auth";
 
@@ -34,6 +35,7 @@ export default function AdminSidebar({
     { href: "/admin/products", label: "Products", icon: Package },
     { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
     { href: "/admin/categories", label: "Categories", icon: FolderTree },
+    { href: "/admin/banner", label: "Banner", icon: Images },
     { href: "/admin/fraud-check", label: "Fraud Check", icon: ShieldAlert },
     { href: "/admin/settings", label: "Settings", icon: Settings },
   ];

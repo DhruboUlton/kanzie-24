@@ -20,6 +20,7 @@ export default function AdminHeader({
     if (pathname.startsWith("/admin/orders/")) return "Order Details";
     if (pathname.startsWith("/admin/orders")) return "Orders Management";
     if (pathname.startsWith("/admin/categories")) return "Categories";
+    if (pathname.startsWith("/admin/banner")) return "Homepage Banner";
     if (pathname.startsWith("/admin/fraud-check")) return "Fraud Checking";
     if (pathname.startsWith("/admin/settings")) return "Store Settings";
     return "Admin";
