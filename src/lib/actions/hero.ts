@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { HERO_KEYS, HeroContent, getHeroContent } from "@/lib/hero";
+import {
+  DEFAULT_HERO,
+  HERO_KEYS,
+  HeroContent,
+  getHeroContent,
+  normalizeHex,
+} from "@/lib/hero";
 
 export async function getHeroContentAction(): Promise<HeroContent> {
   await requireAdmin();
@@ -24,6 +30,14 @@ export async function updateHeroAction(
     [HERO_KEYS.headingAccent]: content.headingAccent.trim(),
     [HERO_KEYS.headingTail]: content.headingTail.trim(),
     [HERO_KEYS.subheading]: content.subheading.trim(),
+    [HERO_KEYS.headingColor]: normalizeHex(
+      content.headingColor,
+      DEFAULT_HERO.headingColor,
+    ),
+    [HERO_KEYS.headingAccentColor]: normalizeHex(
+      content.headingAccentColor,
+      DEFAULT_HERO.headingAccentColor,
+    ),
     [HERO_KEYS.ctaLabel]: content.ctaLabel.trim(),
     [HERO_KEYS.ctaHref]: content.ctaHref.trim() || "/products",
     [HERO_KEYS.slides]: JSON.stringify(

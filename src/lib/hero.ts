@@ -8,6 +8,8 @@ export const HERO_KEYS = {
   headingAccent: "hero_heading_accent",
   headingTail: "hero_heading_tail",
   subheading: "hero_subheading",
+  headingColor: "hero_heading_color",
+  headingAccentColor: "hero_heading_accent_color",
   ctaLabel: "hero_cta_label",
   ctaHref: "hero_cta_href",
   slides: "hero_slides",
@@ -29,6 +31,11 @@ export type HeroContent = {
   headingAccent: string;
   headingTail: string;
   subheading: string;
+  // Hex colours for the heading text and its highlighted span. Kept as
+  // values rather than classes so the picker can offer anything, not just
+  // the brand palette.
+  headingColor: string;
+  headingAccentColor: string;
   ctaLabel: string;
   ctaHref: string;
   slides: HeroSlide[];
@@ -39,6 +46,8 @@ export const DEFAULT_HERO: HeroContent = {
   headingAccent: "REMOTE CONTROL",
   headingTail: "CONSTRUCTION TOYS",
   subheading: "Big machines. Big fun. Built for little builders.",
+  headingColor: "#282828",
+  headingAccentColor: "#c0282b",
   ctaLabel: "SHOP RC TOYS →",
   ctaHref: "/products",
   slides: [
@@ -48,6 +57,13 @@ export const DEFAULT_HERO: HeroContent = {
     { src: "/hero/jcb-220x-excavator.png", alt: "JCB 220X LC RC excavator", groundOffset: 12, leftGap: 6, rightGap: 6 },
   ],
 };
+
+// Only ever let a real hex colour reach an inline style attribute.
+export function normalizeHex(value: string | undefined, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  const v = value.trim();
+  return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v) ? v : fallback;
+}
 
 function parseSlides(raw: string | undefined): HeroSlide[] | null {
   if (!raw) return null;
@@ -82,6 +98,11 @@ export async function getHeroContent(): Promise<HeroContent> {
       headingAccent: map[HERO_KEYS.headingAccent] ?? DEFAULT_HERO.headingAccent,
       headingTail: map[HERO_KEYS.headingTail] ?? DEFAULT_HERO.headingTail,
       subheading: map[HERO_KEYS.subheading] ?? DEFAULT_HERO.subheading,
+      headingColor: normalizeHex(map[HERO_KEYS.headingColor], DEFAULT_HERO.headingColor),
+      headingAccentColor: normalizeHex(
+        map[HERO_KEYS.headingAccentColor],
+        DEFAULT_HERO.headingAccentColor,
+      ),
       ctaLabel: map[HERO_KEYS.ctaLabel] ?? DEFAULT_HERO.ctaLabel,
       ctaHref: map[HERO_KEYS.ctaHref] ?? DEFAULT_HERO.ctaHref,
       slides: parseSlides(map[HERO_KEYS.slides]) ?? DEFAULT_HERO.slides,

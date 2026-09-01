@@ -97,9 +97,14 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
 
       <div className="relative mx-auto max-w-7xl px-6 sm:px-10 py-16 sm:py-20">
         <div className="relative z-20 text-center mb-4">
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-wide leading-[1.05] text-ink">
+          <h1
+            className="font-display text-4xl sm:text-5xl lg:text-6xl tracking-wide leading-[1.05]"
+            style={{ color: content.headingColor }}
+          >
             {content.headingLead}{" "}
-            <span className="text-accent">{content.headingAccent}</span>
+            <span style={{ color: content.headingAccentColor }}>
+              {content.headingAccent}
+            </span>
             <br />
             {content.headingTail}
           </h1>
