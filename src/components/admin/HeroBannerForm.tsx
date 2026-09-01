@@ -1,98 +1,51 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
-  Images,
-  Upload,
-  Trash2,
-  ArrowUp,
-  ArrowDown,
   Loader2,
   Save,
   CheckCircle2,
   AlertCircle,
-  Type,
-  MousePointerClick,
   Eye,
-  RotateCcw,
-  Palette,
+  Layers,
+  GalleryHorizontal,
 } from "lucide-react";
-import ColorField from "@/components/admin/ColorField";
-import { updateHeroAction } from "@/lib/actions/hero";
+import HeroCoverflowFields from "@/components/admin/HeroCoverflowFields";
+import HeroBannerSlidesFields from "@/components/admin/HeroBannerSlidesFields";
 import HeroSlider from "@/components/HeroSlider";
-import { DEFAULT_HERO, HeroContent, HeroSlide } from "@/lib/hero";
+import HeroBannerSlider from "@/components/HeroBannerSlider";
+import { updateHeroAction } from "@/lib/actions/hero";
+import { HeroContent, HeroMode, hasRenderableBanner } from "@/lib/hero";
 
-function isUpload(src: string) {
-  return src.startsWith("/api/uploads/");
-}
+// The two hero styles are mutually exclusive by construction: one stored
+// mode, one segmented control. There's no way to express "both on".
+const MODES: {
+  id: HeroMode;
+  label: string;
+  blurb: string;
+  icon: typeof Layers;
+}[] = [
+  {
+    id: "coverflow",
+    label: "Product Slider",
+    blurb: "Cut-out PNGs rotating over a solid colour, with one shared headline",
+    icon: Layers,
+  },
+  {
+    id: "banner",
+    label: "Banner Slider",
+    blurb: "Full-width banner images, each with its own optional text and button",
+    icon: GalleryHorizontal,
+  },
+];
 
 export default function HeroBannerForm({ initial }: { initial: HeroContent }) {
   const router = useRouter();
   const [content, setContent] = useState<HeroContent>(initial);
-  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  const setField = <K extends keyof HeroContent>(key: K, value: HeroContent[K]) =>
-    setContent((c) => ({ ...c, [key]: value }));
-
-  const setSlide = (index: number, patch: Partial<HeroSlide>) =>
-    setContent((c) => ({
-      ...c,
-      slides: c.slides.map((s, i) => (i === index ? { ...s, ...patch } : s)),
-    }));
-
-  const removeSlide = (index: number) =>
-    setContent((c) => ({ ...c, slides: c.slides.filter((_, i) => i !== index) }));
-
-  const moveSlide = (index: number, dir: -1 | 1) =>
-    setContent((c) => {
-      const target = index + dir;
-      if (target < 0 || target >= c.slides.length) return c;
-      const slides = [...c.slides];
-      [slides[index], slides[target]] = [slides[target], slides[index]];
-      return { ...c, slides };
-    });
-
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    setUploading(true);
-    setError(null);
-    try {
-      for (const file of files) {
-        const body = new FormData();
-        body.append("file", file);
-        const res = await fetch("/api/admin/upload", { method: "POST", body });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Upload failed");
-        setContent((c) => ({
-          ...c,
-          slides: [
-            ...c.slides,
-            {
-              src: data.url,
-              alt: "",
-              groundOffset: 0,
-              leftGap: 0,
-              rightGap: 0,
-              zoom: 100,
-              word: "",
-            },
-          ],
-        }));
-      }
-    } catch (err: any) {
-      setError(err?.message || "Upload failed");
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
-  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -115,8 +68,8 @@ export default function HeroBannerForm({ initial }: { initial: HeroContent }) {
     }
   }
 
-  const inputClass =
-    "w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]";
+  const bannerReady = hasRenderableBanner(content);
+  const bannerSelectedButEmpty = content.mode === "banner" && !bannerReady;
 
   return (
     <form onSubmit={handleSave} className="space-y-6">
@@ -124,8 +77,7 @@ export default function HeroBannerForm({ initial }: { initial: HeroContent }) {
         <div>
           <h2 className="text-xl font-bold text-gray-900">Hero Banner</h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            Slider images, headline, and call-to-action at the top of the
-            storefront
+            The slider at the very top of the storefront
           </p>
         </div>
         <button
@@ -155,8 +107,68 @@ export default function HeroBannerForm({ initial }: { initial: HeroContent }) {
         </div>
       )}
 
-      {/* Live preview — the real storefront component, driven by the values
-          being edited, so alignment nudges are visible before saving. */}
+      {/* Style picker — exactly one is live at a time */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-3">
+        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+          Hero Style
+        </h3>
+        <p className="text-[11px] text-gray-400 -mt-1">
+          Only one shows on the homepage. Switching keeps the other one&apos;s
+          setup saved, so you can flip back any time.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {MODES.map(({ id, label, blurb, icon: Icon }) => {
+            const active = content.mode === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setContent((c) => ({ ...c, mode: id }))}
+                aria-pressed={active}
+                className={`text-left p-4 rounded-xl border-2 transition-colors ${
+                  active
+                    ? "border-[#c0282b] bg-[#c0282b]/5"
+                    : "border-gray-200 hover:border-gray-300 bg-white"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Icon
+                    className={`w-4 h-4 ${active ? "text-[#c0282b]" : "text-gray-400"}`}
+                  />
+                  <span
+                    className={`text-sm font-bold ${
+                      active ? "text-[#c0282b]" : "text-gray-900"
+                    }`}
+                  >
+                    {label}
+                  </span>
+                  {active && (
+                    <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-white bg-[#c0282b] px-2 py-0.5 rounded-full">
+                      Live
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
+                  {blurb}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+
+        {bannerSelectedButEmpty && (
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-px" />
+            <span>
+              Banner Slider is selected but has no images yet — the homepage
+              keeps showing the Product Slider until you add one below.
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Live preview of whichever style is selected */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
           <Eye className="w-4 h-4 text-accent" />
@@ -167,321 +179,28 @@ export default function HeroBannerForm({ initial }: { initial: HeroContent }) {
             exactly how the homepage renders these values
           </span>
         </div>
-        <div className="relative h-[26rem] overflow-hidden pointer-events-none">
+        {/* Height tracks the mode — the banner is a shorter strip than the
+            coverflow, and a fixed box left dead space under it. */}
+        <div
+          className={`relative overflow-hidden pointer-events-none ${
+            bannerReady ? "h-[18rem]" : "h-[26rem]"
+          }`}
+        >
           <div className="absolute top-0 left-0 origin-top-left scale-[0.55] w-[181.8%]">
-            <HeroSlider content={content} />
-          </div>
-        </div>
-      </div>
-
-      {/* Headline */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
-        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-          <Type className="w-4 h-4 text-accent" />
-          <span>Headline</span>
-        </h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Line 1 — start
-            </label>
-            <input
-              type="text"
-              value={content.headingLead}
-              onChange={(e) => setField("headingLead", e.target.value)}
-              placeholder="REALISTIC"
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Line 1 — highlighted
-            </label>
-            <input
-              type="text"
-              value={content.headingAccent}
-              onChange={(e) => setField("headingAccent", e.target.value)}
-              placeholder="REMOTE CONTROL"
-              className={`${inputClass} text-[#c0282b] font-semibold`}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Line 2
-            </label>
-            <input
-              type="text"
-              value={content.headingTail}
-              onChange={(e) => setField("headingTail", e.target.value)}
-              placeholder="CONSTRUCTION TOYS"
-              className={inputClass}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-            Subheading
-          </label>
-          <input
-            type="text"
-            value={content.subheading}
-            onChange={(e) => setField("subheading", e.target.value)}
-            placeholder="Big machines. Big fun. Built for little builders."
-            className={inputClass}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          <ColorField
-            label="Heading colour"
-            value={content.headingColor}
-            fallback={DEFAULT_HERO.headingColor}
-            onChange={(v) => setField("headingColor", v)}
-          />
-          <ColorField
-            label="Highlight colour"
-            value={content.headingAccentColor}
-            fallback={DEFAULT_HERO.headingAccentColor}
-            onChange={(v) => setField("headingAccentColor", v)}
-          />
-        </div>
-
-      </div>
-
-      {/* Background */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
-        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-          <Palette className="w-4 h-4 text-accent" />
-          <span>Background</span>
-        </h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <ColorField
-            label="Background colour"
-            value={content.backgroundColor}
-            fallback={DEFAULT_HERO.backgroundColor}
-            onChange={(v) => setField("backgroundColor", v)}
-          />
-          <ColorField
-            label="Background word colour"
-            value={content.watermarkColor}
-            fallback={DEFAULT_HERO.watermarkColor}
-            onChange={(v) => setField("watermarkColor", v)}
-          />
-        </div>
-        <p className="text-[11px] text-gray-400 -mt-1">
-          Each slide carries its own backdrop word (set it with the image
-          below). It sits at 5% opacity, so pick a colour with contrast —
-          white reads on a dark banner, black on a light one.
-        </p>
-      </div>
-
-      {/* CTA */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
-        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-          <MousePointerClick className="w-4 h-4 text-accent" />
-          <span>Call to Action</span>
-        </h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Button label
-            </label>
-            <input
-              type="text"
-              value={content.ctaLabel}
-              onChange={(e) => setField("ctaLabel", e.target.value)}
-              placeholder="SHOP RC TOYS →"
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-              Links to
-            </label>
-            <input
-              type="text"
-              value={content.ctaHref}
-              onChange={(e) => setField("ctaHref", e.target.value)}
-              placeholder="/products"
-              className={`${inputClass} font-mono text-xs`}
-            />
-            <p className="text-[11px] text-gray-400 mt-1">
-              A path on this store (e.g. <code>/products</code> or{" "}
-              <code>/products?category=excavators</code>)
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Slides */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-            <Images className="w-4 h-4 text-accent" />
-            <span>Slider Images ({content.slides.length})</span>
-          </h3>
-
-          <label className="inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-gray-900 hover:bg-black text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors shrink-0">
-            {uploading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+            {bannerReady ? (
+              <HeroBannerSlider content={content} />
             ) : (
-              <Upload className="w-4 h-4" />
+              <HeroSlider content={content} />
             )}
-            <span>{uploading ? "Uploading…" : "Upload PNG"}</span>
-            <input
-              type="file"
-              accept="image/png,image/webp,image/jpeg"
-              multiple
-              onChange={handleUpload}
-              className="hidden"
-            />
-          </label>
-        </div>
-
-        <p className="text-[11px] text-gray-400 -mt-2">
-          Transparent PNGs work best — the slider sits on a solid background and
-          the artwork has no frame around it. You can select several at once.
-        </p>
-
-        {content.slides.length === 0 && (
-          <p className="text-xs text-gray-500 py-6 text-center">
-            No slides yet. Upload at least one image.
-          </p>
-        )}
-
-        <div className="space-y-3">
-          {content.slides.map((slide, i) => (
-            <div
-              key={`${slide.src}-${i}`}
-              className="flex flex-col sm:flex-row gap-4 p-3 rounded-lg border border-gray-200 bg-gray-50/60"
-            >
-              <div className="relative w-full sm:w-28 h-28 rounded-md bg-paper overflow-hidden shrink-0">
-                <Image
-                  src={slide.src}
-                  alt={slide.alt || `Slide ${i + 1}`}
-                  fill
-                  sizes="112px"
-                  unoptimized={isUpload(slide.src)}
-                  className="object-contain"
-                />
-                <span className="absolute top-1 left-1 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                  {i + 1}
-                </span>
-              </div>
-
-              <div className="flex-1 min-w-0 space-y-2.5">
-                <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-2">
-                  <input
-                    type="text"
-                    value={slide.alt}
-                    onChange={(e) => setSlide(i, { alt: e.target.value })}
-                    placeholder="Describe the image (for accessibility & SEO)"
-                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-[#c0282b]"
-                  />
-                  <input
-                    type="text"
-                    value={slide.word ?? ""}
-                    onChange={(e) => setSlide(i, { word: e.target.value })}
-                    placeholder="Backdrop word"
-                    title="The oversized word shown behind this image"
-                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs uppercase tracking-wide focus:outline-none focus:border-[#c0282b]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {(
-                    [
-                      ["groundOffset", "Down"],
-                      ["leftGap", "Left pad"],
-                      ["rightGap", "Right pad"],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <div key={key}>
-                      <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                        {label}
-                      </label>
-                      <input
-                        type="number"
-                        value={slide[key]}
-                        onChange={(e) =>
-                          setSlide(i, { [key]: Number(e.target.value) || 0 } as Partial<HeroSlide>)
-                        }
-                        className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:border-[#c0282b]"
-                      />
-                    </div>
-                  ))}
-
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                      Zoom %
-                    </label>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min={10}
-                        max={300}
-                        step={5}
-                        value={slide.zoom ?? 100}
-                        onChange={(e) =>
-                          setSlide(i, { zoom: Number(e.target.value) || 100 })
-                        }
-                        className="w-full min-w-0 px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:border-[#c0282b]"
-                      />
-                      {(slide.zoom ?? 100) !== 100 && (
-                        <button
-                          type="button"
-                          onClick={() => setSlide(i, { zoom: 100 })}
-                          title="Reset zoom to 100%"
-                          className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded shrink-0"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <p className="text-[10px] text-gray-400">
-                  Nudges in % to line this image up with the others, plus zoom
-                  to match its size. Defaults: 0 nudge, 100% zoom.
-                </p>
-              </div>
-
-              <div className="flex sm:flex-col items-center gap-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => moveSlide(i, -1)}
-                  disabled={i === 0}
-                  aria-label="Move slide earlier"
-                  className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-200 rounded-md disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                >
-                  <ArrowUp className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveSlide(i, 1)}
-                  disabled={i === content.slides.length - 1}
-                  aria-label="Move slide later"
-                  className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-200 rounded-md disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                >
-                  <ArrowDown className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => removeSlide(i)}
-                  aria-label="Remove slide"
-                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
+          </div>
         </div>
       </div>
+
+      {content.mode === "banner" ? (
+        <HeroBannerSlidesFields content={content} setContent={setContent} />
+      ) : (
+        <HeroCoverflowFields content={content} setContent={setContent} />
+      )}
     </form>
   );
 }

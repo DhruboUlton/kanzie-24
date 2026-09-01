@@ -4,11 +4,15 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import {
+  DEFAULT_BANNER_SLIDE,
   DEFAULT_HERO,
   HERO_KEYS,
   HeroContent,
   getHeroContent,
   normalizeHex,
+  normalizeMode,
+  normalizeAlign,
+  clampOverlay,
   clampZoom,
 } from "@/lib/hero";
 
@@ -22,11 +26,23 @@ export async function updateHeroAction(
 ): Promise<{ success: boolean; error?: string }> {
   await requireAdmin();
 
-  if (content.slides.length === 0) {
+  const mode = normalizeMode(content.mode);
+  const bannerSlides = content.bannerSlides.filter((s) => s.src.trim());
+
+  // Only the active mode has to be complete — the other one's setup is
+  // still stored, it just isn't what the homepage is showing.
+  if (mode === "coverflow" && content.slides.length === 0) {
     return { success: false, error: "Add at least one slide image." };
+  }
+  if (mode === "banner" && bannerSlides.length === 0) {
+    return {
+      success: false,
+      error: "Add at least one banner image, or switch back to the slider.",
+    };
   }
 
   const values: Record<string, string> = {
+    [HERO_KEYS.mode]: mode,
     [HERO_KEYS.headingLead]: content.headingLead.trim(),
     [HERO_KEYS.headingAccent]: content.headingAccent.trim(),
     [HERO_KEYS.headingTail]: content.headingTail.trim(),
@@ -61,6 +77,21 @@ export async function updateHeroAction(
           zoom: clampZoom(s.zoom),
           word: s.word.trim(),
         })),
+    ),
+    [HERO_KEYS.bannerSlides]: JSON.stringify(
+      bannerSlides.map((s) => ({
+        src: s.src.trim(),
+        alt: s.alt.trim(),
+        heading: s.heading.trim(),
+        subheading: s.subheading.trim(),
+        ctaLabel: s.ctaLabel.trim(),
+        // Kept empty rather than defaulted so a slide with no button
+        // doesn't quietly acquire a destination it never asked for.
+        ctaHref: s.ctaHref.trim(),
+        align: normalizeAlign(s.align),
+        textColor: normalizeHex(s.textColor, DEFAULT_BANNER_SLIDE.textColor),
+        overlay: clampOverlay(s.overlay),
+      })),
     ),
   };
 

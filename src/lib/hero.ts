@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 // it's a single record's worth of copy plus a small ordered list, so a
 // JSON blob keeps it migration-free alongside the other store settings.
 export const HERO_KEYS = {
+  mode: "hero_mode",
   headingLead: "hero_heading_lead",
   headingAccent: "hero_heading_accent",
   headingTail: "hero_heading_tail",
@@ -15,7 +16,16 @@ export const HERO_KEYS = {
   ctaLabel: "hero_cta_label",
   ctaHref: "hero_cta_href",
   slides: "hero_slides",
+  bannerSlides: "hero_banner_slides",
 } as const;
+
+// Two mutually exclusive hero styles. Stored as one value rather than a
+// pair of on/off flags so "both at once" is unrepresentable.
+//   coverflow — cut-out PNGs rotating over a solid colour (the original)
+//   banner    — full-bleed banner artwork, one image per slide
+export type HeroMode = "coverflow" | "banner";
+
+export const HERO_MODES: HeroMode[] = ["coverflow", "banner"];
 
 export type HeroSlide = {
   src: string;
@@ -34,7 +44,31 @@ export type HeroSlide = {
   word: string;
 };
 
+// A full-bleed banner image. Every text field is optional — leave them all
+// empty and the slide is nothing but the artwork, which is the point of
+// this mode: most shops bake the copy into the image itself.
+export type BannerSlide = {
+  src: string;
+  alt: string;
+  heading: string;
+  subheading: string;
+  ctaLabel: string;
+  ctaHref: string;
+  // Where the copy sits over the image. Ignored when no text is set.
+  align: BannerAlign;
+  textColor: string;
+  // Black scrim between image and text, 0–100%. 0 = none. Needed because
+  // a photo's brightness varies across the frame and plain white text on a
+  // pale sky is unreadable.
+  overlay: number;
+};
+
+export type BannerAlign = "left" | "center" | "right";
+
+export const BANNER_ALIGNMENTS: BannerAlign[] = ["left", "center", "right"];
+
 export type HeroContent = {
+  mode: HeroMode;
   headingLead: string;
   headingAccent: string;
   headingTail: string;
@@ -51,9 +85,24 @@ export type HeroContent = {
   ctaLabel: string;
   ctaHref: string;
   slides: HeroSlide[];
+  // Only rendered in "banner" mode; kept alongside the coverflow slides so
+  // switching modes never destroys the other mode's setup.
+  bannerSlides: BannerSlide[];
+};
+
+export const DEFAULT_BANNER_SLIDE: Omit<BannerSlide, "src"> = {
+  alt: "",
+  heading: "",
+  subheading: "",
+  ctaLabel: "",
+  ctaHref: "",
+  align: "left",
+  textColor: "#ffffff",
+  overlay: 35,
 };
 
 export const DEFAULT_HERO: HeroContent = {
+  mode: "coverflow",
   headingLead: "REALISTIC",
   headingAccent: "REMOTE CONTROL",
   headingTail: "CONSTRUCTION TOYS",
@@ -70,6 +119,7 @@ export const DEFAULT_HERO: HeroContent = {
     { src: "/hero/jcb-backhoe-loader-2.png", alt: "JCB RC backhoe loader, arm raised", groundOffset: 0, leftGap: 2, rightGap: 0, zoom: 100, word: "PUSH" },
     { src: "/hero/jcb-220x-excavator.png", alt: "JCB 220X LC RC excavator", groundOffset: 12, leftGap: 6, rightGap: 6, zoom: 100, word: "BUILD" },
   ],
+  bannerSlides: [],
 };
 
 // Slides saved before zoom existed have no value; treat those as 100 and
@@ -78,6 +128,30 @@ export function clampZoom(value: unknown): number {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return 100;
   return Math.min(300, Math.max(10, n));
+}
+
+// Scrim strength, as a whole percentage that can't leave 0–100.
+export function clampOverlay(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_BANNER_SLIDE.overlay;
+  return Math.min(100, Math.max(0, Math.round(n)));
+}
+
+export function normalizeMode(value: string | undefined): HeroMode {
+  return value === "banner" ? "banner" : "coverflow";
+}
+
+// Banner mode only actually renders when there's something to show — a
+// half-filled row (added, no URL pasted yet) doesn't count.
+export function hasRenderableBanner(content: HeroContent): boolean {
+  return (
+    content.mode === "banner" &&
+    content.bannerSlides.some((s) => s.src.trim().length > 0)
+  );
+}
+
+export function normalizeAlign(value: unknown): BannerAlign {
+  return value === "center" || value === "right" ? value : "left";
 }
 
 // Only ever let a real hex colour reach an inline style attribute.
@@ -109,6 +183,32 @@ function parseSlides(raw: string | undefined): HeroSlide[] | null {
   }
 }
 
+// Unlike the coverflow slides there's no shipped default to fall back on,
+// so an empty list is a legitimate answer — the storefront falls back to
+// coverflow rather than rendering an empty banner (see Hero.tsx).
+function parseBannerSlides(raw: string | undefined): BannerSlide[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((s) => s && typeof s.src === "string" && s.src.trim())
+      .map((s) => ({
+        src: String(s.src),
+        alt: typeof s.alt === "string" ? s.alt : "",
+        heading: typeof s.heading === "string" ? s.heading : "",
+        subheading: typeof s.subheading === "string" ? s.subheading : "",
+        ctaLabel: typeof s.ctaLabel === "string" ? s.ctaLabel : "",
+        ctaHref: typeof s.ctaHref === "string" ? s.ctaHref : "",
+        align: normalizeAlign(s.align),
+        textColor: normalizeHex(s.textColor, DEFAULT_BANNER_SLIDE.textColor),
+        overlay: clampOverlay(s.overlay),
+      }));
+  } catch {
+    return [];
+  }
+}
+
 export async function getHeroContent(): Promise<HeroContent> {
   try {
     const rows = await db.siteSetting.findMany({
@@ -118,6 +218,7 @@ export async function getHeroContent(): Promise<HeroContent> {
     for (const r of rows) map[r.key] = r.value;
 
     return {
+      mode: normalizeMode(map[HERO_KEYS.mode]),
       headingLead: map[HERO_KEYS.headingLead] ?? DEFAULT_HERO.headingLead,
       headingAccent: map[HERO_KEYS.headingAccent] ?? DEFAULT_HERO.headingAccent,
       headingTail: map[HERO_KEYS.headingTail] ?? DEFAULT_HERO.headingTail,
@@ -138,6 +239,7 @@ export async function getHeroContent(): Promise<HeroContent> {
       ctaLabel: map[HERO_KEYS.ctaLabel] ?? DEFAULT_HERO.ctaLabel,
       ctaHref: map[HERO_KEYS.ctaHref] ?? DEFAULT_HERO.ctaHref,
       slides: parseSlides(map[HERO_KEYS.slides]) ?? DEFAULT_HERO.slides,
+      bannerSlides: parseBannerSlides(map[HERO_KEYS.bannerSlides]),
     };
   } catch {
     // DB unreachable — the storefront still renders the shipped banner.

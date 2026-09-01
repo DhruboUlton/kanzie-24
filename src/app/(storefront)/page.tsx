@@ -1,5 +1,5 @@
 import Link from "next/link";
-import HeroSlider from "@/components/HeroSlider";
+import Hero from "@/components/Hero";
 import { getHeroContent } from "@/lib/hero";
 import { getBodyBannerContent } from "@/lib/body-banner";
 import UspStrip from "@/components/UspStrip";
@@ -29,7 +29,7 @@ export default async function Home() {
 
   return (
     <>
-      <HeroSlider content={heroContent} />
+      <Hero content={heroContent} />
 
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
         <h2 className="font-display text-3xl sm:text-4xl tracking-wide text-center mb-10">
