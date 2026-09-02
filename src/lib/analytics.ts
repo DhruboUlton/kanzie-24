@@ -13,6 +13,7 @@ import {
   granularityFor,
 } from "@/lib/analytics-shared";
 import { STOCK_REASONS } from "@/lib/inventory-shared";
+import { STORE_UTC_OFFSET_HOURS, storeParts } from "@/lib/datetime";
 
 // Every figure on the analytics page is aggregated in MySQL. Nothing pulls a
 // table into Node to add it up, so the page cost stays flat as orders grow.
@@ -27,22 +28,34 @@ import { STOCK_REASONS } from "@/lib/inventory-shared";
 
 const REVENUE_STATUS_LIST = REVENUE_STATUSES as string[];
 
+// Timestamps are stored in UTC but the shop's day runs on Bangladesh time,
+// so an evening order would otherwise land in the next day's bucket. The
+// offset is fixed at +6: Bangladesh has never used daylight saving, and a
+// literal beats CONVERT_TZ, which needs timezone tables shared hosting
+// usually hasn't loaded.
+const STORE_OFFSET_SQL = `INTERVAL ${STORE_UTC_OFFSET_HOURS} HOUR`;
+
 function bucketExpr(granularity: Granularity, column: string) {
+  const local = `${column} + ${STORE_OFFSET_SQL}`;
   return granularity === "month"
-    ? `DATE_FORMAT(${column}, '%Y-%m')`
-    : `DATE_FORMAT(${column}, '%Y-%m-%d')`;
+    ? `DATE_FORMAT(${local}, '%Y-%m')`
+    : `DATE_FORMAT(${local}, '%Y-%m-%d')`;
 }
 
 function labelFor(bucket: string, granularity: Granularity) {
+  // Built and formatted in UTC so the label always matches the bucket key,
+  // whatever timezone the process happens to run in.
   if (granularity === "month") {
     const [y, m] = bucket.split("-").map(Number);
-    return new Date(y, m - 1, 1).toLocaleDateString("en-GB", {
+    return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-GB", {
+      timeZone: "UTC",
       month: "short",
       year: "numeric",
     });
   }
   const [y, m, d] = bucket.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-GB", {
+    timeZone: "UTC",
     day: "2-digit",
     month: "short",
   });
@@ -51,23 +64,25 @@ function labelFor(bucket: string, granularity: Granularity) {
 /** Every bucket in the range, so quiet days render as zero instead of vanishing. */
 function emptyBuckets(range: DateRange, granularity: Granularity): string[] {
   const out: string[] = [];
-  const cursor = new Date(range.from);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  let cursor = new Date(range.from);
+
   if (granularity === "month") {
-    cursor.setDate(1);
+    const seen = new Set<string>();
     while (cursor <= range.to) {
-      out.push(
-        `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`,
-      );
-      cursor.setMonth(cursor.getMonth() + 1);
+      const { year, month } = storeParts(cursor);
+      const key = `${year}-${pad(month + 1)}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(key);
+      }
+      cursor = new Date(cursor.getTime() + 86_400_000);
     }
   } else {
     while (cursor <= range.to) {
-      out.push(
-        `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(
-          cursor.getDate(),
-        ).padStart(2, "0")}`,
-      );
-      cursor.setDate(cursor.getDate() + 1);
+      const { year, month, day } = storeParts(cursor);
+      out.push(`${year}-${pad(month + 1)}-${pad(day)}`);
+      cursor = new Date(cursor.getTime() + 86_400_000);
     }
   }
   return out;

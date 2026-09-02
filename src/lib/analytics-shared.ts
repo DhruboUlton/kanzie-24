@@ -1,3 +1,5 @@
+import { storeDate, storeParts } from "@/lib/datetime";
+
 // Date-range vocabulary and result shapes. No database import — the range
 // picker and the charts are client components and need these too.
 
@@ -33,6 +35,23 @@ export function isRangePreset(value: unknown): value is RangePreset {
 
 export type DateRange = { from: Date; to: Date };
 
+// All range maths happens in store time. The server runs UTC, so without
+// this "Today" would mean the UTC day — wrong for six hours out of every
+// twenty-four in Bangladesh.
+function dayStart(d: Date): Date {
+  const { year, month, day } = storeParts(d);
+  return storeDate(year, month, day, 0, 0, 0, 0);
+}
+
+function dayEnd(d: Date): Date {
+  const { year, month, day } = storeParts(d);
+  return storeDate(year, month, day, 23, 59, 59, 999);
+}
+
+function shiftDays(d: Date, n: number): Date {
+  return new Date(d.getTime() + n * 86_400_000);
+}
+
 // Day buckets stay readable up to about a quarter; beyond that a chart with
 // one point per day is unreadable, so switch to months.
 export type Granularity = "day" | "month";
@@ -40,24 +59,6 @@ export type Granularity = "day" | "month";
 export function granularityFor(range: DateRange): Granularity {
   const days = (range.to.getTime() - range.from.getTime()) / 86_400_000;
   return days > 92 ? "month" : "day";
-}
-
-function startOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function endOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
-
-function addDays(d: Date, n: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
 }
 
 /**
@@ -70,34 +71,31 @@ export function resolveRange(
 ): DateRange {
   const now = options?.now ?? new Date();
 
+  const p = storeParts(now);
+
   switch (preset) {
     case "today":
-      return { from: startOfDay(now), to: endOfDay(now) };
+      return { from: dayStart(now), to: dayEnd(now) };
     case "yesterday": {
-      const y = addDays(now, -1);
-      return { from: startOfDay(y), to: endOfDay(y) };
+      const y = shiftDays(now, -1);
+      return { from: dayStart(y), to: dayEnd(y) };
     }
     case "last7":
-      return { from: startOfDay(addDays(now, -6)), to: endOfDay(now) };
+      return { from: dayStart(shiftDays(now, -6)), to: dayEnd(now) };
     case "last30":
-      return { from: startOfDay(addDays(now, -29)), to: endOfDay(now) };
+      return { from: dayStart(shiftDays(now, -29)), to: dayEnd(now) };
     case "last90":
-      return { from: startOfDay(addDays(now, -89)), to: endOfDay(now) };
+      return { from: dayStart(shiftDays(now, -89)), to: dayEnd(now) };
     case "thisMonth":
-      return {
-        from: startOfDay(new Date(now.getFullYear(), now.getMonth(), 1)),
-        to: endOfDay(now),
-      };
+      return { from: storeDate(p.year, p.month, 1), to: dayEnd(now) };
     case "lastMonth": {
-      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const last = new Date(now.getFullYear(), now.getMonth(), 0);
-      return { from: startOfDay(first), to: endOfDay(last) };
+      const first = storeDate(p.year, p.month - 1, 1);
+      // Day 0 of this month is the last day of the previous one.
+      const last = storeDate(p.year, p.month, 0, 23, 59, 59, 999);
+      return { from: first, to: last };
     }
     case "thisYear":
-      return {
-        from: startOfDay(new Date(now.getFullYear(), 0, 1)),
-        to: endOfDay(now),
-      };
+      return { from: storeDate(p.year, 0, 1), to: dayEnd(now) };
     case "custom": {
       const from = options?.from ? new Date(options.from) : null;
       const to = options?.to ? new Date(options.to) : null;
@@ -106,9 +104,14 @@ export function resolveRange(
         // than throwing a date error at someone reading a dashboard.
         return resolveRange("last30", { now });
       }
-      return from <= to
-        ? { from: startOfDay(from), to: endOfDay(to) }
-        : { from: startOfDay(to), to: endOfDay(from) };
+      const [lo, hi] = from <= to ? [from, to] : [to, from];
+      // A date input gives midnight UTC; read its calendar day, not its instant.
+      return {
+        from: storeDate(lo.getUTCFullYear(), lo.getUTCMonth(), lo.getUTCDate()),
+        to: storeDate(
+          hi.getUTCFullYear(), hi.getUTCMonth(), hi.getUTCDate(), 23, 59, 59, 999,
+        ),
+      };
     }
   }
 }
@@ -125,7 +128,8 @@ export function previousRange(range: DateRange): DateRange {
 
 export function toDateInput(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const { year, month, day } = storeParts(d);
+  return `${year}-${pad(month + 1)}-${pad(day)}`;
 }
 
 /**

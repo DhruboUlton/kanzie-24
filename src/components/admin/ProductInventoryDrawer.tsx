@@ -12,6 +12,7 @@ import {
   StockMovementRow,
 } from "@/lib/inventory-shared";
 import { formatPrice } from "@/lib/format";
+import { formatDateTime } from "@/lib/datetime";
 
 export default function ProductInventoryDrawer({
   row,
@@ -235,12 +236,7 @@ export default function ProductInventoryDrawer({
                   </div>
                   <p className="text-[11px] text-gray-500 mt-1">
                     → {m.resultQty} in stock ·{" "}
-                    {new Date(m.createdAt).toLocaleString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {formatDateTime(m.createdAt)}
                   </p>
                   {m.note && (
                     <p className="text-[11px] text-gray-600 mt-1 italic">

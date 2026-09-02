@@ -23,6 +23,7 @@ import {
   setStaffActiveAction,
 } from "@/lib/actions/staff";
 import { OWNER_ROLE_KEY, Permission } from "@/lib/permissions";
+import { formatDate, formatDateTime } from "@/lib/datetime";
 
 export type StaffRowView = {
   id: string;
@@ -43,23 +44,8 @@ export type RoleOption = {
   isSystem: boolean;
 };
 
-function formatDate(value: Date | string | null) {
-  if (!value) return "—";
-  return new Date(value).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function formatDateTime(value: Date | string | null) {
-  if (!value) return "Never";
-  return new Date(value).toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function lastLogin(value: Date | string | null) {
+  return value ? formatDateTime(value) : "Never";
 }
 
 export default function StaffClient({
@@ -250,7 +236,7 @@ export default function StaffClient({
                   </td>
 
                   <td className="px-4 py-3 hidden lg:table-cell text-xs text-gray-600 whitespace-nowrap">
-                    {formatDateTime(row.lastLoginAt)}
+                    {lastLogin(row.lastLoginAt)}
                   </td>
                   <td className="px-4 py-3 hidden xl:table-cell text-xs text-gray-600 whitespace-nowrap">
                     {formatDate(row.createdAt)}

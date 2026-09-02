@@ -32,6 +32,7 @@ import {
   StockStatus,
 } from "@/lib/inventory-shared";
 import { formatPrice } from "@/lib/format";
+import { formatDateTime } from "@/lib/datetime";
 
 const STATUS_STYLE: Record<StockStatus, string> = {
   OVERSOLD: "bg-red-100 text-red-700 border-red-200",
@@ -617,12 +618,7 @@ export default function InventoryClient({
                   {movements.map((m) => (
                     <tr key={m.id} className="hover:bg-gray-50/60">
                       <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                        {new Date(m.createdAt).toLocaleString("en-GB", {
-                          day: "2-digit",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {formatDateTime(m.createdAt)}
                       </td>
                       <td className="px-4 py-3">
                         <p className="font-semibold text-gray-900 truncate max-w-[14rem]">

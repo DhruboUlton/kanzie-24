@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarDays, Download, Loader2, GitCompareArrows } from "lucide-react";
+import { formatDate } from "@/lib/datetime";
 import {
   RANGE_LABELS,
   RANGE_PRESETS,
@@ -46,17 +47,7 @@ export default function AnalyticsControls({
         <div>
           <h2 className="text-xl font-bold text-gray-900">Analytics</h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            {new Date(range.from).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })}{" "}
-            –{" "}
-            {new Date(range.to).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })}
+            {formatDate(range.from)} – {formatDate(range.to)}
             {pending && (
               <span className="inline-flex items-center gap-1 ml-2 text-gray-400">
                 <Loader2 className="w-3 h-3 animate-spin" />

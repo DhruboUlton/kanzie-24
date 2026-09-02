@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ScrollText, Search, Filter } from "lucide-react";
+import { formatDateTime } from "@/lib/datetime";
 
 export type ActivityEntryView = {
   id: string;
@@ -142,12 +143,7 @@ export default function ActivityLogClient({
                 {visible.map((e) => (
                   <tr key={e.id} className="hover:bg-gray-50/60 align-top">
                     <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                      {new Date(e.createdAt).toLocaleString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {formatDateTime(e.createdAt)}
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-gray-900 truncate max-w-[10rem]">
