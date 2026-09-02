@@ -48,7 +48,9 @@ export async function updateSettingsAction(settings: Record<string, string>) {
       metadata: { keys: Object.keys(settings) },
     });
 
-    revalidatePath("/");
+    // "layout" scope so the root layout's generateMetadata re-runs — the tab
+    // title and favicon live there, and a plain page revalidate misses them.
+    revalidatePath("/", "layout");
     revalidatePath("/admin/settings");
     return { success: true };
   } catch (error: any) {

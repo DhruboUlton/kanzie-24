@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, Save, CheckCircle2, AlertCircle, Loader2, Bell, Phone, Mail } from "lucide-react";
+import { Settings, Save, CheckCircle2, AlertCircle, Loader2, Bell, Phone, Mail, AppWindow } from "lucide-react";
 import { updateSettingsAction } from "@/lib/actions/settings";
+import ImageField from "@/components/admin/ImageField";
 
 export default function SettingsClient({
   initialSettings,
@@ -23,6 +24,17 @@ export default function SettingsClient({
   const [contactEmail, setContactEmail] = useState(
     initialSettings.contact_email || "support@kanzie.com"
   );
+  // Browser tab identity. Defaults mirror src/lib/site-identity.ts so an
+  // untouched store shows what it has always shown.
+  const [tabTitle, setTabTitle] = useState(
+    initialSettings.site_tab_title || "KANZIE"
+  );
+  const [tabTagline, setTabTagline] = useState(
+    initialSettings.site_tab_tagline ?? "RC Construction Vehicles"
+  );
+  const [favicon, setFavicon] = useState(
+    initialSettings.site_favicon || "/kanzie-icon.png"
+  );
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -40,6 +52,9 @@ export default function SettingsClient({
         announcement_enabled: announcementEnabled ? "true" : "false",
         contact_phone: contactPhone,
         contact_email: contactEmail,
+        site_tab_title: tabTitle,
+        site_tab_tagline: tabTagline,
+        site_favicon: favicon,
       });
 
       if (res.success) {
@@ -62,7 +77,7 @@ export default function SettingsClient({
         <div>
           <h2 className="text-xl font-bold text-gray-900">Store Settings</h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            Configure global announcement strip, customer support contacts, and store policies
+            Configure the browser tab, global announcement strip, and customer support contacts
           </p>
         </div>
         <button
@@ -92,6 +107,78 @@ export default function SettingsClient({
           <span>{error}</span>
         </div>
       )}
+
+      {/* Browser Tab Card */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+          <AppWindow className="w-4 h-4 text-accent" />
+          <span>Browser Tab</span>
+        </h3>
+
+        {/* What the tab will actually look like, assembled the same way
+            composeTabTitle() does it on the server. */}
+        <div className="flex items-center gap-2 max-w-sm px-3 py-2 rounded-t-lg bg-gray-100 border border-gray-200 border-b-0">
+          <span className="w-4 h-4 rounded-sm overflow-hidden bg-white shrink-0 flex items-center justify-center">
+            {favicon.trim() ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={favicon} alt="" className="w-4 h-4 object-contain" />
+            ) : (
+              <span className="w-2 h-2 rounded-full bg-gray-300" />
+            )}
+          </span>
+          <span className="text-xs text-gray-700 truncate">
+            {[tabTitle.trim() || "KANZIE", tabTagline.trim()]
+              .filter(Boolean)
+              .join(" — ")}
+          </span>
+        </div>
+        <p className="text-[11px] text-gray-400 -mt-3">
+          Preview of the tab, before truncation.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              Tab Title
+            </label>
+            <input
+              type="text"
+              value={tabTitle}
+              onChange={(e) => setTabTitle(e.target.value)}
+              placeholder="KANZIE"
+              className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+            />
+            <p className="text-[11px] text-gray-400 mt-1">
+              The first thing in the tab. Keep it short — tabs truncate fast.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              Tagline
+            </label>
+            <input
+              type="text"
+              value={tabTagline}
+              onChange={(e) => setTabTagline(e.target.value)}
+              placeholder="RC Construction Vehicles"
+              className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+            />
+            <p className="text-[11px] text-gray-400 mt-1">
+              Appears after the title, separated by a dash. Leave empty for
+              the title on its own.
+            </p>
+          </div>
+        </div>
+
+        <ImageField
+          label="Tab Icon (favicon)"
+          value={favicon}
+          onChange={setFavicon}
+          hint="Square PNG, 512×512 or smaller. Browsers cache favicons hard — a hard refresh, or a new tab, may be needed before you see it change."
+          previewClassName="h-20"
+        />
+      </div>
 
       {/* Announcement Bar Settings Card */}
       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">

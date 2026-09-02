@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Poppins, Lato } from "next/font/google";
 import "./globals.css";
-import { SITE_NAME, SITE_TAGLINE } from "@/lib/site-config";
+import { SITE_TAGLINE } from "@/lib/site-config";
+import { composeTabTitle, getSiteIdentity } from "@/lib/site-identity";
 
 const poppins = Poppins({
   variable: "--font-heading",
@@ -15,10 +16,18 @@ const lato = Lato({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: `${SITE_NAME} — RC Construction Vehicles`,
-  description: SITE_TAGLINE,
-};
+// Read per render rather than fixed at build: the tab title, tagline and
+// favicon are editable in /admin/settings. Storefront pages are static, so
+// this resolves once at build for them — updateSettingsAction revalidates
+// the root layout so a change actually reaches them.
+export async function generateMetadata(): Promise<Metadata> {
+  const identity = await getSiteIdentity();
+  return {
+    title: composeTabTitle(identity),
+    description: SITE_TAGLINE,
+    icons: { icon: identity.favicon },
+  };
+}
 
 export default function RootLayout({
   children,
