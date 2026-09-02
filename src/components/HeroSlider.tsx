@@ -37,16 +37,33 @@ function recycle(o: number, n: number) {
   return v;
 }
 
-// Only slides outside the visible window (center + one neighbour each side)
-// may be recycled. Wrapping one that is on screen teleports it across the
-// track mid-transition, which is what the animation is meant to hide.
-function isHidden(o: number) {
-  return Math.abs(o) > 1;
+// How far from centre a slide can sit and still be on screen. Four or more
+// slides leave a slot free on each side to hide the wrap in; two do not, so
+// there only the centre shows and the wrap happens behind a fade.
+function hiddenBeyond(n: number) {
+  return n <= 2 ? 0 : 1;
+}
+
+// Park an off-screen slide on the side it will enter from.
+//
+// This is the whole trick. A slide that leaves on the left has to come back
+// on the right, and +n/2 and -n/2 are the same slot on the ring — so the
+// wrap is free, but only if it happens *before* the move and while the
+// slide is off screen. Wrap it as part of the move instead and it travels
+// the full width of the track in the wrong direction, in plain view, which
+// is exactly what "one item goes backwards when I click forward" looks like.
+function park(o: number, n: number, entrySign: 1 | -1, hidden: number) {
+  if (Math.abs(o) <= hidden) return o;
+  const c = recycle(o, n);
+  // Only the far slot is ambiguous; everything else has one ring position.
+  if (Math.abs(c) * 2 === n) return (entrySign * Math.abs(c)) as number;
+  return c;
 }
 
 export default function HeroSlider({ content }: { content: HeroContent }) {
   const SLIDES = content.slides;
   const n = SLIDES.length;
+  const hidden = hiddenBeyond(n);
 
   const seed = useCallback(
     () => SLIDES.map((_, i) => ringOffset(i, SLIDES.length)),
@@ -54,54 +71,93 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
   );
 
   const [offsets, setOffsets] = useState<number[]>(seed);
+  // Transitions are switched off for the single frame that parks a slide.
+  // Nothing on screen moves in that frame, so the teleport is invisible.
+  const [parking, setParking] = useState(false);
+
+  const offsetsRef = useRef<number[]>(offsets);
+  // Moves run one at a time. A move needs the ring to be parked before it
+  // starts, so letting a second one interrupt mid-flight is what allowed
+  // slides to drift out of view during a burst of clicks.
+  const queueRef = useRef<((prev: number[]) => number)[]>([]);
+  const busyRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const runRef = useRef<() => void>(() => {});
   const autoplayRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Bumped on every manual move so autoplay restarts its countdown instead
   // of firing a fraction of a second after a click.
   const [interactions, setInteractions] = useState(0);
 
-  const shift = useCallback(
-    (getDelta: (prev: number[]) => number) => {
-      setOffsets((stale) => {
-        // Editing slides in /admin/banner changes the list under a live
-        // slider; re-seed rather than carrying an array of the wrong length.
-        const prev = stale.length === n ? stale : seed();
-        const delta = getDelta(prev);
-        if (!delta) return prev;
-        return prev.map((o) => {
-          const moved = o - delta;
-          // Wrap here, while the slide is off-screen on both sides of the
-          // move, so repeated clicks can never accumulate a drift that
-          // strands a slide outside the visible window.
-          return isHidden(o) && isHidden(moved) ? recycle(moved, n) : moved;
-        });
-      });
+  const commit = useCallback((next: number[]) => {
+    offsetsRef.current = next;
+    setOffsets(next);
+  }, []);
 
-      // Safety net for the slide that was on screen during the move: once
-      // its transition has finished it is hidden, so it can wrap silently.
-      if (settleRef.current) clearTimeout(settleRef.current);
-      settleRef.current = setTimeout(() => {
-        setOffsets((prev) =>
-          prev.map((o) => (isHidden(o) ? recycle(o, n) : o)),
-        );
-      }, TRANSITION_MS);
-    },
-    [n, seed],
-  );
+  const runNext = useCallback(() => {
+    const job = queueRef.current.shift();
+    if (!job) {
+      busyRef.current = false;
+      return;
+    }
+    busyRef.current = true;
+
+    // Editing slides in /admin/banner changes the list under a live slider;
+    // re-seed rather than carrying an array of the wrong length.
+    const current =
+      offsetsRef.current.length === n ? offsetsRef.current : seed();
+    const delta = job(current);
+    if (!delta) {
+      busyRef.current = false;
+      runRef.current();
+      return;
+    }
+
+    // Frame 1 — park the off-screen slides, unanimated.
+    const entry: 1 | -1 = delta > 0 ? 1 : -1;
+    setParking(true);
+    commit(current.map((o) => park(o, n, entry, hidden)));
+
+    // Frame 2 — the move itself, animated out of the parked positions. Two
+    // rAFs so the parked frame is painted before transitions come back on;
+    // one is not enough, the style change coalesces into the same paint.
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = requestAnimationFrame(() => {
+        setParking(false);
+        commit(offsetsRef.current.map((o) => o - delta));
+        timerRef.current = setTimeout(() => {
+          busyRef.current = false;
+          runRef.current();
+        }, TRANSITION_MS);
+      });
+    });
+  }, [n, seed, commit, hidden]);
+
+  useEffect(() => {
+    runRef.current = runNext;
+  }, [runNext]);
+
+  const enqueue = useCallback((job: (prev: number[]) => number) => {
+    // Cap the backlog so mashing an arrow doesn't animate long after the
+    // last click, while still letting a quick double-click through.
+    if (queueRef.current.length >= 2) return;
+    queueRef.current.push(job);
+    if (!busyRef.current) runRef.current();
+  }, []);
 
   const step = useCallback(
     (direction: 1 | -1) => {
       setInteractions((c) => c + 1);
-      shift(() => direction);
+      enqueue(() => direction);
     },
-    [shift],
+    [enqueue],
   );
   const goToSlide = useCallback(
     (i: number) => {
       setInteractions((c) => c + 1);
-      shift((prev) => prev[i] ?? 0);
+      enqueue((prev) => prev[i] ?? 0);
     },
-    [shift],
+    [enqueue],
   );
 
   const goPrev = useCallback(() => step(-1), [step]);
@@ -109,7 +165,8 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
 
   useEffect(() => {
     return () => {
-      if (settleRef.current) clearTimeout(settleRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
@@ -171,7 +228,7 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
 
             // Per-slide zoom rides on top of the coverflow scaling.
             const scale = (isCenter ? 1.25 : 0.5) * ((slide.zoom ?? 100) / 100);
-            const opacity = abs > 1 ? 0 : isCenter ? 1 : 0.8;
+            const opacity = abs > hidden ? 0 : isCenter ? 1 : 0.8;
             const zIndex = 10 - abs;
 
             // Gap facing the center: a left-side slide's inward edge is its
@@ -211,7 +268,9 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
                     transformOrigin: "bottom",
                     opacity,
                     willChange: "transform, opacity",
-                    transition: "transform 500ms ease-out, opacity 500ms ease-out",
+                    transition: parking
+                      ? "none"
+                      : "transform 500ms ease-out, opacity 500ms ease-out",
                   }}
                 >
                   <Image
