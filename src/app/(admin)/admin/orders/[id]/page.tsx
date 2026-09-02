@@ -1,12 +1,17 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import OrderDetailClient from "@/components/admin/OrderDetailClient";
+import { requirePageAccess } from "@/lib/admin-guard";
+import NoAccess from "@/components/admin/NoAccess";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminOrderDetailPage(props: {
   params: Promise<{ id: string }>;
 }) {
+  const { allowed } = await requirePageAccess("ORDERS_VIEW");
+  if (!allowed) return <NoAccess what="orders" />;
+
   const { id } = await props.params;
 
   let order: any = null;

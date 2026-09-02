@@ -1,5 +1,7 @@
 import InventoryClient from "@/components/admin/InventoryClient";
 import { getInventory, getStockMovements } from "@/lib/inventory";
+import { requirePageAccess } from "@/lib/admin-guard";
+import NoAccess from "@/components/admin/NoAccess";
 import type {
   InventoryRow,
   InventorySummary,
@@ -21,6 +23,9 @@ const EMPTY_SUMMARY: InventorySummary = {
 };
 
 export default async function InventoryPage() {
+  const { allowed } = await requirePageAccess("INVENTORY_VIEW");
+  if (!allowed) return <NoAccess what="inventory" />;
+
   let rows: InventoryRow[] = [];
   let summary = EMPTY_SUMMARY;
   let threshold = 5;

@@ -15,10 +15,23 @@ import {
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/format";
 import { getLowStockThreshold } from "@/lib/inventory";
+import { requirePageAdmin } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
+  // The dashboard is the one page every signed-in staff member can open,
+  // so it earns its content per permission rather than gating the route.
+  const ctx = await requirePageAdmin();
+  const can = (p: Parameters<typeof ctx.permissions.includes>[0]) =>
+    ctx.permissions.includes(p);
+
+  const canSeeOrders = can("ORDERS_VIEW");
+  const canSeeMoney = can("FINANCE_VIEW");
+  const canSeeProducts = can("PRODUCTS_VIEW");
+  const canSeeStock = can("INVENTORY_VIEW");
+  const canSeeCategories = can("CATEGORIES_VIEW");
+
   // Aggregate Metrics safely (with fallback if DB empty)
   let totalRevenueCents = 0;
   let totalOrdersCount = 0;
@@ -30,11 +43,13 @@ export default async function AdminDashboardPage() {
   let categoriesCount = 0;
 
   try {
-    const orders = await db.order.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      include: { items: true },
-    });
+    const orders = canSeeOrders
+      ? await db.order.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 50,
+          include: { items: true },
+        })
+      : [];
 
     totalOrdersCount = orders.length;
     recentOrders = orders.slice(0, 5);
@@ -53,25 +68,29 @@ export default async function AdminDashboardPage() {
       }
     }
 
-    const products = await db.product.findMany({
-      where: { archivedAt: null },
-      include: { category: true },
-    });
+    const products = canSeeProducts
+      ? await db.product.findMany({
+          where: { archivedAt: null },
+          include: { category: true },
+        })
+      : [];
     totalProductsCount = products.length;
     // Per-product override first, store-wide setting otherwise — same rule
     // the Inventory screen uses, so the two never disagree.
-    const lowStockThreshold = await getLowStockThreshold();
-    lowStockProducts = products.filter(
-      (p) => (p.stockQty ?? 0) <= (p.lowStockThreshold ?? lowStockThreshold),
-    );
+    if (canSeeStock) {
+      const lowStockThreshold = await getLowStockThreshold();
+      lowStockProducts = products.filter(
+        (p) => (p.stockQty ?? 0) <= (p.lowStockThreshold ?? lowStockThreshold),
+      );
+    }
 
-    categoriesCount = await db.category.count();
+    categoriesCount = canSeeCategories ? await db.category.count() : 0;
   } catch (error) {
     console.warn("Dashboard stats DB query fallback:", error);
   }
 
   const statCards = [
-    {
+    canSeeMoney && {
       title: "Total Revenue",
       value: formatPrice(totalRevenueCents),
       subtitle: `${confirmedOrdersCount} confirmed orders`,
@@ -79,31 +98,41 @@ export default async function AdminDashboardPage() {
       iconBg: "bg-emerald-50 text-emerald-600",
       border: "border-emerald-100",
     },
-    {
+    canSeeOrders && {
       title: "Total Orders",
       value: totalOrdersCount.toString(),
-      subtitle: `${pendingOrdersCount} pending payment`,
+      subtitle: `${pendingOrdersCount} awaiting your call`,
       icon: ShoppingCart,
       iconBg: "bg-blue-50 text-blue-600",
       border: "border-blue-100",
     },
-    {
+    canSeeProducts && {
       title: "Active Products",
-      value: (totalProductsCount || 15).toString(),
-      subtitle: `${lowStockProducts.length} low in stock`,
+      value: totalProductsCount.toString(),
+      subtitle: canSeeStock
+        ? `${lowStockProducts.length} low in stock`
+        : "In the catalogue",
       icon: Package,
       iconBg: "bg-amber-50 text-amber-600",
       border: "border-amber-100",
     },
-    {
+    canSeeCategories && {
       title: "Categories",
-      value: (categoriesCount || 3).toString(),
+      value: categoriesCount.toString(),
       subtitle: "Construction machinery",
       icon: FolderTree,
       iconBg: "bg-purple-50 text-purple-600",
       border: "border-purple-100",
     },
-  ];
+  ].filter(Boolean) as {
+    title: string;
+    value: string;
+    subtitle: string;
+    icon: typeof TrendingUp;
+    iconBg: string;
+    border: string;
+  }[];
+
 
   return (
     <div className="space-y-8">
@@ -118,6 +147,7 @@ export default async function AdminDashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {canSeeProducts && can("PRODUCTS_CREATE") && (
           <Link
             href="/admin/products/new"
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#c0282b] hover:bg-[#8f1e20] text-white text-sm font-semibold rounded-lg shadow-sm transition-colors"
@@ -125,6 +155,8 @@ export default async function AdminDashboardPage() {
             <PlusCircle className="w-4 h-4" />
             <span>Add Product</span>
           </Link>
+          )}
+          {canSeeOrders && (
           <Link
             href="/admin/orders"
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-semibold rounded-lg transition-colors"
@@ -132,6 +164,7 @@ export default async function AdminDashboardPage() {
             <ShoppingCart className="w-4 h-4" />
             <span>Orders</span>
           </Link>
+          )}
         </div>
       </div>
 
@@ -164,6 +197,7 @@ export default async function AdminDashboardPage() {
       {/* Main Split: Recent Orders & Alerts/Quick Links */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Recent Orders List (2 Cols) */}
+        {canSeeOrders && (
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex items-center justify-between">
             <div>
@@ -253,10 +287,12 @@ export default async function AdminDashboardPage() {
             )}
           </div>
         </div>
+        )}
 
         {/* Sidebar Column: Stock Alerts & Quick Navigation */}
         <div className="space-y-6">
           {/* Low Stock Alerts */}
+          {canSeeStock && (
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs">
             <div className="flex items-center gap-2 text-amber-600 font-bold text-sm mb-3">
               <AlertTriangle className="w-4 h-4" />
@@ -284,12 +320,14 @@ export default async function AdminDashboardPage() {
               </div>
             )}
           </div>
+          )}
 
           {/* Quick Management Shortcuts */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">
               Quick Shortcuts
             </h4>
+            {canSeeProducts && (
             <Link
               href="/admin/products"
               className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-all text-xs font-semibold text-gray-700"
@@ -300,7 +338,9 @@ export default async function AdminDashboardPage() {
               </span>
               <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
             </Link>
+            )}
 
+            {canSeeCategories && (
             <Link
               href="/admin/categories"
               className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-all text-xs font-semibold text-gray-700"
@@ -311,7 +351,9 @@ export default async function AdminDashboardPage() {
               </span>
               <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
             </Link>
+            )}
 
+            {can("SETTINGS_VIEW") && (
             <Link
               href="/admin/settings"
               className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-all text-xs font-semibold text-gray-700"
@@ -322,6 +364,7 @@ export default async function AdminDashboardPage() {
               </span>
               <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
             </Link>
+            )}
           </div>
         </div>
       </div>

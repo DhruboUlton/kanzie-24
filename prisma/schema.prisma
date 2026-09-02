@@ -12,8 +12,57 @@ model AdminUser {
   email        String    @unique
   passwordHash String
   name         String
+  // Nullable so the column could be added to an existing table without a
+  // default. A user with no role has no permissions and is refused at
+  // login — roles are assigned explicitly, never inferred.
+  roleId       String?
+  role         Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  activityLogs ActivityLog[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+
+  @@index([roleId])
+}
+
+// Roles are data so they can be created and edited in the admin; the
+// permission keys they hold are validated against the code catalogue in
+// src/lib/permissions.ts on every write. Storing them as a JSON array
+// rather than a join table keeps this to one extra table — see that file
+// for the reasoning.
+model Role {
+  id          String      @id @default(cuid())
+  key         String      @unique
+  name        String
+  description String?     @db.Text
+  // System roles ship with the app and cannot be deleted or re-keyed.
+  isSystem    Boolean     @default(false)
+  permissions Json
+  users       AdminUser[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+// Append-only from the application's point of view: nothing in the app
+// updates or deletes a row here. Actor identity is denormalised so the
+// trail survives the staff account being deleted.
+model ActivityLog {
+  id          String     @id @default(cuid())
+  actorId     String?
+  actor       AdminUser? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorEmail  String
+  actorName   String
+  action      String
+  entityType  String?
+  entityId    String?
+  description String?    @db.Text
+  metadata    Json?
+  createdAt   DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([actorId])
+  @@index([entityType, entityId])
 }
 
 model Category {

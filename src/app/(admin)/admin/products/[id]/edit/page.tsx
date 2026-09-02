@@ -2,12 +2,17 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCategories, getProducts } from "@/lib/products";
 import ProductForm from "@/components/admin/ProductForm";
+import { requirePageAccess } from "@/lib/admin-guard";
+import NoAccess from "@/components/admin/NoAccess";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditProductPage(props: {
   params: Promise<{ id: string }>;
 }) {
+  const { allowed } = await requirePageAccess("PRODUCTS_EDIT");
+  if (!allowed) return <NoAccess what="editing products" />;
+
   const { id } = await props.params;
   const categories = await getCategories();
 

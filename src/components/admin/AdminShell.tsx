@@ -3,6 +3,7 @@
 import { useState } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
+import { Permission } from "@/lib/permissions";
 
 // Holds the sidebar drawer state so the header's menu button and the
 // sidebar itself can share it. Below lg the sidebar is off-canvas; from lg
@@ -10,10 +11,14 @@ import AdminHeader from "@/components/admin/AdminHeader";
 export default function AdminShell({
   adminName,
   adminEmail,
+  roleName,
+  permissions,
   children,
 }: {
   adminName?: string;
   adminEmail?: string;
+  roleName?: string | null;
+  permissions?: Permission[];
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -31,6 +36,8 @@ export default function AdminShell({
       <AdminSidebar
         adminName={adminName}
         adminEmail={adminEmail}
+        roleName={roleName}
+        permissions={permissions}
         open={sidebarOpen}
         onNavigate={() => setSidebarOpen(false)}
       />

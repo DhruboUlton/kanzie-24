@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, authErrorResult } from "@/lib/auth";
+import { logActivity } from "@/lib/activity-log";
 
 export async function getSettingsMap(): Promise<Record<string, string>> {
   try {
@@ -23,7 +24,12 @@ export async function getSettingsMap(): Promise<Record<string, string>> {
 }
 
 export async function updateSettingsAction(settings: Record<string, string>) {
-  await requireAdmin();
+  let ctx;
+  try {
+    ctx = await requirePermission("SETTINGS_MANAGE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
 
   try {
     for (const [key, value] of Object.entries(settings)) {
@@ -34,10 +40,21 @@ export async function updateSettingsAction(settings: Record<string, string>) {
       });
     }
 
+    await logActivity({
+      actor: ctx,
+      action: "SETTINGS_UPDATED",
+      entityType: "SETTINGS",
+      description: "Updated store settings",
+      metadata: { keys: Object.keys(settings) },
+    });
+
     revalidatePath("/");
     revalidatePath("/admin/settings");
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message || "Failed to update settings" };
+    const denied = authErrorResult(error);
+    if (denied) return denied;
+    console.error("updateSettings error:", error);
+    return { success: false, error: "Couldn't save the settings." };
   }
 }

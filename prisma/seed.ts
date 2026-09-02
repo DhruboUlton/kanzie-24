@@ -1,5 +1,4 @@
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -7,23 +6,15 @@ async function main() {
   console.log("Seeding database...");
 
   // 1. Create Default Admin User
-  const defaultAdminEmail = "admin@kanzie.com";
-  const existingAdmin = await prisma.adminUser.findUnique({
-    where: { email: defaultAdminEmail },
-  });
-
-  if (!existingAdmin) {
-    const passwordHash = await bcrypt.hash("admin123456", 10);
-    await prisma.adminUser.create({
-      data: {
-        email: defaultAdminEmail,
-        name: "KANZIE Admin",
-        passwordHash,
-      },
-    });
-    console.log("Created admin user: admin@kanzie.com / admin123456");
+  // No admin account is seeded. Creating one here would mean shipping a
+  // known password; the first owner is created through the setup screen at
+  // /admin/login, which only appears while no admin exists.
+  const adminCount = await prisma.adminUser.count();
+  if (adminCount === 0) {
+    console.log(
+      "No admin user yet — open /admin/login to create the owner account.",
+    );
   }
-
   // 2. Create Categories
   const categoriesData = [
     { slug: "excavators", name: "Excavators", sortOrder: 1 },

@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  Users,
+  ShieldCheck,
+  ScrollText,
+  KeyRound,
   Package,
   ShoppingCart,
   FolderTree,
@@ -17,30 +22,60 @@ import {
   Boxes,
 } from "lucide-react";
 import { logoutAdminAction } from "@/lib/actions/auth";
+import { Permission } from "@/lib/permissions";
+import ChangePasswordDialog from "@/components/admin/ChangePasswordDialog";
+
+// Each item names the permission that opens it. This is a UX filter only —
+// every page and every server action does its own check, so a hidden link
+// is a convenience, never the control.
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+  permission?: Permission;
+};
+
+const STORE_NAV: NavItem[] = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/admin/products", label: "Products", icon: Package, permission: "PRODUCTS_VIEW" },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingCart, permission: "ORDERS_VIEW" },
+  { href: "/admin/inventory", label: "Inventory", icon: Boxes, permission: "INVENTORY_VIEW" },
+  { href: "/admin/categories", label: "Categories", icon: FolderTree, permission: "CATEGORIES_VIEW" },
+  { href: "/admin/banner", label: "Banner", icon: Images, permission: "BANNER_VIEW" },
+  { href: "/admin/fraud-check", label: "Fraud Check", icon: ShieldAlert, permission: "FRAUD_CHECK_VIEW" },
+  { href: "/admin/settings", label: "Settings", icon: Settings, permission: "SETTINGS_VIEW" },
+];
+
+const STAFF_NAV: NavItem[] = [
+  { href: "/admin/staff", label: "Staff", icon: Users, permission: "STAFF_VIEW" },
+  { href: "/admin/roles", label: "Roles & Permissions", icon: ShieldCheck, permission: "ROLES_VIEW" },
+  { href: "/admin/activity-log", label: "Activity Log", icon: ScrollText, permission: "ACTIVITY_LOG_VIEW" },
+];
 
 export default function AdminSidebar({
   adminName,
   adminEmail,
+  roleName,
+  permissions = [],
   open = false,
   onNavigate,
 }: {
   adminName?: string;
   adminEmail?: string;
+  roleName?: string | null;
+  permissions?: Permission[];
   open?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const [changingPassword, setChangingPassword] = useState(false);
 
-  const navItems = [
-    { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-    { href: "/admin/products", label: "Products", icon: Package },
-    { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
-    { href: "/admin/inventory", label: "Inventory", icon: Boxes },
-    { href: "/admin/categories", label: "Categories", icon: FolderTree },
-    { href: "/admin/banner", label: "Banner", icon: Images },
-    { href: "/admin/fraud-check", label: "Fraud Check", icon: ShieldAlert },
-    { href: "/admin/settings", label: "Settings", icon: Settings },
-  ];
+  const allowed = (items: NavItem[]) =>
+    items.filter((i) => !i.permission || permissions.includes(i.permission));
+
+  const navItems = allowed(STORE_NAV);
+  const staffItems = allowed(STAFF_NAV);
 
   return (
     <aside
@@ -93,6 +128,34 @@ export default function AdminSidebar({
               </Link>
             );
           })}
+
+          {staffItems.length > 0 && (
+            <>
+              <div className="px-3 pt-4 pb-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">
+                Staff &amp; Permissions
+              </div>
+              {staffItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname.startsWith(item.href);
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                      isActive
+                        ? "bg-[#c0282b] text-white shadow-sm font-semibold"
+                        : "text-white/70 hover:text-white hover:bg-white/5"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </>
+          )}
         </nav>
       </div>
 
@@ -119,9 +182,23 @@ export default function AdminSidebar({
               {adminName || "Administrator"}
             </p>
             <p className="text-[11px] text-white/40 truncate">
-              {adminEmail || "admin@kanzie.com"}
+              {adminEmail}
             </p>
+            {roleName && (
+              <p className="text-[10px] font-semibold text-[#e0787a] truncate mt-0.5">
+                {roleName}
+              </p>
+            )}
           </div>
+          <button
+            type="button"
+            onClick={() => setChangingPassword(true)}
+            title="Change your password"
+            aria-label="Change your password"
+            className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+          >
+            <KeyRound className="w-4 h-4" />
+          </button>
           <form
             action={async () => {
               await logoutAdminAction();
@@ -138,6 +215,9 @@ export default function AdminSidebar({
           </form>
         </div>
       </div>
+      {changingPassword && (
+        <ChangePasswordDialog onClose={() => setChangingPassword(false)} />
+      )}
     </aside>
   );
 }

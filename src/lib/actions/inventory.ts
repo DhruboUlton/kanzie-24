@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, authErrorResult } from "@/lib/auth";
+import { logActivity } from "@/lib/activity-log";
 import {
   LOW_STOCK_SETTING_KEY,
   StockMovementRow,
@@ -31,7 +32,12 @@ export async function adjustStockAction(input: {
   reason: string;
   note?: string;
 }): Promise<Result & { after?: number }> {
-  const admin = await requireAdmin();
+  let admin;
+  try {
+    admin = await requirePermission("INVENTORY_ADJUST");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
 
   const value = Math.trunc(Number(input.value));
   if (!Number.isFinite(value)) {
@@ -69,6 +75,15 @@ export async function adjustStockAction(input: {
       actorName: admin.name || admin.email,
     });
 
+    await logActivity({
+      actor: admin,
+      action: "INVENTORY_ADJUSTED",
+      entityType: "INVENTORY",
+      entityId: input.productId,
+      description: `Stock ${input.mode === "set" ? "set to" : "changed by"} ${value}`,
+      metadata: { mode: input.mode, value, reason: input.reason, after },
+    });
+
     revalidateStock(product.slug);
     return { success: true, after };
   } catch (error: any) {
@@ -80,7 +95,12 @@ export async function receiveStockAction(
   lines: { productId: string; qty: number }[],
   note?: string,
 ): Promise<Result & { received?: number }> {
-  const admin = await requireAdmin();
+  let admin;
+  try {
+    admin = await requirePermission("INVENTORY_ADJUST");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
 
   const valid = lines
     .map((l) => ({ productId: l.productId, qty: Math.trunc(Number(l.qty)) }))
@@ -106,6 +126,14 @@ export async function receiveStockAction(
       received += line.qty;
     }
 
+    await logActivity({
+      actor: admin,
+      action: "INVENTORY_RECEIVED",
+      entityType: "INVENTORY",
+      description: `Received ${received} units across ${valid.length} products`,
+      metadata: { received, lines: valid.length, note: note || null },
+    });
+
     revalidateStock();
     return { success: true, received };
   } catch (error: any) {
@@ -118,7 +146,12 @@ export async function updateProductInventorySettingsAction(input: {
   costTaka: number | null;
   lowStockThreshold: number | null;
 }): Promise<Result> {
-  await requireAdmin();
+  let ctx;
+  try {
+    ctx = await requirePermission("INVENTORY_ADJUST");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
 
   const cost =
     input.costTaka === null || input.costTaka === undefined
@@ -141,6 +174,16 @@ export async function updateProductInventorySettingsAction(input: {
       where: { id: input.productId },
       data: { costPriceCents: cost, lowStockThreshold: threshold },
     });
+
+    await logActivity({
+      actor: ctx,
+      action: "INVENTORY_SETTINGS_UPDATED",
+      entityType: "INVENTORY",
+      entityId: input.productId,
+      description: "Updated cost price / low-stock alert",
+      metadata: { costPriceCents: cost, lowStockThreshold: threshold },
+    });
+
     revalidateStock();
     return { success: true };
   } catch (error: any) {
@@ -151,7 +194,12 @@ export async function updateProductInventorySettingsAction(input: {
 export async function updateLowStockThresholdAction(
   threshold: number,
 ): Promise<Result> {
-  await requireAdmin();
+  let ctx;
+  try {
+    ctx = await requirePermission("INVENTORY_ADJUST");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
 
   const n = Math.trunc(Number(threshold));
   if (!Number.isFinite(n) || n < 0) {
@@ -164,6 +212,15 @@ export async function updateLowStockThresholdAction(
       update: { value: String(n) },
       create: { key: LOW_STOCK_SETTING_KEY, value: String(n) },
     });
+
+    await logActivity({
+      actor: ctx,
+      action: "INVENTORY_SETTINGS_UPDATED",
+      entityType: "INVENTORY",
+      description: `Store-wide low-stock alert set to ${n}`,
+      metadata: { threshold: n },
+    });
+
     revalidateStock();
     return { success: true };
   } catch (error: any) {
@@ -174,6 +231,6 @@ export async function updateLowStockThresholdAction(
 export async function getProductMovementsAction(
   productId: string,
 ): Promise<StockMovementRow[]> {
-  await requireAdmin();
+  await requirePermission("INVENTORY_VIEW");
   return getStockMovements({ productId, limit: 50 });
 }

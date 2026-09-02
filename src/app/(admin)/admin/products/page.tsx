@@ -15,12 +15,17 @@ import { db } from "@/lib/db";
 import { getProducts, getCategories } from "@/lib/products";
 import { formatPrice } from "@/lib/format";
 import { archiveProductAction, restoreProductAction } from "@/lib/actions/product";
+import { requirePageAccess } from "@/lib/admin-guard";
+import NoAccess from "@/components/admin/NoAccess";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminProductsPage(props: {
   searchParams?: Promise<{ q?: string; category?: string; status?: string }>;
 }) {
+  const { allowed } = await requirePageAccess("PRODUCTS_VIEW");
+  if (!allowed) return <NoAccess what="the product catalogue" />;
+
   const searchParams = (await props.searchParams) || {};
   const query = searchParams.q?.toLowerCase() || "";
   const categoryFilter = searchParams.category || "all";

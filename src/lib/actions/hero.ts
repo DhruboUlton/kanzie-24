@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, authErrorResult } from "@/lib/auth";
+import { logActivity } from "@/lib/activity-log";
 import {
   DEFAULT_BANNER_SLIDE,
   DEFAULT_HERO,
@@ -17,14 +18,19 @@ import {
 } from "@/lib/hero";
 
 export async function getHeroContentAction(): Promise<HeroContent> {
-  await requireAdmin();
+  await requirePermission("BANNER_VIEW");
   return getHeroContent();
 }
 
 export async function updateHeroAction(
   content: HeroContent,
 ): Promise<{ success: boolean; error?: string }> {
-  await requireAdmin();
+  let ctx;
+  try {
+    ctx = await requirePermission("BANNER_MANAGE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
 
   const mode = normalizeMode(content.mode);
   const bannerSlides = content.bannerSlides.filter((s) => s.src.trim());
@@ -103,6 +109,15 @@ export async function updateHeroAction(
         create: { key, value },
       });
     }
+
+    await logActivity({
+      actor: ctx,
+      action: "BANNER_UPDATED",
+      entityType: "BANNER",
+      entityId: "hero",
+      description: `Updated the hero banner (${mode} style)`,
+      metadata: { mode, slides: content.slides.length, bannerSlides: bannerSlides.length },
+    });
 
     revalidatePath("/");
     revalidatePath("/admin/banner");

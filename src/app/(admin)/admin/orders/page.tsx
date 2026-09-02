@@ -11,12 +11,17 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/format";
+import { requirePageAccess } from "@/lib/admin-guard";
+import NoAccess from "@/components/admin/NoAccess";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminOrdersPage(props: {
   searchParams?: Promise<{ q?: string; status?: string }>;
 }) {
+  const { allowed } = await requirePageAccess("ORDERS_VIEW");
+  if (!allowed) return <NoAccess what="orders" />;
+
   const searchParams = (await props.searchParams) || {};
   const query = searchParams.q?.toLowerCase() || "";
   const statusFilter = searchParams.status || "ALL";

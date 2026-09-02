@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/auth";
+import { getAdminContext } from "@/lib/auth";
 import AdminShell from "@/components/admin/AdminShell";
 
 export default async function AdminLayout({
@@ -6,15 +6,24 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
+  const ctx = await getAdminContext();
 
-  // If not logged in, render unauthenticated child (e.g. login page)
-  if (!session) {
+  // No usable context: not signed in, or signed in with a cookie whose
+  // account has since been deleted, disabled, or stripped of its role.
+  // Render the child bare — that's the login page. Protected pages send
+  // their own visitors to /admin/login via requirePageAdmin(), which can't
+  // be done here because this layout also wraps the login page itself.
+  if (!ctx) {
     return <div className="min-h-screen bg-gray-50">{children}</div>;
   }
 
   return (
-    <AdminShell adminName={session.name} adminEmail={session.email}>
+    <AdminShell
+      adminName={ctx.name}
+      adminEmail={ctx.email}
+      roleName={ctx.roleName}
+      permissions={ctx.permissions}
+    >
       {children}
     </AdminShell>
   );

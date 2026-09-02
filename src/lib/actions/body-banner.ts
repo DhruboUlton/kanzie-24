@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, authErrorResult } from "@/lib/auth";
+import { logActivity } from "@/lib/activity-log";
 import { normalizeHex } from "@/lib/hero";
 import {
   BODY_BANNER_KEYS,
@@ -12,14 +13,19 @@ import {
 } from "@/lib/body-banner";
 
 export async function getBodyBannerContentAction(): Promise<BodyBannerContent> {
-  await requireAdmin();
+  await requirePermission("BANNER_VIEW");
   return getBodyBannerContent();
 }
 
 export async function updateBodyBannerAction(
   content: BodyBannerContent,
 ): Promise<{ success: boolean; error?: string }> {
-  await requireAdmin();
+  let ctx;
+  try {
+    ctx = await requirePermission("BANNER_MANAGE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
 
   const d = DEFAULT_BODY_BANNER;
   const values: Record<string, string> = {
@@ -53,6 +59,14 @@ export async function updateBodyBannerAction(
         create: { key, value },
       });
     }
+
+    await logActivity({
+      actor: ctx,
+      action: "BANNER_UPDATED",
+      entityType: "BANNER",
+      entityId: "body",
+      description: "Updated the body banner",
+    });
 
     revalidatePath("/");
     revalidatePath("/admin/banner");

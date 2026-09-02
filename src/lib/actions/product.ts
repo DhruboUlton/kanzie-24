@@ -2,11 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, authErrorResult } from "@/lib/auth";
+import { logActivity } from "@/lib/activity-log";
 import { productSchema } from "@/lib/schemas/product";
 
 export async function createProductAction(data: any) {
-  await requireAdmin();
+  let ctx;
+  try {
+    ctx = await requirePermission("PRODUCTS_CREATE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
 
   const validated = productSchema.safeParse(data);
   if (!validated.success) {
@@ -87,6 +93,15 @@ export async function createProductAction(data: any) {
     revalidatePath(`/products/${slug}`);
     revalidatePath("/admin/products");
 
+    await logActivity({
+      actor: ctx,
+      action: "PRODUCT_CREATED",
+      entityType: "PRODUCT",
+      entityId: product.id,
+      description: `Created ${product.name}`,
+      metadata: { sku: product.sku, slug: product.slug },
+    });
+
     return { success: true, product };
   } catch (error: any) {
     console.error("createProduct error:", error);
@@ -95,7 +110,12 @@ export async function createProductAction(data: any) {
 }
 
 export async function updateProductAction(id: string, data: any) {
-  await requireAdmin();
+  let ctx;
+  try {
+    ctx = await requirePermission("PRODUCTS_EDIT");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
 
   const validated = productSchema.safeParse(data);
   if (!validated.success) {
@@ -178,6 +198,15 @@ export async function updateProductAction(id: string, data: any) {
     revalidatePath(`/products/${slug}`);
     revalidatePath("/admin/products");
 
+    await logActivity({
+      actor: ctx,
+      action: "PRODUCT_UPDATED",
+      entityType: "PRODUCT",
+      entityId: updated.id,
+      description: `Updated ${updated.name}`,
+      metadata: { sku: updated.sku, slug: updated.slug },
+    });
+
     return { success: true, product: updated };
   } catch (error: any) {
     console.error("updateProduct error:", error);
@@ -186,7 +215,12 @@ export async function updateProductAction(id: string, data: any) {
 }
 
 export async function archiveProductAction(id: string) {
-  await requireAdmin();
+  let ctx;
+  try {
+    ctx = await requirePermission("PRODUCTS_ARCHIVE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
   try {
     const product = await db.product.update({
       where: { id },
@@ -198,6 +232,15 @@ export async function archiveProductAction(id: string) {
     revalidatePath(`/products/${product.slug}`);
     revalidatePath("/admin/products");
 
+    await logActivity({
+      actor: ctx,
+      action: "PRODUCT_ARCHIVED",
+      entityType: "PRODUCT",
+      entityId: product.id,
+      description: `Archived ${product.name}`,
+      metadata: { sku: product.sku },
+    });
+
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to archive product" };
@@ -205,7 +248,12 @@ export async function archiveProductAction(id: string) {
 }
 
 export async function restoreProductAction(id: string) {
-  await requireAdmin();
+  let ctx;
+  try {
+    ctx = await requirePermission("PRODUCTS_ARCHIVE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
   try {
     const product = await db.product.update({
       where: { id },
@@ -216,6 +264,15 @@ export async function restoreProductAction(id: string) {
     revalidatePath("/products");
     revalidatePath(`/products/${product.slug}`);
     revalidatePath("/admin/products");
+
+    await logActivity({
+      actor: ctx,
+      action: "PRODUCT_RESTORED",
+      entityType: "PRODUCT",
+      entityId: product.id,
+      description: `Restored ${product.name}`,
+      metadata: { sku: product.sku },
+    });
 
     return { success: true };
   } catch (error: any) {

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission, authErrorResult } from "@/lib/auth";
+import { logActivity } from "@/lib/activity-log";
 
 function normalizeSlug(slug: string) {
   return slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
@@ -43,7 +44,12 @@ export async function createCategoryAction(
   sortOrder: number = 0,
   parentId: string | null = null,
 ) {
-  await requireAdmin();
+  let ctx;
+  try {
+    ctx = await requirePermission("CATEGORIES_MANAGE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
 
   const formattedSlug = normalizeSlug(slug);
   if (!name.trim() || !formattedSlug) {
@@ -71,6 +77,15 @@ export async function createCategoryAction(
     revalidatePath("/products");
     revalidatePath("/admin/categories");
     revalidatePath("/", "layout");
+    await logActivity({
+      actor: ctx,
+      action: "CATEGORY_CREATED",
+      entityType: "CATEGORY",
+      entityId: category.id,
+      description: `Created category ${category.name}`,
+      metadata: { slug: category.slug },
+    });
+
     return { success: true, category };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to create category" };
@@ -84,7 +99,12 @@ export async function updateCategoryAction(
   sortOrder: number,
   parentId: string | null = null,
 ) {
-  await requireAdmin();
+  let ctx;
+  try {
+    ctx = await requirePermission("CATEGORIES_MANAGE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
 
   const formattedSlug = normalizeSlug(slug);
   if (!name.trim() || !formattedSlug) {
@@ -118,6 +138,15 @@ export async function updateCategoryAction(
     revalidatePath("/products");
     revalidatePath("/admin/categories");
     revalidatePath("/", "layout");
+    await logActivity({
+      actor: ctx,
+      action: "CATEGORY_UPDATED",
+      entityType: "CATEGORY",
+      entityId: category.id,
+      description: `Updated category ${category.name}`,
+      metadata: { slug: category.slug },
+    });
+
     return { success: true, category };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to update category" };
@@ -125,7 +154,12 @@ export async function updateCategoryAction(
 }
 
 export async function deleteCategoryAction(id: string) {
-  await requireAdmin();
+  let ctx;
+  try {
+    ctx = await requirePermission("CATEGORIES_MANAGE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
 
   try {
     const productCount = await db.product.count({ where: { categoryId: id } });
@@ -148,6 +182,14 @@ export async function deleteCategoryAction(id: string) {
     revalidatePath("/products");
     revalidatePath("/admin/categories");
     revalidatePath("/", "layout");
+    await logActivity({
+      actor: ctx,
+      action: "CATEGORY_DELETED",
+      entityType: "CATEGORY",
+      entityId: id,
+      description: "Deleted a category",
+    });
+
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to delete category" };
