@@ -32,6 +32,8 @@ export const PERMISSIONS = {
 
   FINANCE_VIEW: "See revenue and stock valuation figures",
 
+  ANALYTICS_VIEW: "Open the analytics dashboard",
+
   SETTINGS_VIEW: "See store settings",
   SETTINGS_MANAGE: "Change store settings and courier logins",
 
@@ -71,6 +73,7 @@ export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
   { label: "Banner", keys: ["BANNER_VIEW", "BANNER_MANAGE"] },
   { label: "Fraud check", keys: ["FRAUD_CHECK_VIEW"] },
   { label: "Money", keys: ["FINANCE_VIEW"] },
+  { label: "Analytics", keys: ["ANALYTICS_VIEW"] },
   { label: "Settings", keys: ["SETTINGS_VIEW", "SETTINGS_MANAGE"] },
   { label: "Staff", keys: ["STAFF_VIEW", "STAFF_CREATE", "STAFF_EDIT", "STAFF_DISABLE", "STAFF_DELETE"] },
   { label: "Roles", keys: ["ROLES_VIEW", "ROLES_MANAGE"] },

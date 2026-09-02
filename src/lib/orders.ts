@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { getProductBySlug } from "@/lib/products";
 import { recordStockChange } from "@/lib/inventory";
+import { STOCK_COMMITTED_STATUSES } from "@/lib/order-status";
 
 export type CreateOrderItemInput = {
   slug: string;
@@ -84,16 +85,6 @@ export async function createPendingOrder(params: {
   }
 }
 
-// Statuses where the order's units have already been taken out of stock.
-// PENDING is deliberately absent: an unconfirmed order reserves nothing, it
-// only shows up as "committed" on the inventory screen.
-const STOCK_COMMITTED_STATUSES = [
-  "CONFIRMED",
-  "PACKED",
-  "SHIPPED",
-  "DELIVERED",
-];
-
 async function applyOrderStock(
   items: { productId: string | null; qty: number }[],
   orderId: string,
@@ -157,8 +148,8 @@ export async function updateOrderStatus(
     // re-confirming never double-decrements and cancelling twice never
     // double-credits. Every change goes through recordStockChange so the
     // sellable flag and the audit trail move with the count.
-    const hadCommittedStock = STOCK_COMMITTED_STATUSES.includes(existing.status);
-    const hasCommittedStock = STOCK_COMMITTED_STATUSES.includes(status);
+    const hadCommittedStock = (STOCK_COMMITTED_STATUSES as string[]).includes(existing.status);
+    const hasCommittedStock = (STOCK_COMMITTED_STATUSES as string[]).includes(status);
 
     if (!hadCommittedStock && hasCommittedStock) {
       await applyOrderStock(existing.items, orderId, "SALE", -1);
