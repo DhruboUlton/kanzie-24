@@ -19,6 +19,7 @@ import {
   OWNER_ROLE_KEY,
   PERMISSIONS,
   Permission,
+  isRoleAdmin,
 } from "@/lib/permissions";
 
 export type RoleView = {
@@ -34,12 +35,16 @@ export type RoleView = {
 export default function RolesClient({
   roles,
   permissions,
+  roleKey,
 }: {
   roles: RoleView[];
   permissions: Permission[];
+  roleKey: string | null;
 }) {
   const router = useRouter();
-  const canManage = permissions.includes("ROLES_MANAGE");
+  // Both gates, same as requireRoleAdmin() on the server: the checkbox, and
+  // an owner/manager role to use it with.
+  const canManage = permissions.includes("ROLES_MANAGE") && isRoleAdmin({ roleKey });
 
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<RoleView | null>(null);
@@ -200,6 +205,7 @@ export default function RolesClient({
       {(creating || editing) && (
         <RoleFormDialog
           role={editing}
+          grantable={permissions}
           onClose={() => {
             setCreating(false);
             setEditing(null);

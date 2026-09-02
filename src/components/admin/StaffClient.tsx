@@ -22,7 +22,7 @@ import {
   deleteStaffAction,
   setStaffActiveAction,
 } from "@/lib/actions/staff";
-import { OWNER_ROLE_KEY, Permission } from "@/lib/permissions";
+import { OWNER_ROLE_KEY, Permission, isRoleAdmin } from "@/lib/permissions";
 import { formatDate, formatDateTime } from "@/lib/datetime";
 
 export type StaffRowView = {
@@ -52,11 +52,13 @@ export default function StaffClient({
   staff,
   roles,
   currentUserId,
+  currentUserRoleKey,
   permissions,
 }: {
   staff: StaffRowView[];
   roles: RoleOption[];
   currentUserId: string;
+  currentUserRoleKey: string | null;
   permissions: Permission[];
 }) {
   const router = useRouter();
@@ -95,6 +97,22 @@ export default function StaffClient({
   const isLastOwner = (row: StaffRowView) =>
     row.roleKey === OWNER_ROLE_KEY && row.isActive && activeOwners <= 1;
 
+  // Owner accounts are only touchable by owners, and the Owner role is only
+  // assignable by one. Same courtesy as above — src/lib/actions/staff.ts
+  // enforces all of this server-side.
+  const viewerIsOwner = currentUserRoleKey === OWNER_ROLE_KEY;
+  // Deciding which role someone sits on is owner/manager work — see
+  // requireRoleAdmin() and isRoleAdmin(). Ordinary STAFF_EDIT still covers
+  // names, emails and password resets.
+  const canAssignRoles = isRoleAdmin({ roleKey: currentUserRoleKey });
+  const assignableRoles = useMemo(
+    () => (viewerIsOwner ? roles : roles.filter((r) => r.key !== OWNER_ROLE_KEY)),
+    [roles, viewerIsOwner],
+  );
+
+  const canManage = (row: StaffRowView) =>
+    viewerIsOwner || row.roleKey !== OWNER_ROLE_KEY;
+
   function announce(message: string) {
     setFlash(message);
     setTimeout(() => setFlash(null), 4000);
@@ -131,7 +149,7 @@ export default function StaffClient({
             Who can sign in to the admin, and what each of them can do
           </p>
         </div>
-        {can("STAFF_CREATE") && (
+        {can("STAFF_CREATE") && canAssignRoles && (
           <button
             type="button"
             onClick={() => setAdding(true)}
@@ -248,7 +266,7 @@ export default function StaffClient({
                         <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                       )}
 
-                      {can("STAFF_EDIT") && (
+                      {can("STAFF_EDIT") && canManage(row) && (
                         <>
                           <button
                             type="button"
@@ -259,19 +277,23 @@ export default function StaffClient({
                           >
                             <Pencil className="w-4 h-4" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setResetting(row)}
-                            title="Reset password"
-                            aria-label={`Reset password for ${row.name}`}
-                            className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
-                          >
-                            <KeyRound className="w-4 h-4" />
-                          </button>
+                          {/* Your own password is changed on your profile,
+                              where the current one is asked for first. */}
+                          {row.id !== currentUserId && (
+                            <button
+                              type="button"
+                              onClick={() => setResetting(row)}
+                              title="Reset password"
+                              aria-label={`Reset password for ${row.name}`}
+                              className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                            >
+                              <KeyRound className="w-4 h-4" />
+                            </button>
+                          )}
                         </>
                       )}
 
-                      {can("STAFF_DISABLE") && row.id !== currentUserId && (
+                      {can("STAFF_DISABLE") && row.id !== currentUserId && canManage(row) && (
                         <button
                           type="button"
                           onClick={() =>
@@ -295,7 +317,7 @@ export default function StaffClient({
                         </button>
                       )}
 
-                      {can("STAFF_DELETE") && row.id !== currentUserId && (
+                      {can("STAFF_DELETE") && row.id !== currentUserId && canManage(row) && (
                         <button
                           type="button"
                           onClick={() => setConfirm({ kind: "delete", row })}
@@ -322,8 +344,16 @@ export default function StaffClient({
 
       {(adding || editing) && (
         <StaffFormDialog
-          roles={roles}
+          roles={assignableRoles}
           staff={editing}
+          lockRole={
+            !canAssignRoles || (!!editing && editing.id === currentUserId)
+          }
+          lockRoleReason={
+            !canAssignRoles
+              ? "Only an owner or a manager can change someone's role."
+              : "You can't change your own role. Ask another admin."
+          }
           onClose={() => {
             setAdding(false);
             setEditing(null);

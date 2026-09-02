@@ -18,6 +18,14 @@ import {
   previousRange,
   resolveRange,
 } from "@/lib/analytics-shared";
+import {
+  redactCategories,
+  redactInventorySummary,
+  redactProducts,
+  redactSeries,
+  redactStatuses,
+  redactTotals,
+} from "@/lib/analytics-redact";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +80,36 @@ export default async function AnalyticsPage(props: {
       : Promise.resolve(null),
   ]);
 
+  // Everything below crosses into a client component, which means it crosses
+  // into the browser. Without FINANCE_VIEW the money never makes that trip —
+  // the client's canSeeMoney checks only decide what is drawn, not what was
+  // sent.
+  const view = canSeeMoney
+    ? {
+        series,
+        previousSeries,
+        totals,
+        previousTotals,
+        statuses,
+        topByUnits: topProducts.byUnits,
+        topByRevenue: topProducts.byRevenue,
+        categories,
+        inventorySummary: inventory?.summary ?? null,
+      }
+    : {
+        series: redactSeries(series),
+        previousSeries: previousSeries ? redactSeries(previousSeries) : null,
+        totals: redactTotals(totals),
+        previousTotals: previousTotals ? redactTotals(previousTotals) : null,
+        statuses: redactStatuses(statuses),
+        topByUnits: redactProducts(topProducts.byUnits),
+        // The revenue ranking is itself a revenue figure, and nothing renders
+        // it without FINANCE_VIEW.
+        topByRevenue: [],
+        categories: redactCategories(categories),
+        inventorySummary: redactInventorySummary(inventory?.summary ?? null),
+      };
+
   return (
     <AnalyticsClient
       preset={preset}
@@ -82,17 +120,17 @@ export default async function AnalyticsPage(props: {
       }}
       compare={compare}
       granularity={granularityFor(range)}
-      series={series}
-      previousSeries={previousSeries}
-      totals={totals}
-      previousTotals={previousTotals}
-      statuses={statuses}
-      topByUnits={topProducts.byUnits}
-      topByRevenue={topProducts.byRevenue}
-      categories={categories}
+      series={view.series}
+      previousSeries={view.previousSeries}
+      totals={view.totals}
+      previousTotals={view.previousTotals}
+      statuses={view.statuses}
+      topByUnits={view.topByUnits}
+      topByRevenue={view.topByRevenue}
+      categories={view.categories}
       movements={movements}
       costCoverage={costCoverage}
-      inventorySummary={inventory?.summary ?? null}
+      inventorySummary={view.inventorySummary}
       canSeeMoney={canSeeMoney}
       canSeeStock={canSeeStock}
     />

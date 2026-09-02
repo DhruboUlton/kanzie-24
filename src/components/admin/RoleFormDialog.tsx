@@ -12,10 +12,18 @@ import type { RoleView } from "@/components/admin/RolesClient";
 
 export default function RoleFormDialog({
   role,
+  grantable,
   onClose,
   onSaved,
 }: {
   role: RoleView | null;
+  /**
+   * What the signed-in admin holds themselves. They can't grant beyond it —
+   * see ungrantable() in src/lib/actions/roles.ts, which is the real check.
+   * Permissions the role already has stay togglable so an edit can still
+   * remove them.
+   */
+  grantable: Permission[];
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
@@ -32,15 +40,23 @@ export default function RoleFormDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const toggle = (p: Permission) =>
-    setSelected((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]));
+  const canToggle = (p: Permission) =>
+    grantable.includes(p) || (role?.permissions.includes(p) ?? false);
 
-  const toggleGroup = (keys: Permission[]) =>
+  const toggle = (p: Permission) => {
+    if (!canToggle(p)) return;
+    setSelected((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p]));
+  };
+
+  const toggleGroup = (keys: Permission[]) => {
+    const usable = keys.filter(canToggle);
+    if (usable.length === 0) return;
     setSelected((s) =>
-      keys.every((k) => s.includes(k))
-        ? s.filter((x) => !keys.includes(x))
-        : Array.from(new Set([...s, ...keys])),
+      usable.every((k) => s.includes(k))
+        ? s.filter((x) => !usable.includes(x))
+        : Array.from(new Set([...s, ...usable])),
     );
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -138,7 +154,9 @@ export default function RoleFormDialog({
               </div>
 
               {PERMISSION_GROUPS.map((group) => {
-                const all = group.keys.every((k) => selected.includes(k));
+                const usable = group.keys.filter(canToggle);
+                const all =
+                  usable.length > 0 && usable.every((k) => selected.includes(k));
                 return (
                   <div
                     key={group.label}
@@ -151,33 +169,45 @@ export default function RoleFormDialog({
                       <button
                         type="button"
                         onClick={() => toggleGroup(group.keys)}
-                        className="text-[11px] font-semibold text-accent hover:underline"
+                        disabled={usable.length === 0}
+                        className="text-[11px] font-semibold text-accent hover:underline disabled:text-gray-300 disabled:no-underline disabled:cursor-not-allowed"
                       >
                         {all ? "Clear all" : "Select all"}
                       </button>
                     </div>
                     <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {group.keys.map((key) => (
-                        <label
-                          key={key}
-                          className="flex items-start gap-2 cursor-pointer group"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selected.includes(key)}
-                            onChange={() => toggle(key)}
-                            className="mt-0.5 accent-[#c0282b]"
-                          />
-                          <span className="min-w-0">
-                            <span className="block text-xs font-semibold text-gray-800 group-hover:text-gray-900">
-                              {PERMISSIONS[key]}
+                      {group.keys.map((key) => {
+                        const locked = !canToggle(key);
+                        return (
+                          <label
+                            key={key}
+                            title={
+                              locked
+                                ? "You don't hold this permission, so you can't grant it."
+                                : undefined
+                            }
+                            className={`flex items-start gap-2 group ${
+                              locked ? "opacity-40 cursor-not-allowed" : "cursor-pointer"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selected.includes(key)}
+                              onChange={() => toggle(key)}
+                              disabled={locked}
+                              className="mt-0.5 accent-[#c0282b]"
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-xs font-semibold text-gray-800 group-hover:text-gray-900">
+                                {PERMISSIONS[key]}
+                              </span>
+                              <span className="block text-[10px] font-mono text-gray-400">
+                                {key}
+                              </span>
                             </span>
-                            <span className="block text-[10px] font-mono text-gray-400">
-                              {key}
-                            </span>
-                          </span>
-                        </label>
-                      ))}
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 );

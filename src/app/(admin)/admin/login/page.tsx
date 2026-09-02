@@ -3,19 +3,9 @@ import LoginForm from "@/components/admin/LoginForm";
 import SetupOwnerForm from "@/components/admin/SetupOwnerForm";
 import { isBootstrapNeeded } from "@/lib/staff";
 import { getAdminContext } from "@/lib/auth";
+import { safeAdminDestination } from "@/lib/admin-redirect";
 
 export const dynamic = "force-dynamic";
-
-// Only ever hand back a same-origin /admin path. `from` arrives as a query
-// param that middleware itself set, always a pathname it matched against
-// /admin/:path* — but it's still attacker-reachable input by the time it
-// gets here, so it's re-validated rather than trusted.
-function safeDestination(raw: string | undefined): string {
-  if (!raw || !raw.startsWith("/admin") || raw.startsWith("//") || raw.includes("://")) {
-    return "/admin";
-  }
-  return raw;
-}
 
 export default async function AdminLoginPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -33,7 +23,7 @@ export default async function AdminLoginPage(props: {
     if (ctx) {
       const sp = await props.searchParams;
       const from = typeof sp.from === "string" ? sp.from : undefined;
-      redirect(safeDestination(from));
+      redirect(safeAdminDestination(from));
     }
   }
 

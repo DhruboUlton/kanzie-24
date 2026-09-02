@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Mail, Loader2, ArrowRight, ShieldCheck } from "lucide-react";
 import { loginAdminAction } from "@/lib/actions/auth";
+import { safeAdminDestination } from "@/lib/admin-redirect";
 
 function LoginFormInner() {
   const router = useRouter();
@@ -25,8 +26,9 @@ function LoginFormInner() {
     try {
       const res = await loginAdminAction(email, password);
       if (res.success) {
-        const from = searchParams.get("from") || "/admin";
-        router.push(from);
+        // Validated, not trusted: `from` is attacker-reachable, and
+        // router.push happily hard-navigates to another origin.
+        router.push(safeAdminDestination(searchParams.get("from")));
         router.refresh();
       } else {
         setError(res.error || "Failed to sign in. Check email and password.");

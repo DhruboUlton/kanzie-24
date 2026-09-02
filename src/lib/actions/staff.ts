@@ -4,12 +4,25 @@ import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { authErrorResult, requirePermission } from "@/lib/auth";
+import { authErrorResult, requirePermission, requireRoleAdmin } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
 import { assertNotLastOwner } from "@/lib/staff";
-import { OWNER_ROLE_KEY } from "@/lib/permissions";
+import { OWNER_ROLE_KEY, ROLE_ADMIN_DENIED, isRoleAdmin } from "@/lib/permissions";
 
 type Result = { success: boolean; error?: string };
+
+// OWNER is not just another role: getAdminContext() hands it ALL_PERMISSIONS
+// unconditionally, so anything that can put an account on it, or edit an
+// account already on it, is a path to full control of the store. STAFF_CREATE
+// and STAFF_EDIT are delegable ("Edit staff and reset their passwords"), and
+// without these checks either one was equivalent to handing over ownership:
+// a delegate could promote themselves to Owner, or reset the owner's password
+// and sign in as them.
+const OWNER_ONLY = "Only an owner can do that.";
+
+function isOwner(ctx: { roleKey: string | null }): boolean {
+  return ctx.roleKey === OWNER_ROLE_KEY;
+}
 
 function revalidateStaff() {
   revalidatePath("/admin/staff");
@@ -36,7 +49,9 @@ export async function createStaffAction(input: {
   roleId: string;
 }): Promise<Result> {
   try {
-    const ctx = await requirePermission("STAFF_CREATE");
+    // Creating a staff account always puts them on a role, so this is role
+    // administration and not just STAFF_CREATE.
+    const ctx = await requireRoleAdmin("STAFF_CREATE");
 
     const parsed = createSchema.safeParse(input);
     if (!parsed.success) {
@@ -45,6 +60,10 @@ export async function createStaffAction(input: {
 
     const role = await db.role.findUnique({ where: { id: parsed.data.roleId } });
     if (!role) return { success: false, error: "That role no longer exists." };
+
+    if (role.key === OWNER_ROLE_KEY && !isOwner(ctx)) {
+      return { success: false, error: `${OWNER_ONLY} Choose another role.` };
+    }
 
     const existing = await db.adminUser.findUnique({
       where: { email: parsed.data.email },
@@ -106,6 +125,11 @@ export async function updateStaffAction(input: {
     });
     if (!user) return { success: false, error: "That staff account no longer exists." };
 
+    // An owner's account — its email included — is only editable by an owner.
+    if (user.role?.key === OWNER_ROLE_KEY && !isOwner(ctx)) {
+      return { success: false, error: `${OWNER_ONLY} That account belongs to an owner.` };
+    }
+
     // Moving the only owner onto another role would lock everyone out of
     // staff management, so it is refused regardless of who asks.
     if (user.role?.key === OWNER_ROLE_KEY && parsed.data.roleId !== user.roleId) {
@@ -114,6 +138,28 @@ export async function updateStaffAction(input: {
 
     const role = await db.role.findUnique({ where: { id: parsed.data.roleId } });
     if (!role) return { success: false, error: "That role no longer exists." };
+
+    const movingRole = role.id !== user.roleId;
+
+    // Nobody changes their own role. Otherwise STAFF_EDIT is self-promotion:
+    // pick Owner from the dropdown on your own row and the next request has
+    // every permission.
+    if (user.id === ctx.id && movingRole) {
+      return {
+        success: false,
+        error: "You can't change your own role. Ask another admin.",
+      };
+    }
+
+    // Changing someone's name or email is ordinary STAFF_EDIT work; moving
+    // them onto a different role is role administration.
+    if (movingRole && !isRoleAdmin(ctx)) {
+      return { success: false, error: ROLE_ADMIN_DENIED };
+    }
+
+    if (role.key === OWNER_ROLE_KEY && !isOwner(ctx)) {
+      return { success: false, error: `${OWNER_ONLY} Choose another role.` };
+    }
 
     const clash = await db.adminUser.findFirst({
       where: { email: parsed.data.email, id: { not: user.id } },
@@ -164,6 +210,9 @@ export async function setStaffActiveAction(
       if (user.id === ctx.id) {
         return { success: false, error: "You can't deactivate your own account." };
       }
+      if (user.role?.key === OWNER_ROLE_KEY && !isOwner(ctx)) {
+        return { success: false, error: `${OWNER_ONLY} That account belongs to an owner.` };
+      }
       await assertNotLastOwner(user.id, "disable");
     }
 
@@ -197,8 +246,24 @@ export async function resetStaffPasswordAction(
       return { success: false, error: parsed.error.issues[0].message };
     }
 
-    const user = await db.adminUser.findUnique({ where: { id } });
+    const user = await db.adminUser.findUnique({
+      where: { id },
+      include: { role: true },
+    });
     if (!user) return { success: false, error: "That staff account no longer exists." };
+
+    // Resetting an owner's password is taking over the store, so it stays
+    // with the owners. Resetting your own goes through the profile screen,
+    // which asks for the current password first.
+    if (user.role?.key === OWNER_ROLE_KEY && !isOwner(ctx)) {
+      return { success: false, error: `${OWNER_ONLY} That account belongs to an owner.` };
+    }
+    if (user.id === ctx.id) {
+      return {
+        success: false,
+        error: "Use Change password on your own profile to set your own password.",
+      };
+    }
 
     await db.adminUser.update({
       where: { id },
@@ -230,6 +295,9 @@ export async function deleteStaffAction(id: string): Promise<Result> {
 
     if (user.id === ctx.id) {
       return { success: false, error: "You can't delete your own account." };
+    }
+    if (user.role?.key === OWNER_ROLE_KEY && !isOwner(ctx)) {
+      return { success: false, error: `${OWNER_ONLY} That account belongs to an owner.` };
     }
     await assertNotLastOwner(user.id, "remove");
 

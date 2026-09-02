@@ -14,5 +14,7 @@ export default async function RolesPage() {
   await ensureSystemRoles();
   const roles = await getRoles();
 
-  return <RolesClient roles={roles} permissions={ctx.permissions} />;
+  return (
+    <RolesClient roles={roles} permissions={ctx.permissions} roleKey={ctx.roleKey} />
+  );
 }

@@ -6,6 +6,8 @@ import {
   ALL_PERMISSIONS,
   OWNER_ROLE_KEY,
   Permission,
+  ROLE_ADMIN_DENIED,
+  isRoleAdmin,
   sanitizePermissions,
 } from "@/lib/permissions";
 
@@ -124,6 +126,19 @@ export async function requirePermission(
 ): Promise<AdminContext> {
   const ctx = await requireAdmin();
   if (!ctx.permissions.includes(permission)) throw new ForbiddenError();
+  return ctx;
+}
+
+/**
+ * Gate for anything that creates, changes or assigns a role. Needs the
+ * capability *and* an owner/manager role — see isRoleAdmin(). Both, so that
+ * an owner can still decide which manager actually gets the checkbox.
+ */
+export async function requireRoleAdmin(
+  permission: Permission,
+): Promise<AdminContext> {
+  const ctx = await requirePermission(permission);
+  if (!isRoleAdmin(ctx)) throw new ForbiddenError(ROLE_ADMIN_DENIED);
   return ctx;
 }
 

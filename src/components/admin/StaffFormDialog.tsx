@@ -8,11 +8,16 @@ import type { RoleOption, StaffRowView } from "@/components/admin/StaffClient";
 export default function StaffFormDialog({
   roles,
   staff,
+  lockRole = false,
+  lockRoleReason,
   onClose,
   onSaved,
 }: {
   roles: RoleOption[];
   staff: StaffRowView | null;
+  /** Nobody changes their own role, and only owners/managers change anyone's. */
+  lockRole?: boolean;
+  lockRoleReason?: string;
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
@@ -138,16 +143,25 @@ export default function StaffFormDialog({
               value={roleId}
               onChange={(e) => setRoleId(e.target.value)}
               required
-              className={inputClass}
+              disabled={lockRole}
+              className={`${inputClass} disabled:bg-gray-100 disabled:text-gray-500`}
             >
               {roles.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
                 </option>
               ))}
+              {/* An owner editing their own row still sees which role it is,
+                  even though the field is locked. */}
+              {lockRole && !roles.some((r) => r.id === roleId) && staff?.roleName && (
+                <option value={roleId}>{staff.roleName}</option>
+              )}
             </select>
             <p className="text-[11px] text-gray-400 mt-1">
-              What they can do is decided entirely by this role.
+              {lockRole
+                ? (lockRoleReason ??
+                  "You can't change your own role. Ask another admin.")
+                : "What they can do is decided entirely by this role."}
             </p>
           </div>
 

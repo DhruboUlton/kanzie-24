@@ -16,6 +16,7 @@ export default async function StaffPage() {
       staff={staff}
       roles={roles}
       currentUserId={ctx.id}
+      currentUserRoleKey={ctx.roleKey}
       permissions={ctx.permissions}
     />
   );

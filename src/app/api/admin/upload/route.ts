@@ -2,13 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
-import { getSession } from "@/lib/auth";
+import { getAdminContext } from "@/lib/auth";
 import { getUploadDir, UPLOAD_MIME_EXT } from "@/lib/uploads";
+import { Permission } from "@/lib/permissions";
+
+// The screens that upload: the product form, the hero/coverflow banner
+// editors, and the body banner form.
+const UPLOAD_PERMISSIONS: Permission[] = [
+  "PRODUCTS_CREATE",
+  "PRODUCTS_EDIT",
+  "BANNER_MANAGE",
+];
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  if (!session) {
+  // getAdminContext(), not getSession(): the cookie's signature alone stays
+  // valid for seven days, so a session-only check let a deactivated or
+  // deleted staff member keep uploading long after their access was pulled.
+  // This resolves the account against the database on every request, the
+  // same way every server action does.
+  const ctx = await getAdminContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!UPLOAD_PERMISSIONS.some((p) => ctx.permissions.includes(p))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {

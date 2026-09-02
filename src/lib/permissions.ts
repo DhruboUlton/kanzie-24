@@ -170,3 +170,29 @@ export function hasAnyPermission(
 ): boolean {
   return !!ctx && permissions.some((p) => ctx.permissions.includes(p));
 }
+
+/**
+ * Role administration is a tier, not a checkbox.
+ *
+ * Creating, editing or deleting a role — and deciding which role a staff
+ * member sits on — is limited to the owner and the manager roles. Holding
+ * ROLES_MANAGE or STAFF_CREATE is still required on top of this, but it is
+ * no longer sufficient: a custom role can never be given these powers,
+ * however its permissions are ticked. That closes the escalation where a
+ * delegate rewrote their own role, or moved themselves onto a bigger one.
+ */
+export const ROLE_ADMIN_ROLE_KEYS: string[] = [
+  OWNER_ROLE_KEY,
+  "ORDER_MANAGER",
+  "INVENTORY_MANAGER",
+  "MARKETING_MANAGER",
+];
+
+export function isRoleAdmin(
+  ctx: Pick<AdminContext, "roleKey"> | null,
+): boolean {
+  return !!ctx?.roleKey && ROLE_ADMIN_ROLE_KEYS.includes(ctx.roleKey);
+}
+
+export const ROLE_ADMIN_DENIED =
+  "Only an owner or a manager can create, change or assign roles.";
