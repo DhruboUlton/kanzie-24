@@ -31,6 +31,7 @@ export type ActivityAction =
   | "SETTINGS_UPDATED"
   | "COURIER_CREDENTIALS_UPDATED"
   | "BANNER_UPDATED"
+  | "INTEGRATIONS_UPDATED"
   | "OWNER_BOOTSTRAPPED";
 
 export type ActivityEntity =
@@ -41,7 +42,8 @@ export type ActivityEntity =
   | "ORDER"
   | "INVENTORY"
   | "SETTINGS"
-  | "BANNER";
+  | "BANNER"
+  | "INTEGRATIONS";
 
 export type ActivityLogRow = {
   id: string;

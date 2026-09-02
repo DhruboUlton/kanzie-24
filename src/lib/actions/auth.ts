@@ -9,6 +9,8 @@ import { logActivity } from "@/lib/activity-log";
 import { ensureSystemRoles, isBootstrapNeeded } from "@/lib/staff";
 import { OWNER_ROLE_KEY } from "@/lib/permissions";
 
+import { STAFF_MARKER_COOKIE } from "@/lib/integrations-shared";
+
 const COOKIE_NAME = "kanzie_admin_session";
 const SESSION_DAYS = 7;
 
@@ -26,6 +28,19 @@ async function setSessionCookie(user: { id: string; email: string; name: string 
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * SESSION_DAYS,
+  });
+
+  // Deliberately readable by scripts, unlike the session above: the
+  // storefront's tracking injector checks it in the browser so staff
+  // browsing the shop aren't counted as customers. It carries no secret and
+  // grants nothing — a visitor who sets it by hand only opts themselves out
+  // of analytics.
+  cookieStore.set(STAFF_MARKER_COOKIE, "1", {
+    httpOnly: false,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
@@ -86,6 +101,7 @@ export async function loginAdminAction(
 export async function logoutAdminAction(): Promise<void> {
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
+  cookieStore.delete(STAFF_MARKER_COOKIE);
 }
 
 const bootstrapSchema = z.object({

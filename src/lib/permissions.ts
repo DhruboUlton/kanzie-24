@@ -34,6 +34,9 @@ export const PERMISSIONS = {
 
   ANALYTICS_VIEW: "Open the analytics dashboard",
 
+  INTEGRATIONS_VIEW: "See the tracking and marketing integrations",
+  INTEGRATIONS_MANAGE: "Add and edit tracking code on the storefront",
+
   SETTINGS_VIEW: "See store settings",
   SETTINGS_MANAGE: "Change store settings and courier logins",
 
@@ -74,6 +77,7 @@ export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
   { label: "Fraud check", keys: ["FRAUD_CHECK_VIEW"] },
   { label: "Money", keys: ["FINANCE_VIEW"] },
   { label: "Analytics", keys: ["ANALYTICS_VIEW"] },
+  { label: "Integrations", keys: ["INTEGRATIONS_VIEW", "INTEGRATIONS_MANAGE"] },
   { label: "Settings", keys: ["SETTINGS_VIEW", "SETTINGS_MANAGE"] },
   { label: "Staff", keys: ["STAFF_VIEW", "STAFF_CREATE", "STAFF_EDIT", "STAFF_DISABLE", "STAFF_DELETE"] },
   { label: "Roles", keys: ["ROLES_VIEW", "ROLES_MANAGE"] },

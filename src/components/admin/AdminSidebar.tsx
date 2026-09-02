@@ -21,6 +21,7 @@ import {
   ShieldAlert,
   Images,
   Boxes,
+  Plug,
 } from "lucide-react";
 import { logoutAdminAction } from "@/lib/actions/auth";
 import { Permission } from "@/lib/permissions";
@@ -46,6 +47,7 @@ const STORE_NAV: NavItem[] = [
   { href: "/admin/categories", label: "Categories", icon: FolderTree, permission: "CATEGORIES_VIEW" },
   { href: "/admin/banner", label: "Banner", icon: Images, permission: "BANNER_VIEW" },
   { href: "/admin/fraud-check", label: "Fraud Check", icon: ShieldAlert, permission: "FRAUD_CHECK_VIEW" },
+  { href: "/admin/integrations", label: "Integrations", icon: Plug, permission: "INTEGRATIONS_VIEW" },
   { href: "/admin/settings", label: "Settings", icon: Settings, permission: "SETTINGS_VIEW" },
 ];
 
