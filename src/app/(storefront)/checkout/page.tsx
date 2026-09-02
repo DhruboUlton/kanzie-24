@@ -5,6 +5,12 @@ import Link from "next/link";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { CartItem, useCartStore, cartTotalCents, takeBuyNowItem } from "@/lib/cart-store";
 import { formatPrice } from "@/lib/format";
+import {
+  BD_DIAL_CODE,
+  BD_LOCAL_LENGTH,
+  isValidBDLocalPhone,
+  normalizeBDLocalPhone,
+} from "@/lib/phone";
 
 type Customer = {
   name: string;
@@ -109,6 +115,14 @@ export default function CheckoutPage() {
   function updateField(field: keyof Customer) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
       setCustomer((c) => ({ ...c, [field]: e.target.value }));
+  }
+
+  // The phone field never holds what was literally typed. Bangla numerals
+  // are folded to ASCII and a pasted +88/88 prefix is stripped, so the value
+  // is always the local 01XXXXXXXXX form the rest of the system expects.
+  function updatePhone(e: React.ChangeEvent<HTMLInputElement>) {
+    const next = normalizeBDLocalPhone(e.target.value);
+    setCustomer((c) => ({ ...c, phone: next }));
   }
 
   async function handleCheckout() {
@@ -225,7 +239,12 @@ export default function CheckoutPage() {
     );
   }
 
-  const customerComplete = Object.values(customer).every((v) => v.trim().length > 0);
+  const phoneValid = isValidBDLocalPhone(customer.phone);
+  // Shown only once they have typed enough to be wrong, so the field isn't
+  // scolding someone who is still halfway through it.
+  const phoneLooksWrong = customer.phone.length >= BD_LOCAL_LENGTH && !phoneValid;
+  const customerComplete =
+    Object.values(customer).every((v) => v.trim().length > 0) && phoneValid;
 
   return (
     <div className="mx-auto max-w-2xl px-4 sm:px-6 py-12">
@@ -273,13 +292,44 @@ export default function CheckoutPage() {
             onChange={updateField("email")}
             className="border border-black/15 rounded px-3 py-2 text-sm"
           />
-          <input
-            type="tel"
-            placeholder="Phone number"
-            value={customer.phone}
-            onChange={updateField("phone")}
-            className="border border-black/15 rounded px-3 py-2 text-sm"
-          />
+          <div>
+            <div
+              className={`flex items-stretch rounded border overflow-hidden bg-white ${
+                phoneLooksWrong ? "border-red-400" : "border-black/15"
+              }`}
+            >
+              {/* Fixed, not typed: the country code is the same for every
+                  customer, and leaving it editable is how numbers arrive as
+                  +8801… that then fail the courier lookups. */}
+              <span className="flex items-center px-3 text-sm text-black/50 bg-black/[0.04] border-r border-black/10 select-none">
+                {BD_DIAL_CODE}
+              </span>
+              <input
+                type="tel"
+                // Latin digits only: inputMode="numeric" gets the numeric
+                // keypad rather than the Bangla letter keyboard, and
+                // normalizeBDLocalPhone folds anything else that arrives.
+                inputMode="numeric"
+                autoComplete="tel-national"
+                pattern="[0-9]*"
+                // Deliberately no maxLength: the browser would truncate the
+                // raw string before onChange runs, so pasting
+                // "+8801712345678" would lose its tail and then have its
+                // country code stripped off the wrong digits.
+                // normalizeBDLocalPhone caps the digits instead.
+                placeholder="01XXXXXXXXX"
+                value={customer.phone}
+                onChange={updatePhone}
+                aria-invalid={phoneLooksWrong}
+                className="flex-1 min-w-0 px-3 py-2 text-sm outline-none"
+              />
+            </div>
+            {phoneLooksWrong && (
+              <p className="mt-1 text-xs text-red-600">
+                Doesn&apos;t look like a Bangladeshi mobile number.
+              </p>
+            )}
+          </div>
           <input
             type="text"
             placeholder="Address"
