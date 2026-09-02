@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/format";
+import { getLowStockThreshold } from "@/lib/inventory";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +58,12 @@ export default async function AdminDashboardPage() {
       include: { category: true },
     });
     totalProductsCount = products.length;
-    lowStockProducts = products.filter((p) => (p.stockQty ?? 0) <= 5);
+    // Per-product override first, store-wide setting otherwise — same rule
+    // the Inventory screen uses, so the two never disagree.
+    const lowStockThreshold = await getLowStockThreshold();
+    lowStockProducts = products.filter(
+      (p) => (p.stockQty ?? 0) <= (p.lowStockThreshold ?? lowStockThreshold),
+    );
 
     categoriesCount = await db.category.count();
   } catch (error) {

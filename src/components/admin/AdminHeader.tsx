@@ -19,6 +19,7 @@ export default function AdminHeader({
     if (pathname.startsWith("/admin/products")) return "Products Catalog";
     if (pathname.startsWith("/admin/orders/")) return "Order Details";
     if (pathname.startsWith("/admin/orders")) return "Orders Management";
+    if (pathname.startsWith("/admin/inventory")) return "Inventory";
     if (pathname.startsWith("/admin/categories")) return "Categories";
     if (pathname.startsWith("/admin/banner")) return "Homepage Banner";
     if (pathname.startsWith("/admin/fraud-check")) return "Fraud Checking";

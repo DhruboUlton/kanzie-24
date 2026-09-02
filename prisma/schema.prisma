@@ -55,9 +55,16 @@ model Product {
   isNew               Boolean     @default(false)
   inStock             Boolean     @default(true)
   stockQty            Int         @default(10)
+  // What the unit cost us. Optional — only set for products the owner has
+  // entered a buy price for; drives the inventory valuation totals.
+  costPriceCents      Int?
+  // Per-product override of the store-wide low-stock threshold held in
+  // SiteSetting("inventory_low_stock_threshold").
+  lowStockThreshold   Int?
   videoUrl            String?     @db.VarChar(500)
   archivedAt          DateTime?
   orderItems          OrderItem[]
+  stockMovements      StockMovement[]
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 
@@ -113,6 +120,28 @@ model OrderEvent {
   createdAt DateTime @default(now())
 
   @@index([orderId])
+}
+
+// Append-only audit trail for every stock change, whether an admin typed it
+// or an order caused it. Product.stockQty stays the live number; this is the
+// record of how it got there, so a drifting count can be traced.
+model StockMovement {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  // Signed change. resultQty is the stock level *after* it, stored rather
+  // than recomputed so history stays readable even after later edits.
+  delta     Int
+  resultQty Int
+  reason    String   // RESTOCK, SALE, RETURN, DAMAGE, LOST, CORRECTION
+  note      String?  @db.Text
+  // Set when an order drove the change, so a movement links back to it.
+  orderId   String?
+  actorName String?  // admin who made the change, or "System" for order-driven
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
 }
 
 model SiteSetting {

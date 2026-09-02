@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getProductBySlug } from "@/lib/products";
+import { recordStockChange } from "@/lib/inventory";
 
 export type CreateOrderItemInput = {
   slug: string;
@@ -83,6 +84,39 @@ export async function createPendingOrder(params: {
   }
 }
 
+// Statuses where the order's units have already been taken out of stock.
+// PENDING is deliberately absent: an unconfirmed order reserves nothing, it
+// only shows up as "committed" on the inventory screen.
+const STOCK_COMMITTED_STATUSES = [
+  "CONFIRMED",
+  "PACKED",
+  "SHIPPED",
+  "DELIVERED",
+];
+
+async function applyOrderStock(
+  items: { productId: string | null; qty: number }[],
+  orderId: string,
+  reason: "SALE" | "RETURN",
+  sign: 1 | -1,
+) {
+  for (const item of items) {
+    if (!item.productId) continue;
+    try {
+      await recordStockChange({
+        productId: item.productId,
+        delta: sign * item.qty,
+        reason,
+        orderId,
+        note: reason === "SALE" ? "Order confirmed" : "Order cancelled — stock returned",
+      });
+    } catch {
+      // A product that was archived or deleted since the order was placed
+      // has nothing to move; the order itself still updates.
+    }
+  }
+}
+
 export async function updateOrderStatus(
   orderId: string,
   status: string,
@@ -118,22 +152,20 @@ export async function updateOrderStatus(
       include: { items: true, events: true },
     });
 
-    // Stock commits the moment an admin confirms the order by phone call —
-    // guarded on the order's previous status so re-confirming (or any
-    // later status change) never decrements twice.
-    if (status === "CONFIRMED" && existing.status !== "CONFIRMED") {
-      for (const item of existing.items) {
-        if (item.productId) {
-          try {
-            await db.product.update({
-              where: { id: item.productId },
-              data: { stockQty: { decrement: item.qty } },
-            });
-          } catch {
-            // ignore if product is unlinked/archived
-          }
-        }
-      }
+    // Stock commits the moment an admin confirms the order by phone call.
+    // Both directions are guarded on the order's *previous* status, so
+    // re-confirming never double-decrements and cancelling twice never
+    // double-credits. Every change goes through recordStockChange so the
+    // sellable flag and the audit trail move with the count.
+    const hadCommittedStock = STOCK_COMMITTED_STATUSES.includes(existing.status);
+    const hasCommittedStock = STOCK_COMMITTED_STATUSES.includes(status);
+
+    if (!hadCommittedStock && hasCommittedStock) {
+      await applyOrderStock(existing.items, orderId, "SALE", -1);
+    } else if (hadCommittedStock && !hasCommittedStock) {
+      // A confirmed order that gets cancelled used to leave its units
+      // deducted forever; put them back on the shelf instead.
+      await applyOrderStock(existing.items, orderId, "RETURN", 1);
     }
 
     return updated;
