@@ -27,42 +27,80 @@ function ringOffset(i: number, n: number) {
   return d;
 }
 
-// Recycle an offset by a full lap (±n) once it's drifted past the visible
-// window (center + 1 neighbor either side). Only ever applied to a slide
-// that has *already finished* fading to opacity 0 (see the deferred call
-// below) — recycling in the same update as the shift jumped a slide's
-// transform 3 slots while its opacity was still fading from visible,
-// which read as a reverse slide across the track.
+// Bring an offset back onto the ring. Loops rather than adding a single lap:
+// a burst of clicks can push a slide several laps out, and one correction
+// used to leave it stranded off-screen.
 function recycle(o: number, n: number) {
-  if (o <= -n / 2) return o + n;
-  if (o > n / 2) return o - n;
-  return o;
+  let v = o;
+  while (v <= -n / 2) v += n;
+  while (v > n / 2) v -= n;
+  return v;
+}
+
+// Only slides outside the visible window (center + one neighbour each side)
+// may be recycled. Wrapping one that is on screen teleports it across the
+// track mid-transition, which is what the animation is meant to hide.
+function isHidden(o: number) {
+  return Math.abs(o) > 1;
 }
 
 export default function HeroSlider({ content }: { content: HeroContent }) {
   const SLIDES = content.slides;
   const n = SLIDES.length;
 
-  const [offsets, setOffsets] = useState<number[]>(() =>
-    SLIDES.map((_, i) => ringOffset(i, SLIDES.length)),
+  const seed = useCallback(
+    () => SLIDES.map((_, i) => ringOffset(i, SLIDES.length)),
+    [SLIDES],
   );
-  const autoplayRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const recycleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const shift = useCallback((getDelta: (prev: number[]) => number[]) => {
-    setOffsets(getDelta);
-    if (recycleRef.current) clearTimeout(recycleRef.current);
-    recycleRef.current = setTimeout(() => {
-      setOffsets((prev) => prev.map((o) => recycle(o, n)));
-    }, TRANSITION_MS);
-  }, []);
+  const [offsets, setOffsets] = useState<number[]>(seed);
+  const autoplayRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Bumped on every manual move so autoplay restarts its countdown instead
+  // of firing a fraction of a second after a click.
+  const [interactions, setInteractions] = useState(0);
+
+  const shift = useCallback(
+    (getDelta: (prev: number[]) => number) => {
+      setOffsets((stale) => {
+        // Editing slides in /admin/banner changes the list under a live
+        // slider; re-seed rather than carrying an array of the wrong length.
+        const prev = stale.length === n ? stale : seed();
+        const delta = getDelta(prev);
+        if (!delta) return prev;
+        return prev.map((o) => {
+          const moved = o - delta;
+          // Wrap here, while the slide is off-screen on both sides of the
+          // move, so repeated clicks can never accumulate a drift that
+          // strands a slide outside the visible window.
+          return isHidden(o) && isHidden(moved) ? recycle(moved, n) : moved;
+        });
+      });
+
+      // Safety net for the slide that was on screen during the move: once
+      // its transition has finished it is hidden, so it can wrap silently.
+      if (settleRef.current) clearTimeout(settleRef.current);
+      settleRef.current = setTimeout(() => {
+        setOffsets((prev) =>
+          prev.map((o) => (isHidden(o) ? recycle(o, n) : o)),
+        );
+      }, TRANSITION_MS);
+    },
+    [n, seed],
+  );
 
   const step = useCallback(
-    (direction: 1 | -1) => shift((prev) => prev.map((o) => o - direction)),
+    (direction: 1 | -1) => {
+      setInteractions((c) => c + 1);
+      shift(() => direction);
+    },
     [shift],
   );
   const goToSlide = useCallback(
-    (i: number) => shift((prev) => prev.map((o) => o - prev[i])),
+    (i: number) => {
+      setInteractions((c) => c + 1);
+      shift((prev) => prev[i] ?? 0);
+    },
     [shift],
   );
 
@@ -71,7 +109,7 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
 
   useEffect(() => {
     return () => {
-      if (recycleRef.current) clearTimeout(recycleRef.current);
+      if (settleRef.current) clearTimeout(settleRef.current);
     };
   }, []);
 
@@ -81,9 +119,13 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
     return () => {
       if (autoplayRef.current) clearInterval(autoplayRef.current);
     };
-  }, [goNext]);
+  }, [goNext, n, interactions]);
 
-  const centerIndex = offsets.findIndex((o) => o === 0);
+  // Same guard on the render side, so no frame reads past the array in the
+  // gap between a slide being added and the next move re-seeding state.
+  const view = offsets.length === n ? offsets : seed();
+
+  const centerIndex = view.findIndex((o) => o === 0);
   // The backdrop word belongs to whichever slide is currently centred.
   const activeWord = (SLIDES[centerIndex]?.word ?? "").trim();
 
@@ -123,7 +165,7 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
 
         <div className="relative h-80 sm:h-[30rem] max-w-sm sm:max-w-xl mx-auto">
           {SLIDES.map((slide, i) => {
-            const offset = offsets[i];
+            const offset = view[i];
             const isCenter = offset === 0;
             const abs = Math.abs(offset);
 
