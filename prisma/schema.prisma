@@ -126,7 +126,7 @@ model Order {
   valId           String?
   bankTranId      String?
   cardType        String?
-  status          String       @default("PENDING") // PENDING, CONFIRMED, CANCELLED, PACKED, SHIPPED, DELIVERED — no payment gateway; CONFIRMED means an admin called and verified the order
+  status          String       @default("PENDING") // PENDING, CALLED, CONFIRMED, CANCELLED, PACKED, SHIPPED, DELIVERED — no payment gateway; CALLED means someone rang the customer, CONFIRMED means they said yes
   totalAmountCents Int
   currency        String       @default("BDT")
   customerName    String
@@ -136,6 +136,13 @@ model Order {
   customerCity    String
   trackingNumber  String?
   adminNotes      String?      @db.Text
+  // Who rang the customer, and when. Set once the order reaches CALLED and
+  // kept afterwards, so a confirmed or cancelled order still shows who made
+  // the call that decided it. Denormalised name so the record survives the
+  // staff account being renamed or deleted.
+  calledAt        DateTime?
+  calledById      String?
+  calledByName    String?
   items           OrderItem[]
   events          OrderEvent[]
   createdAt       DateTime     @default(now())
@@ -166,6 +173,8 @@ model OrderEvent {
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   status    String
   note      String?  @db.Text
+  // Which admin caused it. Null for events the checkout itself wrote.
+  actorName String?
   createdAt DateTime @default(now())
 
   @@index([orderId])

@@ -17,12 +17,25 @@ import {
   Mail,
   Phone,
   PhoneCall,
+  PhoneOutgoing,
 } from "lucide-react";
 import { formatPrice } from "@/lib/format";
-import { updateOrderStatusAction, addOrderNoteAction } from "@/lib/actions/order";
+import {
+  updateOrderStatusAction,
+  addOrderNoteAction,
+  markOrderCalledAction,
+} from "@/lib/actions/order";
 import PackingSlip from "@/components/admin/PackingSlip";
+import OrderFraudCheck from "@/components/admin/OrderFraudCheck";
+import { ORDER_STATUS_BADGES } from "@/lib/order-status";
 
-export default function OrderDetailClient({ order }: { order: any }) {
+export default function OrderDetailClient({
+  order,
+  canFraudCheck = false,
+}: {
+  order: any;
+  canFraudCheck?: boolean;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState(order.trackingNumber || "");
@@ -51,6 +64,23 @@ export default function OrderDetailClient({ order }: { order: any }) {
     }
   };
 
+  const handleMarkCalled = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await markOrderCalledAction(order.id);
+      if (res.success) {
+        router.refresh();
+      } else {
+        setError(res.error || "Failed to record the call");
+      }
+    } catch {
+      setError("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!note.trim()) return;
@@ -71,14 +101,7 @@ export default function OrderDetailClient({ order }: { order: any }) {
     }
   };
 
-  const statusStyles: Record<string, string> = {
-    CONFIRMED: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    PENDING: "bg-amber-50 text-amber-700 border-amber-200",
-    PACKED: "bg-blue-50 text-blue-700 border-blue-200",
-    SHIPPED: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    DELIVERED: "bg-green-50 text-green-700 border-green-200",
-    CANCELLED: "bg-gray-100 text-gray-700 border-gray-200",
-  };
+  const calledAt = order.calledAt ? new Date(order.calledAt) : null;
 
   return (
     <div className="space-y-8 max-w-6xl">
@@ -98,7 +121,7 @@ export default function OrderDetailClient({ order }: { order: any }) {
               </h2>
               <span
                 className={`inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold border ${
-                  statusStyles[order.status] || "bg-gray-100 text-gray-700"
+                  ORDER_STATUS_BADGES[order.status] || "bg-gray-100 text-gray-700"
                 }`}
               >
                 {order.status}
@@ -138,17 +161,67 @@ export default function OrderDetailClient({ order }: { order: any }) {
               Fulfillment Workflow Actions
             </h3>
 
+            {order.status === "CALLED" && (
+              <div className="p-3 rounded-lg bg-sky-50 border border-sky-200 text-sky-800 text-xs">
+                <span className="font-semibold">
+                  {order.calledByName
+                    ? `${order.calledByName} called this customer`
+                    : "Customer called"}
+                  {calledAt
+                    ? ` on ${calledAt.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}`
+                    : ""}
+                  .
+                </span>{" "}
+                What did they say?
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2.5">
+              {/* Ringing the customer is its own step. Whether they actually
+                  wanted the order is the next question, not this one — plenty
+                  of buyers cancel on the call. */}
               {order.status === "PENDING" && (
                 <button
                   type="button"
                   disabled={loading}
-                  onClick={() => handleStatusChange("CONFIRMED")}
-                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  onClick={handleMarkCalled}
+                  className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                 >
-                  <PhoneCall className="w-3.5 h-3.5" />
-                  <span>Confirm Order (Called Customer)</span>
+                  {loading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <PhoneOutgoing className="w-3.5 h-3.5" />
+                  )}
+                  <span>Mark as Called</span>
                 </button>
+              )}
+
+              {order.status === "CALLED" && (
+                <>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleStatusChange("CONFIRMED")}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Customer Confirmed</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleStatusChange("CANCELLED")}
+                    className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    <span>Customer Cancelled</span>
+                  </button>
+                </>
               )}
 
               {order.status === "CONFIRMED" && (
@@ -196,7 +269,9 @@ export default function OrderDetailClient({ order }: { order: any }) {
                 </button>
               )}
 
-              {order.status !== "CANCELLED" && order.status !== "DELIVERED" && (
+              {order.status !== "CANCELLED" &&
+                order.status !== "DELIVERED" &&
+                order.status !== "CALLED" && (
                 <button
                   type="button"
                   disabled={loading}
@@ -281,7 +356,15 @@ export default function OrderDetailClient({ order }: { order: any }) {
                   <div className="w-2 h-2 rounded-full bg-accent mt-1.5 shrink-0" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-gray-900">{ev.status}</span>
+                      <span className="font-bold text-gray-900">
+                        {ev.status}
+                        {ev.actorName && (
+                          <span className="font-normal text-gray-400">
+                            {" "}
+                            · {ev.actorName}
+                          </span>
+                        )}
+                      </span>
                       <span className="text-[11px] text-gray-400">
                         {new Date(ev.createdAt).toLocaleString("en-US", {
                           month: "short",
@@ -373,19 +456,48 @@ export default function OrderDetailClient({ order }: { order: any }) {
                 <span className="font-bold text-gray-900">{order.status}</span>
               </div>
 
-              <div className="flex justify-between py-1 border-b border-gray-100">
-                <span className="text-gray-500">Confirmed By Call:</span>
-                <span className="font-semibold text-gray-900">
-                  {order.status === "PENDING" ? "Not yet — call customer" : "Yes"}
+              <div className="flex justify-between gap-3 py-1 border-b border-gray-100">
+                <span className="text-gray-500 shrink-0">Called By:</span>
+                <span className="font-semibold text-gray-900 text-right">
+                  {order.calledByName ? (
+                    <>
+                      {order.calledByName}
+                      {calledAt && (
+                        <span className="block text-[11px] font-normal text-gray-400">
+                          {calledAt.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      )}
+                    </>
+                  ) : order.status === "PENDING" ? (
+                    <span className="text-gray-400">Not yet — call customer</span>
+                  ) : (
+                    // Orders decided before the call step existed have no
+                    // caller on file. Say so rather than implying nobody rang.
+                    <span className="text-gray-400">Not recorded</span>
+                  )}
                 </span>
               </div>
 
-              <div className="flex justify-between py-1">
+              <div className="flex justify-between py-1 border-b border-gray-100">
                 <span className="text-gray-500">Tracking Code:</span>
                 <span className="font-bold text-indigo-700">
                   {order.trackingNumber || "Not assigned yet"}
                 </span>
               </div>
+
+              {/* Right where the confirm-or-cancel decision gets made. */}
+              {canFraudCheck && (
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  <span className="text-gray-500">Courier history:</span>
+                  <OrderFraudCheck phone={order.customerPhone} />
+                </div>
+              )}
             </div>
           </div>
         </div>

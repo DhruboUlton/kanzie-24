@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminOrderDetailPage(props: {
   params: Promise<{ id: string }>;
 }) {
-  const { allowed } = await requirePageAccess("ORDERS_VIEW");
+  const { ctx, allowed } = await requirePageAccess("ORDERS_VIEW");
   if (!allowed) return <NoAccess what="orders" />;
 
   const { id } = await props.params;
@@ -75,5 +75,10 @@ export default async function AdminOrderDetailPage(props: {
     };
   }
 
-  return <OrderDetailClient order={order} />;
+  return (
+    <OrderDetailClient
+      order={order}
+      canFraudCheck={ctx.permissions.includes("FRAUD_CHECK_VIEW")}
+    />
+  );
 }

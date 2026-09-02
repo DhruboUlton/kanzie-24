@@ -112,7 +112,8 @@ export async function updateOrderStatus(
   orderId: string,
   status: string,
   note?: string,
-  trackingNumber?: string
+  trackingNumber?: string,
+  actor?: { id: string; name: string } | null
 ) {
   try {
     const existing = await db.order.findUnique({
@@ -129,12 +130,22 @@ export async function updateOrderStatus(
         create: {
           status,
           note: note || `Order marked as ${status}`,
+          actorName: actor?.name ?? null,
         },
       },
     };
 
     if (trackingNumber !== undefined) {
       data.trackingNumber = trackingNumber;
+    }
+
+    // Stamped once, on the way into CALLED, and never overwritten — the
+    // point is to record who made the call that decided the order, so a
+    // later CONFIRMED or CANCELLED must not erase or replace it.
+    if (status === "CALLED" && actor && !existing.calledAt) {
+      data.calledAt = new Date();
+      data.calledById = actor.id;
+      data.calledByName = actor.name;
     }
 
     const updated = await db.order.update({

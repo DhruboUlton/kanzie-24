@@ -177,7 +177,9 @@ export default function CheckoutPage() {
   if (stage === "success") {
     return (
       <div className="mx-auto max-w-2xl px-4 sm:px-6 py-16 text-center">
-        <CheckCircle2 className="w-10 h-10 mx-auto mb-5 text-accent" />
+        {/* Green, not brand red: this is the one moment on the storefront
+            that has to read as "it worked", and red reads as an error. */}
+        <CheckCircle2 className="w-10 h-10 mx-auto mb-5 text-emerald-600" />
         <h1 className="font-display text-3xl tracking-wide mb-2">
           ORDER PLACED
         </h1>

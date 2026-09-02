@@ -13,14 +13,20 @@ import { db } from "@/lib/db";
 import { formatPrice } from "@/lib/format";
 import { requirePageAccess } from "@/lib/admin-guard";
 import NoAccess from "@/components/admin/NoAccess";
+import OrderFraudCheck from "@/components/admin/OrderFraudCheck";
+import { ORDER_STATUS_BADGES } from "@/lib/order-status";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminOrdersPage(props: {
   searchParams?: Promise<{ q?: string; status?: string }>;
 }) {
-  const { allowed } = await requirePageAccess("ORDERS_VIEW");
+  const { ctx, allowed } = await requirePageAccess("ORDERS_VIEW");
   if (!allowed) return <NoAccess what="orders" />;
+
+  // The courier lookup is its own permission — seeing an order is not the
+  // same as being allowed to pull a customer's delivery history.
+  const canFraudCheck = ctx.permissions.includes("FRAUD_CHECK_VIEW");
 
   const searchParams = (await props.searchParams) || {};
   const query = searchParams.q?.toLowerCase() || "";
@@ -55,21 +61,13 @@ export default async function AdminOrdersPage(props: {
   const statuses = [
     { label: "All Orders", value: "ALL" },
     { label: "Pending Call", value: "PENDING" },
+    { label: "Called", value: "CALLED" },
     { label: "Confirmed", value: "CONFIRMED" },
     { label: "Packed", value: "PACKED" },
     { label: "Shipped", value: "SHIPPED" },
     { label: "Delivered", value: "DELIVERED" },
     { label: "Cancelled", value: "CANCELLED" },
   ];
-
-  const statusStyles: Record<string, string> = {
-    CONFIRMED: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    PENDING: "bg-amber-50 text-amber-700 border-amber-200",
-    PACKED: "bg-blue-50 text-blue-700 border-blue-200",
-    SHIPPED: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    DELIVERED: "bg-green-50 text-green-700 border-green-200",
-    CANCELLED: "bg-gray-100 text-gray-700 border-gray-200",
-  };
 
   return (
     <div className="space-y-6">
@@ -135,6 +133,7 @@ export default async function AdminOrdersPage(props: {
                   <th className="px-6 py-3.5">Items</th>
                   <th className="px-6 py-3.5">Total Amount</th>
                   <th className="px-6 py-3.5">Status</th>
+                  {canFraudCheck && <th className="px-6 py-3.5">Courier History</th>}
                   <th className="px-6 py-3.5 text-right">Action</th>
                 </tr>
               </thead>
@@ -200,12 +199,24 @@ export default async function AdminOrdersPage(props: {
                       <td className="px-6 py-4">
                         <span
                           className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
-                            statusStyles[order.status] || "bg-gray-100 text-gray-700"
+                            ORDER_STATUS_BADGES[order.status] || "bg-gray-100 text-gray-700"
                           }`}
                         >
                           {order.status}
                         </span>
+                        {order.calledByName && (
+                          <span className="block text-[11px] text-gray-400 mt-1">
+                            Called by {order.calledByName}
+                          </span>
+                        )}
                       </td>
+
+                      {/* Courier history — fetched on click, never on load */}
+                      {canFraudCheck && (
+                        <td className="px-6 py-4">
+                          <OrderFraudCheck phone={order.customerPhone} />
+                        </td>
+                      )}
 
                       {/* Actions */}
                       <td className="px-6 py-4 text-right">
