@@ -10,6 +10,7 @@ import {
   Video,
   Sparkles,
   Package,
+  FileSpreadsheet,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { getProducts, getCategories } from "@/lib/products";
@@ -111,6 +112,13 @@ export default async function AdminProductsPage(props: {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/admin/products/import"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold border border-gray-300 rounded-lg shadow-sm transition-colors"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Import CSV</span>
+          </Link>
           <Link
             href="/admin/products/new"
             className="inline-flex items-center gap-2 px-4 py-2 bg-[#c0282b] hover:bg-[#8f1e20] text-white text-sm font-semibold rounded-lg shadow-sm transition-colors"
