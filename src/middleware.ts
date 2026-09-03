@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { getSessionSecret } from "@/lib/secret";
 
 const COOKIE_NAME = "kanzie_admin_session";
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.ADMIN_SESSION_SECRET || "kanzie-super-secure-admin-secret-key-32chars!"
-);
+
+// Lazy so the module import during `next build` doesn't trip the
+// production fail-hard in getSessionSecret() — the check belongs on a real
+// request.
+let cachedSecretKey: Uint8Array | null = null;
+function secretKey(): Uint8Array {
+  if (!cachedSecretKey) {
+    cachedSecretKey = new TextEncoder().encode(getSessionSecret());
+  }
+  return cachedSecretKey;
+}
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
@@ -34,7 +43,7 @@ export async function middleware(req: NextRequest) {
   }
 
   try {
-    await jwtVerify(token, SECRET_KEY);
+    await jwtVerify(token, secretKey());
     return NextResponse.next();
   } catch {
     const loginUrl = new URL("/admin/login", req.url);

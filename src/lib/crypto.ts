@@ -1,17 +1,16 @@
 import "server-only";
 import crypto from "crypto";
+import { getEncryptionSecret } from "@/lib/secret";
 
 // Encrypts merchant credentials (courier passwords, etc.) before they're
-// stored in SiteSetting — that table is otherwise plain text, and these
-// are real third-party login passwords, not display copy. Key is derived
-// from ADMIN_SESSION_SECRET so there's no separate secret to provision;
-// same fallback string as auth.ts for local dev without a .env.local.
+// stored in SiteSetting — that table is otherwise plain text, and these are
+// real third-party login passwords, not display copy. The key comes from
+// ENCRYPTION_KEY when set, falling back to ADMIN_SESSION_SECRET so existing
+// ciphertext keeps decrypting (see getEncryptionSecret).
 const ALGORITHM = "aes-256-gcm";
 
 function getKey(): Buffer {
-  const secret =
-    process.env.ADMIN_SESSION_SECRET || "kanzie-super-secure-admin-secret-key-32chars!";
-  return crypto.createHash("sha256").update(secret).digest();
+  return crypto.createHash("sha256").update(getEncryptionSecret()).digest();
 }
 
 export function encrypt(plaintext: string): string {

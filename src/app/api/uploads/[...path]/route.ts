@@ -35,6 +35,9 @@ export async function GET(
       headers: {
         "Content-Type": contentType,
         "Content-Length": String(info.size),
+        // Serve the byte stream as exactly the declared type — never let the
+        // browser sniff an uploaded file into something executable.
+        "X-Content-Type-Options": "nosniff",
         // Filenames are unique per upload, so they're safe to cache hard.
         "Cache-Control": "public, max-age=31536000, immutable",
       },

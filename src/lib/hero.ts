@@ -161,6 +161,30 @@ export function normalizeHex(value: string | undefined, fallback: string): strin
   return /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v) ? v : fallback;
 }
 
+// A CTA link ends up as an <a href> on the storefront. Only two shapes are
+// allowed through: a same-origin path (one leading slash, so not "//host"
+// or "/\host" which browsers read as protocol-relative), or an explicit
+// http(s):// URL. Everything else — javascript:, data:, mailto:, bare
+// "host.com" — falls back, which kills both the javascript: click vector
+// and the protocol-relative off-site redirect. `fallback` is "/products"
+// for the main CTA and "" for a banner slide with no button.
+export function normalizeCtaHref(value: unknown, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  const v = value.trim();
+  if (!v) return fallback;
+
+  if (v.startsWith("/")) {
+    return v.startsWith("//") || v.startsWith("/\\") ? fallback : v;
+  }
+
+  try {
+    const url = new URL(v);
+    return url.protocol === "http:" || url.protocol === "https:" ? v : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function parseSlides(raw: string | undefined): HeroSlide[] | null {
   if (!raw) return null;
   try {

@@ -31,12 +31,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid checkout payload." }, { status: 400 });
   }
 
-  for (const { slug } of parsed.data.items) {
+  for (const { slug, qty } of parsed.data.items) {
     const product = await getProductBySlug(slug);
     if (!product) {
       return NextResponse.json(
         { error: `Unknown product: ${slug}` },
         { status: 400 },
+      );
+    }
+    // Don't take an order the shop can't fill. Stock only commits when an
+    // admin confirms the call, so this is a checkout-time sanity check, not
+    // a reservation — the out-of-stock flag is the manual switch, stockQty
+    // the live count when it's tracked.
+    if (!product.inStock) {
+      return NextResponse.json(
+        { error: `${product.name} is out of stock.` },
+        { status: 409 },
+      );
+    }
+    if (typeof product.stockQty === "number" && qty > product.stockQty) {
+      return NextResponse.json(
+        {
+          error:
+            product.stockQty > 0
+              ? `Only ${product.stockQty} of ${product.name} left.`
+              : `${product.name} is out of stock.`,
+        },
+        { status: 409 },
       );
     }
   }

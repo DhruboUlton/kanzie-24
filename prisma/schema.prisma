@@ -19,6 +19,11 @@ model AdminUser {
   role         Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
   isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
+  // Sessions issued before this instant are rejected by getAdminContext.
+  // Stamped on password change/reset so a leaked or stale 7-day JWT stops
+  // working the moment the password moves. Null means no boundary yet, so
+  // existing tokens keep working until the next password change.
+  sessionValidFrom DateTime?
   activityLogs ActivityLog[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

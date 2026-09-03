@@ -267,7 +267,12 @@ export async function resetStaffPasswordAction(
 
     await db.adminUser.update({
       where: { id },
-      data: { passwordHash: await bcrypt.hash(parsed.data, 10) },
+      data: {
+        passwordHash: await bcrypt.hash(parsed.data, 10),
+        // Drop the target's active sessions — an admin resetting someone's
+        // password should not leave that person's old 7-day cookie working.
+        sessionValidFrom: new Date(),
+      },
     });
 
     await logActivity({

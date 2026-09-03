@@ -10,11 +10,21 @@ import {
   isRoleAdmin,
   sanitizePermissions,
 } from "@/lib/permissions";
+import { getSessionSecret } from "@/lib/secret";
 
 const COOKIE_NAME = "kanzie_admin_session";
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.ADMIN_SESSION_SECRET || "kanzie-super-secure-admin-secret-key-32chars!"
-);
+
+// Resolved on first use, not at module load: `next build` runs with
+// NODE_ENV=production but without the runtime secret, and the fail-hard in
+// getSessionSecret() must fire on a real request, not during the build's
+// import of this module.
+let cachedSecretKey: Uint8Array | null = null;
+function secretKey(): Uint8Array {
+  if (!cachedSecretKey) {
+    cachedSecretKey = new TextEncoder().encode(getSessionSecret());
+  }
+  return cachedSecretKey;
+}
 
 // The cookie carries identity only. Permissions are read from the database
 // on every request instead, so disabling an account or changing its role
@@ -23,6 +33,9 @@ export type AdminSession = {
   id: string;
   email: string;
   name: string;
+  // Token issue time (epoch seconds) from the JWT, used to reject sessions
+  // predating a password change. Absent only on a token with no iat.
+  iat?: number;
 };
 
 export class ForbiddenError extends Error {
@@ -44,16 +57,17 @@ export async function signSessionToken(session: AdminSession): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(SECRET_KEY);
+    .sign(secretKey());
 }
 
 export async function verifySessionToken(token: string): Promise<AdminSession | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET_KEY);
+    const { payload } = await jwtVerify(token, secretKey());
     return {
       id: payload.id as string,
       email: payload.email as string,
       name: payload.name as string,
+      iat: typeof payload.iat === "number" ? payload.iat : undefined,
     };
   } catch {
     return null;
@@ -85,6 +99,15 @@ export async function getAdminContext(): Promise<AdminContext | null> {
       include: { role: true },
     });
     if (!user || !user.isActive) return null;
+
+    // Reject a session issued before the account's last password change. iat
+    // is in seconds; allow a 5s skew so a token minted in the same request
+    // that set the boundary is not thrown out by rounding.
+    if (user.sessionValidFrom && typeof session.iat === "number") {
+      if (session.iat * 1000 < user.sessionValidFrom.getTime() - 5000) {
+        return null;
+      }
+    }
 
     // OWNER always holds everything, including permissions added by a later
     // release — otherwise shipping a new permission would silently lock the

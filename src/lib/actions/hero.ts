@@ -11,6 +11,7 @@ import {
   HeroContent,
   getHeroContent,
   normalizeHex,
+  normalizeCtaHref,
   normalizeMode,
   normalizeAlign,
   clampOverlay,
@@ -70,7 +71,7 @@ export async function updateHeroAction(
       DEFAULT_HERO.watermarkColor,
     ),
     [HERO_KEYS.ctaLabel]: content.ctaLabel.trim(),
-    [HERO_KEYS.ctaHref]: content.ctaHref.trim() || "/products",
+    [HERO_KEYS.ctaHref]: normalizeCtaHref(content.ctaHref, "/products"),
     [HERO_KEYS.slides]: JSON.stringify(
       content.slides
         .filter((s) => s.src.trim())
@@ -93,7 +94,7 @@ export async function updateHeroAction(
         ctaLabel: s.ctaLabel.trim(),
         // Kept empty rather than defaulted so a slide with no button
         // doesn't quietly acquire a destination it never asked for.
-        ctaHref: s.ctaHref.trim(),
+        ctaHref: normalizeCtaHref(s.ctaHref, ""),
         align: normalizeAlign(s.align),
         textColor: normalizeHex(s.textColor, DEFAULT_BANNER_SLIDE.textColor),
         overlay: clampOverlay(s.overlay),

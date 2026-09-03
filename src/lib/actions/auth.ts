@@ -201,8 +201,17 @@ export async function changeOwnPasswordAction(input: {
 
     await db.adminUser.update({
       where: { id: ctx.id },
-      data: { passwordHash: await bcrypt.hash(parsed.data.newPassword, 10) },
+      data: {
+        passwordHash: await bcrypt.hash(parsed.data.newPassword, 10),
+        // Kill every other session for this account. The cookie re-issued
+        // just below carries a fresh iat, so the person who made the change
+        // stays signed in while any other device is dropped.
+        sessionValidFrom: new Date(),
+      },
     });
+
+    // Fresh token, issued after the boundary above, so this browser survives.
+    await setSessionCookie({ id: ctx.id, email: ctx.email, name: ctx.name });
 
     await logActivity({
       actor: ctx,
