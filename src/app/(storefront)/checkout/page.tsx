@@ -294,14 +294,17 @@ export default function CheckoutPage() {
           />
           <div>
             <div
-              className={`flex items-stretch rounded border overflow-hidden bg-white ${
+              // Same border, radius and (transparent) background as every
+              // other field in this card — the prefix is the only thing that
+              // should look different, not the input itself.
+              className={`flex items-stretch rounded border overflow-hidden ${
                 phoneLooksWrong ? "border-red-400" : "border-black/15"
               }`}
             >
               {/* Fixed, not typed: the country code is the same for every
                   customer, and leaving it editable is how numbers arrive as
                   +8801… that then fail the courier lookups. */}
-              <span className="flex items-center px-3 text-sm text-black/50 bg-black/[0.04] border-r border-black/10 select-none">
+              <span className="flex items-center pl-3 pr-2.5 py-2 text-sm text-black/45 border-r border-black/10 select-none">
                 {BD_DIAL_CODE}
               </span>
               <input
@@ -321,7 +324,7 @@ export default function CheckoutPage() {
                 value={customer.phone}
                 onChange={updatePhone}
                 aria-invalid={phoneLooksWrong}
-                className="flex-1 min-w-0 px-3 py-2 text-sm outline-none"
+                className="flex-1 min-w-0 bg-transparent px-3 py-2 text-sm outline-none"
               />
             </div>
             {phoneLooksWrong && (
