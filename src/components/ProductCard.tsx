@@ -12,7 +12,7 @@ export default function ProductCard({
 }) {
   return (
     <Link href={`/products/${product.slug}`} className="group block">
-      <div className="rounded-lg p-2.5 shadow-sm transition-shadow duration-300 group-hover:shadow-xl">
+      <div className="rounded-lg p-2.5 bg-white shadow-sm transition-all duration-300 ease-out group-hover:shadow-xl group-hover:scale-[1.03] group-hover:-translate-y-1 origin-center">
         <div className="relative aspect-square bg-paper rounded overflow-hidden">
           {product.compareAtPriceCents && (
             <span className="absolute top-3 left-3 z-10 bg-accent text-white text-xs font-bold px-2 py-1 rounded">

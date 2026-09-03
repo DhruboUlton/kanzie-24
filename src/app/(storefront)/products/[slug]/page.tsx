@@ -9,7 +9,6 @@ import { formatPrice } from "@/lib/format";
 import AddToCartButton from "@/components/AddToCartButton";
 import ProductCard from "@/components/ProductCard";
 import ProductGallery from "@/components/ProductGallery";
-import ProductVideo from "@/components/ProductVideo";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +33,11 @@ export default async function ProductPage(
       </nav>
 
       <div className="grid lg:grid-cols-2 gap-12">
-        <ProductGallery images={product.images} name={product.name} />
+        <ProductGallery
+          images={product.images}
+          name={product.name}
+          videoUrl={product.videoUrl}
+        />
 
         <div>
           <p className="text-xs uppercase tracking-wide text-black/40">
@@ -67,10 +70,6 @@ export default async function ProductPage(
               </li>
             ))}
           </ul>
-
-          <div className="mt-5">
-            <ProductVideo product={product} />
-          </div>
 
           <div className="mt-8">
             <AddToCartButton product={product} />

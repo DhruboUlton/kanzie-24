@@ -39,15 +39,21 @@ export async function POST(req: NextRequest) {
     const ext = UPLOAD_MIME_EXT[file.type];
     if (!ext) {
       return NextResponse.json(
-        { error: "Invalid file type. Only JPEG, PNG, WebP, GIF, and AVIF are allowed." },
+        {
+          error:
+            "Invalid file type. Allowed: Images (JPEG, PNG, WebP, GIF, AVIF) or Videos (MP4, WebM, MOV, OGG).",
+        },
         { status: 400 }
       );
     }
 
-    // Max 10MB
-    if (file.size > 10 * 1024 * 1024) {
+    const isVideo = file.type.startsWith("video/");
+    const maxSizeBytes = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
+    const maxLimitLabel = isVideo ? "100MB" : "10MB";
+
+    if (file.size > maxSizeBytes) {
       return NextResponse.json(
-        { error: "File size exceeds 10MB limit." },
+        { error: `File size exceeds ${maxLimitLabel} limit.` },
         { status: 400 }
       );
     }

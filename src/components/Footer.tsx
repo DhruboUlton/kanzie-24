@@ -9,6 +9,16 @@ export default function Footer() {
     <footer className="bg-ink text-white/70">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14 grid grid-cols-2 sm:grid-cols-4 gap-8">
         <div>
+          <div className="mb-4">
+            <Link
+              href="/track"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded border-2 border-accent text-white font-semibold hover:bg-accent transition-colors"
+            >
+              <PackageSearch className="w-4 h-4" />
+              <span>Track your order</span>
+            </Link>
+          </div>
+
           <h3 className="font-display text-white tracking-wide mb-4">
             SHOP
           </h3>
@@ -39,18 +49,6 @@ export default function Footer() {
             HELP
           </h3>
           <ul className="space-y-2 text-sm">
-            {/* Boxed in the brand red rather than sitting in the list: this
-                is the one link a customer comes back to the site for, and
-                plain text in a column of six is not findable. */}
-            <li className="mb-3">
-              <Link
-                href="/track"
-                className="inline-flex items-center gap-2 px-3 py-2 rounded border-2 border-accent text-white font-semibold hover:bg-accent transition-colors"
-              >
-                <PackageSearch className="w-4 h-4" />
-                <span>Track your order</span>
-              </Link>
-            </li>
             <li>
               <Link href="/cart" className="hover:text-accent transition-colors">
                 Cart

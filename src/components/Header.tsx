@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { ChevronDown, Menu, ShoppingCart, X } from "lucide-react";
+import { ChevronDown, Menu, ShoppingCart, X, PackageSearch } from "lucide-react";
 import { useCartStore, cartTotalItems } from "@/lib/cart-store";
 import { CategoryNode } from "@/lib/products";
 import { SITE_NAME } from "@/lib/site-config";
@@ -82,18 +82,29 @@ export default function Header({ tree = [] }: { tree?: CategoryNode[] }) {
           ))}
         </nav>
 
-        <button
-          className="relative p-2"
-          aria-label="Open cart"
-          onClick={openCart}
-        >
-          <ShoppingCart size={22} />
-          {count > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 bg-accent text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-              {count}
-            </span>
-          )}
-        </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link
+            href="/track"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/20 hover:border-accent text-paper hover:text-white text-xs font-semibold tracking-wide transition-colors"
+            title="Track your order"
+          >
+            <PackageSearch size={14} className="text-accent" />
+            <span>Track Order</span>
+          </Link>
+
+          <button
+            className="relative p-2"
+            aria-label="Open cart"
+            onClick={openCart}
+          >
+            <ShoppingCart size={22} />
+            {count > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 bg-accent text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {count}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       <div
@@ -175,6 +186,17 @@ export default function Header({ tree = [] }: { tree?: CategoryNode[] }) {
             )}
           </div>
         ))}
+
+        <div className="mt-auto pt-6 pb-6 border-t border-white/10">
+          <Link
+            href="/track"
+            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded border border-accent text-white text-sm font-semibold hover:bg-accent transition-colors"
+            onClick={closeMobile}
+          >
+            <PackageSearch size={16} className="text-accent" />
+            <span>Track your order</span>
+          </Link>
+        </div>
       </nav>
     </header>
   );

@@ -38,6 +38,7 @@ export default function ProductForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form Fields
@@ -144,6 +145,36 @@ export default function ProductForm({
       setError(err.message || "Failed to upload image.");
     } finally {
       setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  // Video Upload handler
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingVideo(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Video upload failed");
+      }
+
+      setVideoUrl(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload video.");
+    } finally {
+      setUploadingVideo(false);
       e.target.value = "";
     }
   };
@@ -693,7 +724,7 @@ export default function ProductForm({
               {images.map((img, i) => (
                 <div
                   key={i}
-                  className="group relative aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200"
+                  className="group relative aspect-square bg-gray-50 rounded-lg overflow-hidden border border-gray-200"
                 >
                   <Image
                     src={img}
@@ -702,7 +733,7 @@ export default function ProductForm({
                     // Uploads are streamed from outside the app root, so the
                     // image optimizer can't resolve them — load them directly.
                     unoptimized={img.startsWith("/api/uploads/")}
-                    className="object-cover"
+                    className="object-contain p-1"
                   />
                   {i === 0 && (
                     <span className="absolute bottom-1 left-1 bg-black/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
@@ -712,7 +743,7 @@ export default function ProductForm({
                   <button
                     type="button"
                     onClick={() => handleRemoveImage(i)}
-                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
@@ -722,34 +753,109 @@ export default function ProductForm({
           </div>
 
           {/* Video Integration Card */}
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-3">
-            <div className="flex items-center gap-2 text-gray-900 font-bold text-sm">
-              <Video className="w-4 h-4 text-accent" />
-              <span>Product Video Integration</span>
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-gray-900 font-bold text-sm">
+                <Video className="w-4 h-4 text-accent" />
+                <span>Product Video</span>
+              </div>
+              {videoUrl && (
+                <button
+                  type="button"
+                  onClick={() => setVideoUrl("")}
+                  className="text-xs text-red-600 hover:text-red-700 font-medium inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Remove
+                </button>
+              )}
             </div>
-            <p className="text-xs text-gray-500">
-              Paste a Google Drive view link or YouTube link for automatic floating autoplay video on the product page.
+
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Upload a video file directly (MP4, WebM, MOV) or paste a YouTube / Google Drive link.
             </p>
 
-            <input
-              type="text"
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="https://drive.google.com/file/d/... or YouTube"
-              className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-[#c0282b]"
-            />
-
-            {videoUrl && (
-              <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-xs">
-                {parsedVideo ? (
-                  <div className="flex items-center gap-2 text-emerald-700 font-medium">
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>Valid video detected ({parsedVideo.type.toUpperCase()})</span>
-                  </div>
+            {/* Direct Video File Upload */}
+            <div>
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-[#c0282b] bg-gray-50/70 hover:bg-gray-50 rounded-xl p-4 cursor-pointer transition-colors">
+                {uploadingVideo ? (
+                  <Loader2 className="w-5 h-5 text-accent animate-spin mb-1" />
                 ) : (
-                  <div className="flex items-center gap-2 text-amber-700 font-medium">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>Unrecognized link (Drive / YouTube supported)</span>
+                  <Upload className="w-5 h-5 text-gray-400 mb-1" />
+                )}
+                <span className="text-xs font-semibold text-gray-700">
+                  {uploadingVideo ? "Uploading video..." : "Click to Upload Video File"}
+                </span>
+                <span className="text-[10px] text-gray-400 mt-0.5">
+                  MP4, WebM, QuickTime MOV (Max 100MB)
+                </span>
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime,video/*"
+                  onChange={handleVideoUpload}
+                  disabled={uploadingVideo}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* URL Input Alternative */}
+            <div className="space-y-1">
+              <span className="text-[11px] font-medium text-gray-500">
+                Or enter video URL / link:
+              </span>
+              <input
+                type="text"
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                placeholder="https://drive.google.com/file/d/... or YouTube or /api/uploads/..."
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-[#c0282b]"
+              />
+            </div>
+
+            {/* Video Status & Preview Player */}
+            {videoUrl && (
+              <div className="space-y-2 pt-1">
+                <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-xs">
+                  {parsedVideo ? (
+                    <div className="flex items-center gap-2 text-emerald-700 font-medium">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>
+                        Valid video ({parsedVideo.type.toUpperCase()})
+                        {parsedVideo.type === "direct" && " — Uploaded Video File"}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-amber-700 font-medium">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>Unrecognized link (Drive / YouTube / direct video supported)</span>
+                    </div>
+                  )}
+                </div>
+
+                {parsedVideo && (
+                  <div className="rounded-lg overflow-hidden border border-gray-200 bg-black aspect-video max-h-48 relative flex items-center justify-center">
+                    {parsedVideo.type === "direct" ? (
+                      <video
+                        src={parsedVideo.src}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : parsedVideo.type === "youtube" ? (
+                      <iframe
+                        src={parsedVideo.embedUrl}
+                        className="w-full h-full"
+                        allow="encrypted-media"
+                      />
+                    ) : (
+                      <iframe
+                        src={parsedVideo.fallbackEmbedUrl}
+                        className="w-full h-full"
+                        allow="encrypted-media"
+                      />
+                    )}
                   </div>
                 )}
               </div>

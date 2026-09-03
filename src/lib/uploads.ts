@@ -28,6 +28,10 @@ export const UPLOAD_MIME_EXT: Record<string, string> = {
   "image/webp": "webp",
   "image/gif": "gif",
   "image/avif": "avif",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+  "video/ogg": "ogv",
 };
 
 export const UPLOAD_EXT_MIME: Record<string, string> = {
@@ -37,6 +41,10 @@ export const UPLOAD_EXT_MIME: Record<string, string> = {
   webp: "image/webp",
   gif: "image/gif",
   avif: "image/avif",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+  ogv: "video/ogg",
 };
 
 // Joins a request path onto the upload directory, refusing anything that
