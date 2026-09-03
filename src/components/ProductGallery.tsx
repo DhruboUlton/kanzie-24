@@ -10,9 +10,22 @@ function isUpload(src: string) {
   return src.startsWith("/api/uploads/");
 }
 
-// A swipe has to beat this before it counts, so a slightly-diagonal scroll
-// down the page doesn't flick the image sideways.
-const SWIPE_THRESHOLD_PX = 40;
+// All the images sit side by side in one track and the track is what moves.
+// Swapping the <Image src> instead — which is what this used to do — lands
+// the next photo instantly with nothing in between, and reads as a glitch
+// rather than a swipe.
+
+// Below this the gesture is treated as a tap and the track springs back.
+const COMMIT_RATIO = 0.18;
+const COMMIT_MIN_PX = 40;
+// A short, fast flick should turn the page even if it never travelled far.
+const FLICK_MS = 250;
+const FLICK_PX = 12;
+// How far past the first/last image the track will stretch before resisting.
+const EDGE_RESISTANCE = 0.35;
+const SETTLE = "transform 340ms cubic-bezier(0.22, 0.61, 0.36, 1)";
+
+type Axis = "undecided" | "horizontal" | "vertical";
 
 export default function ProductGallery({
   images,
@@ -22,56 +35,114 @@ export default function ProductGallery({
   name: string;
 }) {
   const [active, setActive] = useState(0);
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+
+  const trackRef = useRef<HTMLDivElement>(null);
+  const start = useRef<{ x: number; y: number; t: number } | null>(null);
+  const axis = useRef<Axis>("undecided");
 
   if (images.length === 0) return null;
 
   const count = images.length;
   const index = Math.min(active, count - 1);
-  const current = images[index];
 
   const step = (delta: number) => setActive((i) => (i + delta + count) % count);
 
   function onTouchStart(e: React.TouchEvent) {
+    if (count < 2) return;
     const t = e.touches[0];
-    touchStart.current = { x: t.clientX, y: t.clientY };
+    start.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+    axis.current = "undecided";
+    setDragging(true);
+    setDragX(0);
   }
 
-  function onTouchEnd(e: React.TouchEvent) {
-    const start = touchStart.current;
-    touchStart.current = null;
-    if (!start || count < 2) return;
+  function onTouchMove(e: React.TouchEvent) {
+    const s = start.current;
+    if (!s) return;
 
-    const t = e.changedTouches[0];
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
+    const t = e.touches[0];
+    const dx = t.clientX - s.x;
+    const dy = t.clientY - s.y;
 
-    // Vertical wins ties: the page still has to scroll normally under a
-    // finger that is mostly going up or down.
-    if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) <= Math.abs(dy)) return;
+    // Decide once, on the first few pixels, whether this gesture belongs to
+    // the gallery or to the page. Without the lock a mostly-vertical scroll
+    // drags the track sideways the whole way down.
+    if (axis.current === "undecided") {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      axis.current = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+    }
+    if (axis.current !== "horizontal") return;
 
-    step(dx < 0 ? 1 : -1);
+    // There is nothing beyond the first and last image, so pulling that way
+    // gets heavier instead of revealing blank space.
+    const atStart = index === 0 && dx > 0;
+    const atEnd = index === count - 1 && dx < 0;
+    setDragX(atStart || atEnd ? dx * EDGE_RESISTANCE : dx);
+  }
+
+  function onTouchEnd() {
+    const s = start.current;
+    start.current = null;
+    setDragging(false);
+
+    if (!s || axis.current !== "horizontal") {
+      setDragX(0);
+      return;
+    }
+
+    const width = trackRef.current?.clientWidth ?? 0;
+    const threshold = Math.max(COMMIT_MIN_PX, width * COMMIT_RATIO);
+    const flicked = Date.now() - s.t < FLICK_MS && Math.abs(dragX) > FLICK_PX;
+
+    if (Math.abs(dragX) > threshold || flicked) {
+      if (dragX < 0 && index < count - 1) step(1);
+      else if (dragX > 0 && index > 0) step(-1);
+    }
+    // Cleared either way: the transform below settles onto whichever image
+    // is now active, animated because dragging is false again.
+    setDragX(0);
   }
 
   return (
     <div className="flex flex-col gap-3">
       <div
+        ref={trackRef}
         onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
         // pan-y keeps vertical scrolling with the browser while horizontal
         // movement reaches the handlers above.
         style={{ touchAction: "pan-y" }}
         className="relative aspect-square bg-paper rounded-lg overflow-hidden select-none"
       >
-        <Image
-          src={current}
-          alt={name}
-          fill
-          priority
-          unoptimized={isUpload(current)}
-          className="object-cover pointer-events-none"
-          draggable={false}
-        />
+        <div
+          className="flex h-full w-full"
+          style={{
+            transform: `translate3d(calc(${-index * 100}% + ${dragX}px), 0, 0)`,
+            // No transition while a finger is down, or the track lags behind
+            // it instead of tracking it.
+            transition: dragging ? "none" : SETTLE,
+            willChange: "transform",
+          }}
+        >
+          {images.map((img, i) => (
+            <div key={`slide-${img}-${i}`} className="relative h-full w-full shrink-0">
+              <Image
+                src={img}
+                alt={i === 0 ? name : `${name} — view ${i + 1}`}
+                fill
+                sizes="(min-width: 640px) 50vw, 100vw"
+                priority={i === 0}
+                unoptimized={isUpload(img)}
+                className="object-cover pointer-events-none"
+                draggable={false}
+              />
+            </div>
+          ))}
+        </div>
 
         {count > 1 && (
           <>
@@ -99,7 +170,7 @@ export default function ProductGallery({
               {images.map((img, i) => (
                 <span
                   key={`dot-${img}-${i}`}
-                  className={`h-1.5 rounded-full transition-all ${
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
                     i === index ? "w-4 bg-accent" : "w-1.5 bg-black/25"
                   }`}
                 />
