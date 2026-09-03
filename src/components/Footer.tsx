@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PackageSearch } from "lucide-react";
 import { CATEGORIES } from "@/lib/products";
 import { SITE_NAME, SUPPORT_EMAIL } from "@/lib/site-config";
 import Newsletter from "@/components/Newsletter";
@@ -38,6 +39,18 @@ export default function Footer() {
             HELP
           </h3>
           <ul className="space-y-2 text-sm">
+            {/* Boxed in the brand red rather than sitting in the list: this
+                is the one link a customer comes back to the site for, and
+                plain text in a column of six is not findable. */}
+            <li className="mb-3">
+              <Link
+                href="/track"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded border-2 border-accent text-white font-semibold hover:bg-accent transition-colors"
+              >
+                <PackageSearch className="w-4 h-4" />
+                <span>Track your order</span>
+              </Link>
+            </li>
             <li>
               <Link href="/cart" className="hover:text-accent transition-colors">
                 Cart

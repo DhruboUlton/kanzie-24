@@ -71,3 +71,60 @@ export const ORDER_STATUS_LABELS: Record<string, string> = {
   DELIVERED: "Delivered",
   CANCELLED: "Cancelled",
 };
+
+
+// ── What the customer sees ─────────────────────────────────────────────
+//
+// The internal pipeline has seven states; the public one has five. CALLED
+// is deliberately folded into "Order Processing": that we rang someone is
+// our business, and until they say yes the order has not moved on as far
+// as they are concerned.
+
+export const PUBLIC_STAGES = [
+  {
+    key: "processing",
+    label: "Order Processing",
+    blurb: "We have your order and will call to confirm it.",
+  },
+  {
+    key: "confirmed",
+    label: "Confirmed",
+    blurb: "You confirmed the order on the phone. We're getting it ready.",
+  },
+  {
+    key: "packed",
+    label: "Packed",
+    blurb: "Boxed and waiting for the courier to collect it.",
+  },
+  {
+    key: "shipped",
+    label: "Shipped",
+    blurb: "On its way to you. Pay cash when it arrives.",
+  },
+  {
+    key: "delivered",
+    label: "Delivered",
+    blurb: "Handed over. Thanks for shopping with us.",
+  },
+] as const;
+
+export type PublicStage = (typeof PUBLIC_STAGES)[number]["key"];
+
+const PUBLIC_STAGE_BY_STATUS: Record<string, PublicStage> = {
+  PENDING: "processing",
+  CALLED: "processing",
+  CONFIRMED: "confirmed",
+  PACKED: "packed",
+  SHIPPED: "shipped",
+  DELIVERED: "delivered",
+};
+
+/** Null for a cancelled order — it is off the ladder, not at a point on it. */
+export function publicStageFor(status: string): PublicStage | null {
+  if (status === "CANCELLED") return null;
+  return PUBLIC_STAGE_BY_STATUS[status] ?? "processing";
+}
+
+export function publicStageIndex(stage: PublicStage): number {
+  return PUBLIC_STAGES.findIndex((s) => s.key === stage);
+}
