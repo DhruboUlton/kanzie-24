@@ -16,7 +16,13 @@ export default function CategoryTiles({
       </h2>
       <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 px-4 -mx-4 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:mx-0">
         {categories.map((cat) => {
-          const cover = products.find((p) => p.category === cat.slug);
+          // The category's own cover if one has been set. Otherwise the
+          // first product filed under it, which is a guess and often the
+          // wrong one — set a cover in /admin/categories to replace it.
+          const cover =
+            cat.imageUrl?.trim() ||
+            products.find((p) => p.category === cat.slug)?.images[0] ||
+            null;
           return (
             <Link
               key={cat.slug}
@@ -25,10 +31,13 @@ export default function CategoryTiles({
             >
               {cover && (
                 <Image
-                  src={cover.images[0]}
+                  src={cover}
                   alt={cat.name}
                   fill
                   sizes="(min-width: 640px) 33vw, 100vw"
+                  // Uploads are streamed from outside the app root, so the
+                  // optimizer can't resolve them.
+                  unoptimized={cover.startsWith("/api/uploads/")}
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               )}

@@ -43,6 +43,7 @@ export async function createCategoryAction(
   slug: string,
   sortOrder: number = 0,
   parentId: string | null = null,
+  imageUrl: string | null = null,
 ) {
   let ctx;
   try {
@@ -71,6 +72,7 @@ export async function createCategoryAction(
         slug: formattedSlug,
         sortOrder,
         parentId: parentId || null,
+        imageUrl: imageUrl?.trim() || null,
       },
     });
 
@@ -98,6 +100,7 @@ export async function updateCategoryAction(
   slug: string,
   sortOrder: number,
   parentId: string | null = null,
+  imageUrl: string | null = null,
 ) {
   let ctx;
   try {
@@ -132,6 +135,8 @@ export async function updateCategoryAction(
         slug: formattedSlug,
         sortOrder,
         parentId: parentId || null,
+        // Empty clears it, which sends the tile back to a product photo.
+        imageUrl: imageUrl?.trim() || null,
       },
     });
 
@@ -193,5 +198,79 @@ export async function deleteCategoryAction(id: string) {
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to delete category" };
+  }
+}
+
+
+/**
+ * Sets the order of one group at a time — either the top-level categories,
+ * or the subcategories under one parent. The whole group is sent on every
+ * move, so two saves racing each other still end with the list the admin
+ * last saw rather than a half-applied shuffle.
+ *
+ * Positions are rewritten as 0,1,2… rather than nudged, so a list that had
+ * drifted (everything created at sortOrder 0, which is the default) comes
+ * out consecutive on the first drag.
+ */
+export async function reorderCategoriesAction(
+  orderedIds: string[],
+): Promise<{ success: boolean; error?: string }> {
+  let ctx;
+  try {
+    ctx = await requirePermission("CATEGORIES_MANAGE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
+
+  const ids = Array.isArray(orderedIds)
+    ? orderedIds.filter((id): id is string => typeof id === "string" && !!id)
+    : [];
+  if (ids.length === 0) return { success: false, error: "Nothing to reorder." };
+  if (new Set(ids).size !== ids.length) {
+    return { success: false, error: "That list has a category in it twice." };
+  }
+
+  try {
+    const found = await db.category.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true, parentId: true },
+    });
+    if (found.length !== ids.length) {
+      return { success: false, error: "One of those categories no longer exists." };
+    }
+
+    // Every id must sit at the same level, so a drag can never quietly
+    // re-parent something. Moving a category between levels is the edit
+    // form's job.
+    const levels = new Set(found.map((c) => c.parentId ?? "__root__"));
+    if (levels.size > 1) {
+      return { success: false, error: "Categories can only be reordered within one level." };
+    }
+
+    await db.$transaction(
+      ids.map((id, index) =>
+        db.category.update({ where: { id }, data: { sortOrder: index } }),
+      ),
+    );
+
+    const byId = new Map(found.map((c) => [c.id, c.name]));
+
+    await logActivity({
+      actor: ctx,
+      action: "CATEGORY_UPDATED",
+      entityType: "CATEGORY",
+      description: "Reordered categories",
+      metadata: { order: ids.map((id) => byId.get(id) ?? id) },
+    });
+
+    revalidatePath("/products");
+    revalidatePath("/admin/categories");
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) {
+    const denied = authErrorResult(error);
+    if (denied) return denied;
+    console.error("reorderCategories error:", error);
+    return { success: false, error: "Couldn't save the new order." };
   }
 }

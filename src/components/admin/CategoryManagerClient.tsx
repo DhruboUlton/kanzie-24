@@ -9,65 +9,183 @@ import {
   FolderTree,
   CornerDownRight,
   Loader2,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+  Check,
+  Image as ImageIcon,
 } from "lucide-react";
 import {
   createCategoryAction,
   updateCategoryAction,
   deleteCategoryAction,
+  reorderCategoriesAction,
 } from "@/lib/actions/category";
+import ImageField from "@/components/admin/ImageField";
+
+// Where a category sits is decided by dragging it, not by typing a number
+// into a box. Two things follow from that:
+//
+//  - The list is held in local state and moves immediately, then saves. A
+//    drag that waits for a round trip before it moves feels broken.
+//  - Up/down buttons do the same job. Native HTML5 drag events don't fire
+//    on touch at all, and this admin gets used on a phone.
+
+export type CategoryRow = {
+  id: string;
+  slug: string;
+  name: string;
+  sortOrder?: number | null;
+  parentId?: string | null;
+  imageUrl?: string | null;
+};
+
+function reorder<T>(list: T[], from: number, to: number): T[] {
+  const next = list.slice();
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
 
 export default function CategoryManagerClient({
   categories,
 }: {
-  categories: any[];
+  categories: CategoryRow[];
 }) {
   const router = useRouter();
+  // Mirrors the server list so a drag can move a row at once instead of
+  // waiting for a round trip. Re-synced by comparing the prop against the
+  // last one seen, during render — an effect that calls setItems would run
+  // on every render, because the server hands down a fresh array each time.
+  const [items, setItems] = useState<CategoryRow[]>(categories);
+  const [seenCategories, setSeenCategories] = useState(categories);
+  if (seenCategories !== categories) {
+    setSeenCategories(categories);
+    setItems(categories);
+  }
+
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [orderSaved, setOrderSaved] = useState(false);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [sortOrder, setSortOrder] = useState<number>(1);
   const [parentId, setParentId] = useState<string>("");
+  const [imageUrl, setImageUrl] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Nesting is one level deep, so only categories that aren't already a
   // subcategory can be picked as a parent.
-  const parentOptions = categories.filter(
+  const parentOptions = items.filter(
     (c) => c.id && !c.parentId && c.id !== editingId,
   );
 
+  const byOrder = (a: CategoryRow, b: CategoryRow) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+  // Group key: "" for the top level, the parent's id for a subcategory. A
+  // drag only ever reorders within one of these.
+  const groupOf = (cat: Pick<CategoryRow, "parentId">) => cat.parentId ?? "";
+  const groupIds = (key: string) =>
+    items.filter((c) => groupOf(c) === key).sort(byOrder).map((c) => c.id);
+
   // Parents first, each immediately followed by its own subcategories.
-  const orderedRows: { cat: any; isChild: boolean }[] = [];
-  for (const parent of categories.filter((c) => !c.parentId)) {
+  const orderedRows: { cat: CategoryRow; isChild: boolean }[] = [];
+  for (const parent of items.filter((c) => !c.parentId).sort(byOrder)) {
     orderedRows.push({ cat: parent, isChild: false });
-    for (const child of categories.filter(
-      (c) => c.parentId && c.parentId === parent.id,
-    )) {
+    for (const child of items
+      .filter((c) => c.parentId && c.parentId === parent.id)
+      .sort(byOrder)) {
       orderedRows.push({ cat: child, isChild: true });
     }
   }
   // Any subcategory whose parent is missing from this list still shows.
-  for (const orphan of categories.filter(
-    (c) => c.parentId && !categories.some((p) => p.id === c.parentId),
+  for (const orphan of items.filter(
+    (c) => c.parentId && !items.some((p) => p.id === c.parentId),
   )) {
     orderedRows.push({ cat: orphan, isChild: true });
+  }
+
+  async function persist(orderedIds: string[]) {
+    setSavingOrder(true);
+    setOrderSaved(false);
+    setError(null);
+    try {
+      const res = await reorderCategoriesAction(orderedIds);
+      if (res.success) {
+        setOrderSaved(true);
+        setTimeout(() => setOrderSaved(false), 2500);
+        router.refresh();
+      } else {
+        setError(res.error || "Couldn't save the new order.");
+        setItems(categories); // put the list back the way the server has it
+      }
+    } catch {
+      setError("Couldn't save the new order.");
+      setItems(categories);
+    } finally {
+      setSavingOrder(false);
+    }
+  }
+
+  /** Moves one category within its own level and saves that level's order. */
+  function move(cat: CategoryRow, toIndex: number) {
+    const key = groupOf(cat);
+    const ids = groupIds(key);
+    const from = ids.indexOf(cat.id);
+    if (from === -1 || toIndex < 0 || toIndex >= ids.length || toIndex === from) {
+      return;
+    }
+    const next = reorder(ids, from, toIndex);
+    setItems((prev) =>
+      prev.map((c) => {
+        const i = next.indexOf(c.id);
+        return i === -1 ? c : { ...c, sortOrder: i };
+      }),
+    );
+    persist(next);
+  }
+
+  function moveBy(cat: CategoryRow, delta: number) {
+    const ids = groupIds(groupOf(cat));
+    move(cat, ids.indexOf(cat.id) + delta);
+  }
+
+  function onDrop(target: CategoryRow) {
+    const source = items.find((c) => c.id === dragId);
+    setDragId(null);
+    setOverId(null);
+    // Different levels: a drag must never re-parent something. That is what
+    // the Parent Category field in the edit form is for.
+    if (!source || !target || source.id === target.id) return;
+    if (groupOf(source) !== groupOf(target)) {
+      setError("Drag only reorders within one level. Use Edit to change a parent.");
+      return;
+    }
+    move(source, groupIds(groupOf(target)).indexOf(target.id));
   }
 
   const startCreate = (presetParentId = "") => {
     setEditingId("new");
     setName("");
     setSlug("");
-    setSortOrder((categories.length || 0) + 1);
+    // Lands at the bottom of the level it is being added to, rather than
+    // colliding with whatever is already at that number.
+    setSortOrder(groupIds(presetParentId).length);
     setParentId(presetParentId);
+    setImageUrl("");
     setError(null);
   };
 
-  const startEdit = (cat: any) => {
+  const startEdit = (cat: CategoryRow) => {
     setEditingId(cat.id || cat.slug);
     setName(cat.name);
     setSlug(cat.slug);
     setSortOrder(cat.sortOrder || 0);
     setParentId(cat.parentId || "");
+    setImageUrl(cat.imageUrl || "");
     setError(null);
   };
 
@@ -76,6 +194,7 @@ export default function CategoryManagerClient({
     setName("");
     setSlug("");
     setParentId("");
+    setImageUrl("");
     setError(null);
   };
 
@@ -99,7 +218,13 @@ export default function CategoryManagerClient({
 
     try {
       if (editingId === "new") {
-        const res = await createCategoryAction(name, slug, sortOrder, parentId || null);
+        const res = await createCategoryAction(
+          name,
+          slug,
+          sortOrder,
+          parentId || null,
+          imageUrl || null,
+        );
         if (res.success) {
           cancelEdit();
           router.refresh();
@@ -113,6 +238,7 @@ export default function CategoryManagerClient({
           slug,
           sortOrder,
           parentId || null,
+          imageUrl || null,
         );
         if (res.success) {
           cancelEdit();
@@ -121,8 +247,8 @@ export default function CategoryManagerClient({
           setError(res.error || "Failed to update category");
         }
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to save category");
+    } catch {
+      setError("Failed to save category");
     } finally {
       setLoading(false);
     }
@@ -138,8 +264,8 @@ export default function CategoryManagerClient({
       } else {
         alert(res.error || "Failed to delete category");
       }
-    } catch (err: any) {
-      alert(err.message || "Error deleting category");
+    } catch {
+      alert("Error deleting category");
     } finally {
       setLoading(false);
     }
@@ -151,9 +277,23 @@ export default function CategoryManagerClient({
         <div>
           <h2 className="text-xl font-bold text-gray-900">Categories Management</h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            Organize catalog groupings and homepage collection tiles
+            Drag a row by its handle to set the order shoppers see. Parents
+            reorder among parents, subcategories within their parent.
           </p>
         </div>
+        <div className="flex items-center gap-3">
+          {savingOrder && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Saving order…
+            </span>
+          )}
+          {orderSaved && !savingOrder && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+              <Check className="w-3.5 h-3.5" />
+              Order saved
+            </span>
+          )}
         {editingId !== "new" && (
           <button
             type="button"
@@ -164,6 +304,7 @@ export default function CategoryManagerClient({
             <span>Add Category</span>
           </button>
         )}
+        </div>
       </div>
 
       {error && (
@@ -204,7 +345,7 @@ export default function CategoryManagerClient({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Category Name *
@@ -233,18 +374,16 @@ export default function CategoryManagerClient({
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                Sort Order
-              </label>
-              <input
-                type="number"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(parseInt(e.target.value) || 0)}
-                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
-              />
-            </div>
           </div>
+
+          <ImageField
+            label="Category Cover"
+            value={imageUrl}
+            onChange={setImageUrl}
+            hint="Shown on the homepage's Shop by Machine tile. Leave empty and the tile falls back to the first product's photo."
+            previewClassName="h-40"
+            previewFit="cover"
+          />
 
           <div className="flex justify-end gap-2 pt-2">
             <button
@@ -272,15 +411,51 @@ export default function CategoryManagerClient({
         <table className="w-full min-w-[34rem] text-left text-sm">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b border-gray-100">
             <tr>
+              <th className="w-10 pl-4 py-3.5" aria-label="Reorder" />
               <th className="px-6 py-3.5">Category Name</th>
               <th className="px-6 py-3.5">URL Slug</th>
-              <th className="px-6 py-3.5">Sort Order</th>
               <th className="px-6 py-3.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {orderedRows.map(({ cat, isChild }) => (
-              <tr key={cat.id || cat.slug} className="hover:bg-gray-50/70">
+            {orderedRows.map(({ cat, isChild }) => {
+              const siblings = groupIds(groupOf(cat));
+              const pos = siblings.indexOf(cat.id);
+              const isDragging = dragId === cat.id;
+              const isOver = overId === cat.id && dragId !== cat.id;
+              const sameLevel =
+                !!dragId &&
+                groupOf(items.find((c) => c.id === dragId) ?? {}) === groupOf(cat);
+
+              return (
+              <tr
+                key={cat.id || cat.slug}
+                draggable={!!cat.id && !savingOrder}
+                onDragStart={() => setDragId(cat.id)}
+                onDragEnd={() => { setDragId(null); setOverId(null); }}
+                onDragOver={(e) => {
+                  if (!dragId || !sameLevel) return;
+                  e.preventDefault(); // without this the drop never fires
+                  setOverId(cat.id);
+                }}
+                onDragLeave={() => setOverId((id) => (id === cat.id ? null : id))}
+                onDrop={(e) => { e.preventDefault(); onDrop(cat); }}
+                className={`hover:bg-gray-50/70 transition-colors ${
+                  isDragging ? "opacity-40" : ""
+                } ${isOver ? "bg-accent/5 outline outline-2 -outline-offset-2 outline-accent" : ""}`}
+              >
+                <td className="w-10 pl-4 py-4">
+                  <div className="flex items-center gap-1 text-gray-300">
+                    <GripVertical
+                      className={`w-4 h-4 shrink-0 ${
+                        cat.id ? "cursor-grab active:cursor-grabbing text-gray-400" : ""
+                      }`}
+                    />
+                    <span className="text-[11px] font-mono text-gray-400 tabular-nums">
+                      {pos >= 0 ? pos + 1 : "—"}
+                    </span>
+                  </div>
+                </td>
                 <td className="px-6 py-4 font-bold text-gray-900">
                   <div
                     className={`flex items-center gap-2.5 ${isChild ? "pl-6" : ""}`}
@@ -290,6 +465,21 @@ export default function CategoryManagerClient({
                     ) : (
                       <FolderTree className="w-4 h-4 text-accent shrink-0" />
                     )}
+                    {/* Whether a cover is set is the thing you want to see at
+                        a glance; an empty frame says "still borrowing a
+                        product photo". */}
+                    <span className="shrink-0 w-9 h-9 rounded border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
+                      {cat.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={cat.imageUrl}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="w-3.5 h-3.5 text-gray-300" />
+                      )}
+                    </span>
                     <span className={isChild ? "font-semibold" : ""}>{cat.name}</span>
                     {!isChild && (
                       <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
@@ -305,16 +495,40 @@ export default function CategoryManagerClient({
                 <td className="px-6 py-4 font-mono text-xs text-gray-600">
                   {cat.slug}
                 </td>
-                <td className="px-6 py-4 text-xs font-semibold text-gray-700">
-                  {cat.sortOrder ?? 0}
-                </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
+                    {/* HTML5 drag does nothing on touch, so the same move is
+                        always available as a button. */}
+                    {cat.id && siblings.length > 1 && (
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => moveBy(cat, -1)}
+                          disabled={pos <= 0 || savingOrder}
+                          title="Move up"
+                          aria-label={`Move ${cat.name} up`}
+                          className="p-1 text-gray-400 hover:text-accent hover:bg-gray-100 rounded transition-colors disabled:opacity-25 disabled:hover:bg-transparent"
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveBy(cat, 1)}
+                          disabled={pos < 0 || pos >= siblings.length - 1 || savingOrder}
+                          title="Move down"
+                          aria-label={`Move ${cat.name} down`}
+                          className="p-1 text-gray-400 hover:text-accent hover:bg-gray-100 rounded transition-colors disabled:opacity-25 disabled:hover:bg-transparent"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                     {!isChild && cat.id && (
                       <button
                         type="button"
                         onClick={() => startCreate(cat.id)}
                         title="Add subcategory"
+                        aria-label={`Add a subcategory under ${cat.name}`}
                         className="p-1.5 text-gray-400 hover:text-accent hover:bg-gray-100 rounded-md transition-colors"
                       >
                         <Plus className="w-4 h-4" />
@@ -323,6 +537,8 @@ export default function CategoryManagerClient({
                     <button
                       type="button"
                       onClick={() => startEdit(cat)}
+                      title="Edit"
+                      aria-label={`Edit ${cat.name}`}
                       className="p-1.5 text-gray-600 hover:text-accent hover:bg-gray-100 rounded-md transition-colors"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -331,6 +547,8 @@ export default function CategoryManagerClient({
                       <button
                         type="button"
                         onClick={() => handleDelete(cat.id)}
+                        title="Delete"
+                        aria-label={`Delete ${cat.name}`}
                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -339,7 +557,8 @@ export default function CategoryManagerClient({
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
         </div>

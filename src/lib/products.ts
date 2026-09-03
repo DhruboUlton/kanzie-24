@@ -5,6 +5,8 @@ export type Category = {
   slug: string;
   name: string;
   sortOrder?: number;
+  /** Cover image for the homepage tiles. Null = fall back to a product photo. */
+  imageUrl?: string | null;
   // Set when this category is a subcategory. Categories nest one level:
   // a parent groups subcategories, and products live on the leaves.
   parentId?: string | null;
@@ -706,6 +708,7 @@ export async function getCategories(): Promise<Category[]> {
         slug: c.slug,
         name: c.name,
         sortOrder: c.sortOrder,
+        imageUrl: c.imageUrl,
         parentId: c.parentId,
         parentSlug: c.parent?.slug ?? null,
       }));

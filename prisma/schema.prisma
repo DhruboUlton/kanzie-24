@@ -70,6 +70,10 @@ model Category {
   slug      String     @unique
   name      String
   sortOrder Int        @default(0)
+  // Cover art for the "Shop by machine" tiles. Null falls back to the
+  // first product filed under the category, which is what every tile used
+  // to show whether it suited the category or not.
+  imageUrl  String?    @db.Text
   // Self-relation, one level deep: a category with a parent is a
   // subcategory and cannot itself have children (enforced in
   // src/lib/actions/category.ts). Parents act as groupings — products are
