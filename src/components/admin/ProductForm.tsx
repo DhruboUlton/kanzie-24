@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { parseVideoUrl } from "@/lib/video";
 import { createProductAction, updateProductAction } from "@/lib/actions/product";
+import RichTextEditor from "./RichTextEditor";
 
 export type CategoryOption = {
   id?: string;
@@ -411,13 +412,16 @@ export default function ProductForm({
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
                 Full Description *
               </label>
-              <textarea
-                rows={4}
-                required
+              <p className="text-xs text-gray-500 mb-2">
+                Shown behind a &quot;More Details&quot; expander on the
+                product page. Write it long and thorough — headings, bold
+                terms, and lists here all help search engines understand the
+                product.
+              </p>
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={setDescription}
                 placeholder="Detailed description of features, chassis, play experience..."
-                className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
               />
             </div>
           </div>

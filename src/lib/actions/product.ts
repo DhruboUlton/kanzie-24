@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
 import { productSchema } from "@/lib/schemas/product";
+import { sanitizeDescriptionHtml } from "@/lib/sanitize-html";
 
 export async function createProductAction(data: any) {
   let ctx;
@@ -43,6 +44,8 @@ export async function createProductAction(data: any) {
     videoUrl,
   } = validated.data;
 
+  const cleanDescription = sanitizeDescriptionHtml(description);
+
   try {
     // Check if slug or SKU exists
     const existing = await db.product.findFirst({
@@ -76,7 +79,7 @@ export async function createProductAction(data: any) {
         compareAtPriceCents,
         scale,
         shortDescription,
-        description,
+        description: cleanDescription,
         features: features,
         specs: specs,
         images: images,
@@ -146,6 +149,8 @@ export async function updateProductAction(id: string, data: any) {
     videoUrl,
   } = validated.data;
 
+  const cleanDescription = sanitizeDescriptionHtml(description);
+
   try {
     // Check conflicts
     const conflict = await db.product.findFirst({
@@ -181,7 +186,7 @@ export async function updateProductAction(id: string, data: any) {
         compareAtPriceCents,
         scale,
         shortDescription,
-        description,
+        description: cleanDescription,
         features,
         specs,
         images,

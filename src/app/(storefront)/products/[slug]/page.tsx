@@ -9,6 +9,7 @@ import { formatPrice } from "@/lib/format";
 import AddToCartButton from "@/components/AddToCartButton";
 import ProductCard from "@/components/ProductCard";
 import ProductGallery from "@/components/ProductGallery";
+import ProductDescription from "@/components/ProductDescription";
 
 export const dynamic = "force-dynamic";
 
@@ -58,9 +59,10 @@ export default async function ProductPage(
             </span>
           </div>
 
-          <p className="mt-5 text-black/70 leading-relaxed">
-            {product.description}
-          </p>
+          <ProductDescription
+            shortDescription={product.shortDescription}
+            descriptionHtml={product.description}
+          />
 
           <ul className="mt-5 space-y-1.5">
             {product.features.map((f) => (
