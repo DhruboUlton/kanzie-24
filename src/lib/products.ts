@@ -37,6 +37,7 @@ export type Product = {
   inStock: boolean;
   stockQty?: number;
   videoUrl?: string;
+  popupVideoUrl?: string;
   archivedAt?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -601,6 +602,7 @@ function mapDbProduct(p: any): Product {
     inStock: Boolean(p.inStock),
     stockQty: p.stockQty ?? undefined,
     videoUrl: p.videoUrl || undefined,
+    popupVideoUrl: p.popupVideoUrl || undefined,
     archivedAt: p.archivedAt,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,

@@ -53,6 +53,7 @@ export default async function EditProductPage(props: {
         inStock: product.inStock,
         stockQty: product.stockQty,
         videoUrl: product.videoUrl,
+        popupVideoUrl: product.popupVideoUrl,
       };
     }
   } catch {

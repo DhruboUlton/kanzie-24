@@ -42,6 +42,7 @@ export async function createProductAction(data: any) {
     inStock,
     stockQty,
     videoUrl,
+    popupVideoUrl,
   } = validated.data;
 
   const cleanDescription = sanitizeDescriptionHtml(description);
@@ -88,6 +89,7 @@ export async function createProductAction(data: any) {
         inStock,
         stockQty,
         videoUrl: videoUrl || null,
+        popupVideoUrl: popupVideoUrl || null,
       },
     });
 
@@ -147,6 +149,7 @@ export async function updateProductAction(id: string, data: any) {
     inStock,
     stockQty,
     videoUrl,
+    popupVideoUrl,
   } = validated.data;
 
   const cleanDescription = sanitizeDescriptionHtml(description);
@@ -195,6 +198,7 @@ export async function updateProductAction(id: string, data: any) {
         inStock,
         stockQty,
         videoUrl: videoUrl || null,
+        popupVideoUrl: popupVideoUrl || null,
       },
     });
 

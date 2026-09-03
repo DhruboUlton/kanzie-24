@@ -10,6 +10,7 @@ import AddToCartButton from "@/components/AddToCartButton";
 import ProductCard from "@/components/ProductCard";
 import ProductGallery from "@/components/ProductGallery";
 import ProductDescription from "@/components/ProductDescription";
+import ProductVideoPopup from "@/components/ProductVideoPopup";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,10 @@ export default async function ProductPage(
               </li>
             ))}
           </ul>
+
+          <div className="mt-5">
+            <ProductVideoPopup product={product} />
+          </div>
 
           <div className="mt-8">
             <AddToCartButton product={product} />

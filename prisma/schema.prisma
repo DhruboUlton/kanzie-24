@@ -119,7 +119,11 @@ model Product {
   // Per-product override of the store-wide low-stock threshold held in
   // SiteSetting("inventory_low_stock_threshold").
   lowStockThreshold   Int?
+  // Plays inline in the gallery as a slide next to the photos.
   videoUrl            String?     @db.VarChar(500)
+  // Separate clip for the auto-opening floating corner widget — distinct
+  // content from videoUrl, not just an alternate source for the same one.
+  popupVideoUrl       String?     @db.VarChar(500)
   archivedAt          DateTime?
   orderItems          OrderItem[]
   stockMovements      StockMovement[]

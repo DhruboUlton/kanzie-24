@@ -28,6 +28,7 @@ export const productSchema = z.object({
   inStock: z.boolean().default(true),
   stockQty: z.number().int().min(0).default(10),
   videoUrl: z.string().optional().nullable(),
+  popupVideoUrl: z.string().optional().nullable(),
 });
 
 export type ProductFormValues = z.infer<typeof productSchema>;

@@ -93,8 +93,14 @@ export default function ProductForm({
   );
   const [newImageUrl, setNewImageUrl] = useState("");
 
-  // Video
+  // Video — plays as a gallery slide next to the photos.
   const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || "");
+
+  // Popup video — separate clip for the auto-opening floating widget.
+  const [popupVideoUrl, setPopupVideoUrl] = useState(
+    initialData?.popupVideoUrl || ""
+  );
+  const [uploadingPopupVideo, setUploadingPopupVideo] = useState(false);
 
   // Flags & Stock
   const [featured, setFeatured] = useState<boolean>(
@@ -122,28 +128,41 @@ export default function ProductForm({
 
   // Image Upload handler
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
 
     setUploading(true);
     setError(null);
+    const failed: string[] = [];
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      // Sequential, not Promise.all — keeps upload order matching selection
+      // order, and each successful file is appended to the gallery as soon
+      // as it lands instead of all-or-nothing.
+      for (const file of files) {
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
 
-      const res = await fetch("/api/admin/upload", {
-        method: "POST",
-        body: formData,
-      });
+          const res = await fetch("/api/admin/upload", {
+            method: "POST",
+            body: formData,
+          });
 
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || "Image upload failed");
+          const data = await res.json();
+          if (!res.ok || !data.url) {
+            throw new Error(data.error || "Image upload failed");
+          }
+
+          setImages((prev) => [...prev, data.url]);
+        } catch (err) {
+          failed.push(
+            `${file.name}: ${err instanceof Error ? err.message : "upload failed"}`
+          );
+        }
       }
-
-      setImages((prev) => [...prev, data.url]);
-    } catch (err: any) {
-      setError(err.message || "Failed to upload image.");
+      if (failed.length > 0) {
+        setError(`Some photos failed to upload — ${failed.join("; ")}`);
+      }
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -180,6 +199,36 @@ export default function ProductForm({
     }
   };
 
+  // Popup Video Upload handler
+  const handlePopupVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPopupVideo(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Video upload failed");
+      }
+
+      setPopupVideoUrl(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload video.");
+    } finally {
+      setUploadingPopupVideo(false);
+      e.target.value = "";
+    }
+  };
+
   const handleAddImageUrl = () => {
     if (newImageUrl.trim()) {
       setImages((prev) => [...prev, newImageUrl.trim()]);
@@ -193,6 +242,7 @@ export default function ProductForm({
 
   // Video validation
   const parsedVideo = videoUrl ? parseVideoUrl(videoUrl) : null;
+  const parsedPopupVideo = popupVideoUrl ? parseVideoUrl(popupVideoUrl) : null;
 
   // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
@@ -219,6 +269,7 @@ export default function ProductForm({
       inStock,
       stockQty: Number(stockQty),
       videoUrl: videoUrl.trim() || null,
+      popupVideoUrl: popupVideoUrl.trim() || null,
     };
 
     if (payload.images.length === 0) {
@@ -690,14 +741,15 @@ export default function ProductForm({
               <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-[#c0282b] bg-gray-50/70 hover:bg-gray-50 rounded-xl p-4 cursor-pointer transition-colors">
                 <Upload className="w-5 h-5 text-gray-400 mb-1" />
                 <span className="text-xs font-semibold text-gray-700">
-                  {uploading ? "Uploading..." : "Click to Upload Photo"}
+                  {uploading ? "Uploading..." : "Click to Upload Photos"}
                 </span>
                 <span className="text-[10px] text-gray-400 mt-0.5">
-                  JPEG, PNG, WebP (Max 10MB)
+                  JPEG, PNG, WebP (Max 10MB each) — select multiple at once
                 </span>
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleFileUpload}
                   disabled={uploading}
                   className="hidden"
@@ -856,6 +908,119 @@ export default function ProductForm({
                     ) : (
                       <iframe
                         src={parsedVideo.fallbackEmbedUrl}
+                        className="w-full h-full"
+                        allow="encrypted-media"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Popup Video Card — separate clip from the gallery video above,
+              plays in the auto-opening floating corner widget. */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-gray-900 font-bold text-sm">
+                <Video className="w-4 h-4 text-accent" />
+                <span>Popup Video</span>
+              </div>
+              {popupVideoUrl && (
+                <button
+                  type="button"
+                  onClick={() => setPopupVideoUrl("")}
+                  className="text-xs text-red-600 hover:text-red-700 font-medium inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Remove
+                </button>
+              )}
+            </div>
+
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Auto-opens in a floating corner widget a few seconds after a
+              visitor lands on the product page. Separate clip from the
+              gallery video above — upload a file or paste a link.
+            </p>
+
+            {/* Direct Video File Upload */}
+            <div>
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-[#c0282b] bg-gray-50/70 hover:bg-gray-50 rounded-xl p-4 cursor-pointer transition-colors">
+                {uploadingPopupVideo ? (
+                  <Loader2 className="w-5 h-5 text-accent animate-spin mb-1" />
+                ) : (
+                  <Upload className="w-5 h-5 text-gray-400 mb-1" />
+                )}
+                <span className="text-xs font-semibold text-gray-700">
+                  {uploadingPopupVideo ? "Uploading video..." : "Click to Upload Video File"}
+                </span>
+                <span className="text-[10px] text-gray-400 mt-0.5">
+                  MP4, WebM, QuickTime MOV (Max 100MB)
+                </span>
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime,video/*"
+                  onChange={handlePopupVideoUpload}
+                  disabled={uploadingPopupVideo}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* URL Input Alternative */}
+            <div className="space-y-1">
+              <span className="text-[11px] font-medium text-gray-500">
+                Or enter video URL / link:
+              </span>
+              <input
+                type="text"
+                value={popupVideoUrl}
+                onChange={(e) => setPopupVideoUrl(e.target.value)}
+                placeholder="https://drive.google.com/file/d/... or YouTube or /api/uploads/..."
+                className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-[#c0282b]"
+              />
+            </div>
+
+            {/* Video Status & Preview Player */}
+            {popupVideoUrl && (
+              <div className="space-y-2 pt-1">
+                <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 text-xs">
+                  {parsedPopupVideo ? (
+                    <div className="flex items-center gap-2 text-emerald-700 font-medium">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>
+                        Valid video ({parsedPopupVideo.type.toUpperCase()})
+                        {parsedPopupVideo.type === "direct" && " — Uploaded Video File"}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-amber-700 font-medium">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>Unrecognized link (Drive / YouTube / direct video supported)</span>
+                    </div>
+                  )}
+                </div>
+
+                {parsedPopupVideo && (
+                  <div className="rounded-lg overflow-hidden border border-gray-200 bg-black aspect-video max-h-48 relative flex items-center justify-center">
+                    {parsedPopupVideo.type === "direct" ? (
+                      <video
+                        src={parsedPopupVideo.src}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : parsedPopupVideo.type === "youtube" ? (
+                      <iframe
+                        src={parsedPopupVideo.embedUrl}
+                        className="w-full h-full"
+                        allow="encrypted-media"
+                      />
+                    ) : (
+                      <iframe
+                        src={parsedPopupVideo.fallbackEmbedUrl}
                         className="w-full h-full"
                         allow="encrypted-media"
                       />

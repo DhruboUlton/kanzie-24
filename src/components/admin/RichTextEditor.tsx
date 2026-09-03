@@ -68,7 +68,7 @@ export default function RichTextEditor({
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm max-w-none min-h-[180px] px-3.5 py-2.5 focus:outline-none",
+          "prose prose-sm max-w-none min-h-[180px] max-h-[420px] overflow-y-auto px-3.5 py-2.5 focus:outline-none",
       },
     },
     onUpdate: ({ editor }) => {
