@@ -365,7 +365,7 @@ export default function ProductForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 max-w-5xl">
+    <form onSubmit={handleSubmit} className="space-y-8 max-w-7xl">
       {/* Header Bar */}
       <div className="flex items-center justify-between pb-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
