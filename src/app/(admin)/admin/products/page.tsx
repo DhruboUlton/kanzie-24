@@ -14,7 +14,7 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { db } from "@/lib/db";
-import { getProducts, getCategories } from "@/lib/products";
+import { getProducts, getCategories, parseProductImages } from "@/lib/products";
 import { formatPrice } from "@/lib/format";
 import { archiveProductAction, restoreProductAction } from "@/lib/actions/product";
 import { requirePageAccess } from "@/lib/admin-guard";
@@ -58,7 +58,7 @@ export default async function AdminProductsPage(props: {
       categorySlug: p.category?.slug || "",
       priceCents: p.priceCents,
       scale: p.scale,
-      images: Array.isArray(p.images) ? p.images : JSON.parse(p.images as string || "[]"),
+      images: parseProductImages(p.images),
       featured: p.featured,
       isNew: p.isNew,
       inStock: p.inStock,

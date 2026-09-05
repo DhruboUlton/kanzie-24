@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { getCategories, getProducts } from "@/lib/products";
+import { getCategories, getProducts, parseProductImages } from "@/lib/products";
 import ProductForm from "@/components/admin/ProductForm";
 import { requirePageAccess } from "@/lib/admin-guard";
 import NoAccess from "@/components/admin/NoAccess";
@@ -46,9 +46,7 @@ export default async function EditProductPage(props: {
         specs: Array.isArray(product.specs)
           ? product.specs
           : JSON.parse(product.specs as string || "[]"),
-        images: Array.isArray(product.images)
-          ? product.images
-          : JSON.parse(product.images as string || "[]"),
+        images: parseProductImages(product.images),
         featured: product.featured,
         featuredOrder: product.featuredOrder,
         isNew: product.isNew,

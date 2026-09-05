@@ -622,6 +622,50 @@ function byFeaturedOrder(a: Product, b: Product): number {
   return created !== 0 ? created : a.id.localeCompare(b.id);
 }
 
+/**
+ * A usable image reference: a root-relative path or an absolute URL.
+ *
+ * The images column is free-form JSON, and an import once wrote a product's
+ * description sentence into it, comma-split into an array. Those strings
+ * reach `<Image src>` on every surface that shows the product and throw
+ * "Failed to construct 'URL'", taking the whole page down — so anything that
+ * isn't addressable is dropped here, at the one place rows are read.
+ */
+export function isImagePath(value: unknown): value is string {
+  if (typeof value !== "string" || value.length === 0) return false;
+  if (value.startsWith("/")) return true;
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Shown where a product has no usable photo. A product can legitimately
+ * reach the storefront with none — newly imported, or its list rejected by
+ * the guard below — and `<Image>` with no src throws.
+ */
+export const PRODUCT_IMAGE_PLACEHOLDER = "/kanzie-icon.png";
+
+/** Parses the images column and drops anything unusable. */
+export function parseProductImages(raw: unknown): string[] {
+  const list = Array.isArray(raw)
+    ? raw
+    : typeof raw === "string"
+      ? (() => {
+          try {
+            const parsed = JSON.parse(raw || "[]");
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })()
+      : [];
+  return list.filter(isImagePath);
+}
+
 // Helper to normalize Prisma Product record to our Product type
 function mapDbProduct(p: any): Product {
   return {
@@ -640,7 +684,7 @@ function mapDbProduct(p: any): Product {
     description: p.description,
     features: Array.isArray(p.features) ? p.features : JSON.parse(p.features || "[]"),
     specs: Array.isArray(p.specs) ? p.specs : JSON.parse(p.specs || "[]"),
-    images: Array.isArray(p.images) ? p.images : JSON.parse(p.images || "[]"),
+    images: parseProductImages(p.images),
     featured: Boolean(p.featured),
     featuredOrder: p.featuredOrder ?? 0,
     isNew: Boolean(p.isNew),

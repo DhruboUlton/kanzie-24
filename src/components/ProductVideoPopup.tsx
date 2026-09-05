@@ -7,6 +7,7 @@ import { PlayCircle, X, ShoppingCart, Maximize2, Volume2, VolumeX, Loader2 } fro
 import { parseVideoUrl, VideoInfo } from "@/lib/video";
 import { useCartStore } from "@/lib/cart-store";
 import { resolveAvailability, resolvePricing } from "@/lib/product-pricing";
+import { PRODUCT_IMAGE_PLACEHOLDER } from "@/lib/products";
 import { formatPrice } from "@/lib/format";
 import { Product } from "@/lib/products";
 
@@ -185,7 +186,7 @@ export default function ProductVideoPopup({ product }: { product: Product }) {
                     <video
                       ref={videoRef}
                       src={videoSrc}
-                      poster={product.images[0]}
+                      poster={product.images[0] || PRODUCT_IMAGE_PLACEHOLDER}
                       autoPlay
                       muted={isMuted}
                       playsInline
@@ -236,7 +237,7 @@ export default function ProductVideoPopup({ product }: { product: Product }) {
                     className="relative shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded overflow-hidden bg-paper"
                   >
                     <Image
-                      src={product.images[0]}
+                      src={product.images[0] || PRODUCT_IMAGE_PLACEHOLDER}
                       alt={product.name}
                       fill
                       sizes="48px"
@@ -255,7 +256,7 @@ export default function ProductVideoPopup({ product }: { product: Product }) {
                         {formatPrice(pricing.effectiveCents)}
                       </span>
                       {pricing.originalCents !== null && (
-                        <span className="text-[11px] sm:text-xs text-black/40 line-through">
+                        <span className="text-[11px] sm:text-xs text-black/60 line-through">
                           {formatPrice(pricing.originalCents)}
                         </span>
                       )}

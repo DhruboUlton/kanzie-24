@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Product } from "@/lib/products";
+import { PRODUCT_IMAGE_PLACEHOLDER, Product } from "@/lib/products";
 import { formatPrice } from "@/lib/format";
 import { resolveAvailability, resolvePricing } from "@/lib/product-pricing";
 
@@ -38,7 +38,7 @@ export default function ProductCard({
           )}
 
           <Image
-            src={product.images[0]}
+            src={product.images[0] || PRODUCT_IMAGE_PLACEHOLDER}
             alt={product.name}
             fill
             sizes={
@@ -50,7 +50,7 @@ export default function ProductCard({
           />
         </div>
         <div className={compact ? "mt-2.5" : "mt-4"}>
-          <p className="text-xs uppercase tracking-wide text-black/40">
+          <p className="text-xs uppercase tracking-wide text-black/60">
             {product.brand}
           </p>
           <h3
@@ -63,7 +63,7 @@ export default function ProductCard({
           <div className="mt-1 flex items-center gap-2 flex-wrap">
             {pricing.originalCents !== null && (
               <span
-                className={`text-black/40 line-through ${compact ? "text-xs" : "text-sm"}`}
+                className={`text-black/60 line-through ${compact ? "text-xs" : "text-sm"}`}
               >
                 {formatPrice(pricing.originalCents)}
               </span>
