@@ -82,7 +82,7 @@ export default function CartPage() {
                   </div>
                   <button
                     aria-label="Remove item"
-                    className="text-black/40 hover:text-accent flex items-center gap-1 text-sm"
+                    className="text-black/60 hover:text-accent flex items-center gap-1 text-sm"
                     onClick={() => removeItem(item.productId)}
                   >
                     <Trash2 size={16} /> Remove
@@ -104,7 +104,7 @@ export default function CartPage() {
             <span className="text-black/60">Subtotal</span>
             <span>{formatPrice(total)}</span>
           </div>
-          <p className="text-xs text-black/50 mb-4">
+          <p className="text-xs text-black/60 mb-4">
             Shipping & taxes calculated at checkout.
           </p>
           <Link

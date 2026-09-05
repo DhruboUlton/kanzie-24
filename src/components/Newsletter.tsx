@@ -25,7 +25,7 @@ export default function Newsletter({ compact = false }: { compact?: boolean }) {
           type="email"
           required
           placeholder="Email address"
-          className="flex-1 min-w-0 bg-white/10 border border-white/20 rounded-l px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-accent"
+          className="flex-1 min-w-0 bg-white/10 border border-white/20 rounded-l px-3 py-2 text-sm text-white placeholder:text-white/60 focus:outline-none focus:border-accent"
         />
         <button
           type="submit"

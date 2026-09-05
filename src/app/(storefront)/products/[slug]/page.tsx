@@ -34,7 +34,7 @@ export default async function ProductPage(
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-      <nav className="text-sm text-black/40 mb-8">
+      <nav className="text-sm text-black/60 mb-8">
         <Link href="/products" className="hover:text-accent">
           Shop
         </Link>{" "}
@@ -49,7 +49,7 @@ export default async function ProductPage(
         />
 
         <div>
-          <p className="text-xs uppercase tracking-wide text-black/40">
+          <p className="text-xs uppercase tracking-wide text-black/60">
             {product.brand} &middot; SKU {product.sku}
           </p>
           <h1 className="font-display text-4xl tracking-wide mt-1">
@@ -58,7 +58,7 @@ export default async function ProductPage(
 
           <div className="mt-3 flex items-center gap-3 flex-wrap">
             {pricing.originalCents !== null && (
-              <span className="text-black/40 line-through text-lg">
+              <span className="text-black/60 line-through text-lg">
                 {formatPrice(pricing.originalCents)}
               </span>
             )}
@@ -103,7 +103,7 @@ export default async function ProductPage(
             <tbody>
               {product.specs.map((s) => (
                 <tr key={s.label} className="border-b border-black/10">
-                  <td className="py-2.5 pr-4 text-black/50 w-1/3">
+                  <td className="py-2.5 pr-4 text-black/60 w-1/3">
                     {s.label}
                   </td>
                   <td className="py-2.5 font-medium">{s.value}</td>

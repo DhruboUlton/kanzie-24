@@ -91,7 +91,7 @@ function OrderRecap({
       </div>
 
       <div className="mt-6 pt-6 border-t border-black/10 text-sm space-y-1">
-        <p className="font-display text-xs tracking-wide text-black/40 mb-2">
+        <p className="font-display text-xs tracking-wide text-black/60 mb-2">
           DELIVERING TO
         </p>
         <p className="font-semibold">{customer.name}</p>
@@ -343,7 +343,7 @@ export default function CheckoutPage() {
         <h1 className="font-display text-3xl tracking-wide mb-2">
           PROCESSING YOUR ORDER
         </h1>
-        <p className="text-sm text-black/50 mb-8">
+        <p className="text-sm text-black/60 mb-8">
           Please don&apos;t close or refresh this page.
         </p>
         <OrderRecap
@@ -367,7 +367,7 @@ export default function CheckoutPage() {
           ORDER PLACED
         </h1>
         {orderId && (
-          <p className="font-mono text-sm text-black/50 mb-2">
+          <p className="font-mono text-sm text-black/60 mb-2">
             Order ID: <span className="font-bold text-ink">{orderId}</span>
           </p>
         )}
@@ -476,7 +476,7 @@ export default function CheckoutPage() {
             <form onSubmit={handleApplyCoupon} className="space-y-2">
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/40" />
+                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/60" />
                   <input
                     type="text"
                     placeholder="Enter coupon code (e.g. SALE20)"
@@ -529,7 +529,7 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        <p className="text-xs text-black/50 mt-2">
+        <p className="text-xs text-black/60 mt-2">
           Shipping & taxes calculated on the next step.
         </p>
       </div>
@@ -618,7 +618,7 @@ export default function CheckoutPage() {
       >
         {revalidatingCoupon ? "UPDATING TOTAL…" : "CONFIRM ORDER"}
       </button>
-      <p className="mt-3 text-xs text-black/40 text-center">
+      <p className="mt-3 text-xs text-black/60 text-center">
         No online payment — we&apos;ll call to confirm your order, then you pay
         cash on delivery.
       </p>

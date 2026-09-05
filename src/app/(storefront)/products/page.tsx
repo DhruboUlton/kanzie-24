@@ -24,7 +24,7 @@ export default async function ProductsPage(props: PageProps<"/products">) {
       </div>
 
       {products.length === 0 ? (
-        <p className="text-center text-black/50 py-20">
+        <p className="text-center text-black/60 py-20">
           No products in this category yet.
         </p>
       ) : (

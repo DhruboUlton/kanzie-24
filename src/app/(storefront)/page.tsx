@@ -76,6 +76,10 @@ export default async function Home() {
               </h2>
               <Link
                 href={`/products?category=${category.slug}`}
+                // Every rail on this page has a "View all", so the visible
+                // text alone leaves a screen reader with three identical
+                // links to three different places.
+                aria-label={`View all ${category.name}`}
                 className="text-sm font-semibold text-accent hover:underline"
               >
                 View all →

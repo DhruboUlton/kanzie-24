@@ -95,7 +95,7 @@ function Timeline({ order }: { order: PublicOrder }) {
                 {stage.label}
               </p>
               {(active || done) && (
-                <p className="text-xs text-black/50 mt-0.5">{stage.blurb}</p>
+                <p className="text-xs text-black/60 mt-0.5">{stage.blurb}</p>
               )}
 
               {/* The courier code only means anything once it has shipped. */}
@@ -114,7 +114,7 @@ function Timeline({ order }: { order: PublicOrder }) {
                         .catch(() => {})
                     }
                     aria-label="Copy tracking number"
-                    className="text-black/40 hover:text-accent transition-colors cursor-pointer"
+                    className="text-black/60 hover:text-accent transition-colors cursor-pointer"
                   >
                     <Copy className="w-3.5 h-3.5" />
                   </button>
@@ -136,7 +136,7 @@ function OrderCard({ order }: { order: PublicOrder }) {
           <span className="font-mono text-sm font-bold text-ink break-all">
             {order.tranId}
           </span>
-          <span className="text-xs text-black/50">
+          <span className="text-xs text-black/60">
             Placed {whenText(order.placedAt)}
           </span>
         </div>
@@ -200,14 +200,14 @@ export default function TrackOrderClient() {
   return (
     <div className="mx-auto max-w-2xl px-4 sm:px-6 py-12">
       <h1 className="font-display text-4xl tracking-wide mb-2">TRACK ORDER</h1>
-      <p className="text-sm text-black/50 mb-8">
+      <p className="text-sm text-black/60 mb-8">
         Enter the order ID from your confirmation, or the phone number you
         ordered with.
       </p>
 
       <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-black/30 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-black/55 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={query}
@@ -241,7 +241,7 @@ export default function TrackOrderClient() {
       {orders && orders.length > 0 && (
         <div className="mt-8 flex flex-col gap-5">
           {orders.length > 1 && (
-            <p className="text-xs text-black/50">
+            <p className="text-xs text-black/60">
               {orders.length} recent orders for that number, newest first.
             </p>
           )}

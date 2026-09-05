@@ -238,20 +238,29 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
             // Each slide's nudge stands alone — no cross-slide reference, so
             // editing one slide in /admin/banner never moves the others.
             const sideCorrection = Math.sign(offset) * sideGap;
+            // Beyond the immediate neighbours a slide is parked out of sight.
+            const offStage = abs > 1;
 
             return (
               <button
                 key={slide.src}
                 type="button"
-                aria-label={`Show slide ${i + 1}`}
-                aria-hidden={!isCenter}
-                tabIndex={isCenter ? -1 : 0}
+                aria-label={`Show ${slide.alt}`}
+                // Only the slides parked off-stage are hidden from assistive
+                // tech, and those are made unfocusable in the same breath.
+                // Marking a reachable button aria-hidden strands a keyboard
+                // user on a control their screen reader never announced.
+                aria-hidden={offStage || undefined}
+                // The centre slide is already showing, so its button has
+                // nothing to do: disabled states that honestly rather than
+                // leaving a focusable no-op.
+                disabled={isCenter || offStage}
                 onClick={() => !isCenter && goToSlide(i)}
                 className="absolute inset-0 flex items-end justify-center pb-14 sm:pb-20"
                 style={{
                   zIndex,
                   cursor: isCenter ? "default" : "pointer",
-                  pointerEvents: abs > 1 ? "none" : "auto",
+                  pointerEvents: offStage ? "none" : "auto",
                 }}
               >
                 <div
@@ -277,9 +286,16 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
                     src={slide.src}
                     alt={slide.alt}
                     fill
-                    sizes="(max-width: 640px) 320px, 480px"
+                    // The box is 320/480px but every slide is transform-
+                    // scaled off that: the centre up to 1.25, the flanks
+                    // down to 0.5. One shared `sizes` therefore fetched a
+                    // soft centre and oversized flanks at the same time.
+                    sizes={
+                      isCenter
+                        ? "(max-width: 640px) 400px, 600px"
+                        : "(max-width: 640px) 160px, 240px"
+                    }
                     priority={isCenter}
-                    unoptimized={slide.src.startsWith("/api/uploads/")}
                     className="object-contain"
                   />
                 </div>
@@ -315,16 +331,25 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
             <ChevronRight size={20} />
           </button>
 
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 flex gap-2">
+          {/* The dot is the indicator, not the target. Each button carries a
+              44px-tall transparent pad so a fingertip can land on it, while
+              the visible dot stays small. */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 z-30 flex items-center">
             {SLIDES.map((slide, i) => (
               <button
                 key={slide.src}
-                aria-label={`Go to slide ${i + 1}`}
+                type="button"
+                aria-label={`Show ${slide.alt}`}
+                aria-current={i === centerIndex ? "true" : undefined}
                 onClick={() => goToSlide(i)}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === centerIndex ? "w-6 bg-accent" : "w-1.5 bg-black/20"
-                }`}
-              />
+                className="flex h-11 w-8 items-center justify-center"
+              >
+                <span
+                  className={`block h-1.5 rounded-full transition-all ${
+                    i === centerIndex ? "w-6 bg-accent" : "w-1.5 bg-black/20"
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </>

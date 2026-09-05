@@ -25,7 +25,7 @@ export default function Testimonials() {
             <blockquote className="text-black/70 italic leading-relaxed">
               &ldquo;{t.quote}&rdquo;
             </blockquote>
-            <figcaption className="mt-4 font-display tracking-wide text-sm text-black/50">
+            <figcaption className="mt-4 font-display tracking-wide text-sm text-black/60">
               {t.name.toUpperCase()}
             </figcaption>
           </figure>

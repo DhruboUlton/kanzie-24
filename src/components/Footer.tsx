@@ -62,8 +62,8 @@ export default function Footer() {
                 Contact us
               </a>
             </li>
-            <li className="text-white/40">Shipping & returns</li>
-            <li className="text-white/40">Warranty</li>
+            <li className="text-white/60">Shipping & returns</li>
+            <li className="text-white/60">Warranty</li>
           </ul>
         </div>
 
@@ -71,7 +71,7 @@ export default function Footer() {
           <h3 className="font-display text-white tracking-wide mb-4">
             COMPANY
           </h3>
-          <ul className="space-y-2 text-sm text-white/40">
+          <ul className="space-y-2 text-sm text-white/60">
             <li>About us</li>
             <li>Careers</li>
             <li>Press</li>
@@ -86,7 +86,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-white/10 py-6 text-center text-xs text-white/40">
+      <div className="border-t border-white/10 py-6 text-center text-xs text-white/60">
         © {new Date().getFullYear()} {SITE_NAME}. All rights reserved.
       </div>
     </footer>

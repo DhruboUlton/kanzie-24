@@ -35,7 +35,7 @@ export default function CartDrawer() {
         </div>
 
         {items.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-black/50 px-6 text-center">
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-black/60 px-6 text-center">
             <p>Your cart is empty.</p>
             <Link
               href="/products"
@@ -88,7 +88,7 @@ export default function CartDrawer() {
                       </div>
                       <button
                         aria-label="Remove item"
-                        className="text-black/40 hover:text-accent"
+                        className="text-black/60 hover:text-accent"
                         onClick={() => removeItem(item.productId)}
                       >
                         <Trash2 size={16} />
@@ -104,7 +104,7 @@ export default function CartDrawer() {
                 <span>SUBTOTAL</span>
                 <span>{formatPrice(total)}</span>
               </div>
-              <p className="text-xs text-black/50">
+              <p className="text-xs text-black/60">
                 Shipping & taxes calculated at checkout.
               </p>
               <Link

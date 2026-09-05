@@ -61,7 +61,7 @@ export default function AddToCartButton({ product }: { product: Product }) {
         <button
           disabled={!availability.purchasable}
           onClick={handleAddToCart}
-          className="flex-1 bg-white border border-accent hover:bg-accent/5 disabled:bg-black/5 disabled:border-black/20 disabled:text-black/40 disabled:cursor-not-allowed transition-colors text-accent font-display tracking-wide py-3.5 rounded"
+          className="flex-1 bg-white border border-accent hover:bg-accent/5 disabled:bg-black/5 disabled:border-black/20 disabled:text-black/60 disabled:cursor-not-allowed transition-colors text-accent font-display tracking-wide py-3.5 rounded"
         >
           {availability.purchasable
             ? "ADD TO CART"
