@@ -14,7 +14,7 @@ export default function CategoryTiles({
       <h2 className="font-display text-3xl sm:text-4xl tracking-wide text-center mb-10">
         SHOP BY MACHINE
       </h2>
-      <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 px-4 -mx-4 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:mx-0">
+      <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 px-4 -mx-4 sm:px-6 sm:-mx-6 lg:px-8 lg:-mx-8">
         {categories.map((cat) => {
           // The category's own cover if one has been set. Otherwise the
           // first product filed under it, which is a guess and often the
@@ -27,14 +27,14 @@ export default function CategoryTiles({
             <Link
               key={cat.slug}
               href={`/products?category=${cat.slug}`}
-              className="group relative shrink-0 w-[70%] aspect-[4/5] snap-start rounded-lg overflow-hidden bg-paper sm:w-auto"
+              className="group relative shrink-0 w-[70%] sm:w-64 lg:w-72 aspect-[4/5] snap-start rounded-lg overflow-hidden bg-paper"
             >
               {cover && (
                 <Image
                   src={cover}
                   alt={cat.name}
                   fill
-                  sizes="(min-width: 640px) 33vw, 100vw"
+                  sizes="(min-width: 640px) 288px, 70vw"
                   // Uploads are streamed from outside the app root, so the
                   // optimizer can't resolve them.
                   unoptimized={cover.startsWith("/api/uploads/")}
