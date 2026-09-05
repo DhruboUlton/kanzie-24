@@ -14,10 +14,20 @@ import {
   ArrowLeft,
   Image as ImageIcon,
   Sparkles,
+  Tag,
+  Boxes,
+  ArrowUpDown,
 } from "lucide-react";
 import { parseVideoUrl } from "@/lib/video";
 import { createProductAction, updateProductAction } from "@/lib/actions/product";
 import RichTextEditor from "./RichTextEditor";
+import { formatPrice } from "@/lib/format";
+import {
+  MAX_SALE_PERCENT,
+  MIN_SALE_PERCENT,
+  resolveAvailability,
+  resolvePricing,
+} from "@/lib/product-pricing";
 
 export type CategoryOption = {
   id?: string;
@@ -102,15 +112,54 @@ export default function ProductForm({
   );
   const [uploadingPopupVideo, setUploadingPopupVideo] = useState(false);
 
+  // Pricing. The "on sale" switch is the presence of salePercent rather than
+  // a boolean of its own, so the toggle and the number cannot disagree.
+  const [onSale, setOnSale] = useState<boolean>(
+    typeof initialData?.salePercent === "number"
+  );
+  const [salePercent, setSalePercent] = useState<string>(
+    initialData?.salePercent != null ? String(initialData.salePercent) : "20"
+  );
+
   // Flags & Stock
   const [featured, setFeatured] = useState<boolean>(
     initialData?.featured ?? false
   );
+  const [featuredOrder, setFeaturedOrder] = useState<string>(
+    String(initialData?.featuredOrder ?? 0)
+  );
   const [isNew, setIsNew] = useState<boolean>(initialData?.isNew ?? false);
-  const [inStock, setInStock] = useState<boolean>(initialData?.inStock ?? true);
+  const [categoryOrder, setCategoryOrder] = useState<string>(
+    String(initialData?.categoryOrder ?? 0)
+  );
+  const [soldOut, setSoldOut] = useState<boolean>(initialData?.soldOut ?? false);
   const [stockQty, setStockQty] = useState<number>(
     initialData?.stockQty ?? 10
   );
+
+  // Everything the admin is about to save, priced by the same function the
+  // storefront and the order writer use, so this preview is the real answer
+  // rather than a second implementation that can drift.
+  const parsedSalePercent = Number.parseInt(salePercent, 10);
+  const previewPricing = resolvePricing({
+    priceCents: Math.round((Number(priceTaka) || 0) * 100),
+    salePercent:
+      onSale && Number.isFinite(parsedSalePercent) ? parsedSalePercent : null,
+    compareAtPriceCents: compareAtPriceTaka
+      ? Math.round(Number(compareAtPriceTaka) * 100)
+      : null,
+  });
+  const previewAvailability = resolveAvailability({
+    soldOut,
+    stockQty: Number(stockQty),
+  });
+  const salePercentError =
+    onSale &&
+    (!Number.isInteger(parsedSalePercent) ||
+      parsedSalePercent < MIN_SALE_PERCENT ||
+      parsedSalePercent > MAX_SALE_PERCENT)
+      ? `Enter a whole number between ${MIN_SALE_PERCENT} and ${MAX_SALE_PERCENT}.`
+      : null;
 
   // Auto-slug sync
   const handleNameChange = (val: string) => {
@@ -257,7 +306,11 @@ export default function ProductForm({
       sku,
       categoryId,
       priceTaka: Number(priceTaka),
-      compareAtPriceTaka: compareAtPriceTaka ? Number(compareAtPriceTaka) : null,
+      salePercent: onSale ? parsedSalePercent : null,
+      // A percentage sale supersedes a compare-at price; the action clears it
+      // too, so the two can never both claim to be the original.
+      compareAtPriceTaka:
+        !onSale && compareAtPriceTaka ? Number(compareAtPriceTaka) : null,
       scale,
       shortDescription,
       description,
@@ -265,8 +318,14 @@ export default function ProductForm({
       specs: specs.filter((s) => s.label.trim() && s.value.trim()),
       images: images.filter((img) => img.trim().length > 0),
       featured,
+      featuredOrder: Number.parseInt(featuredOrder, 10) || 0,
       isNew,
-      inStock,
+      categoryOrder: Number.parseInt(categoryOrder, 10) || 0,
+      // Derived, never typed: recordStockChange keeps this equal to
+      // (stockQty > 0), so saving anything else here would only be undone by
+      // the next stock movement. The admin's intent lives in soldOut.
+      inStock: Number(stockQty) > 0,
+      soldOut,
       stockQty: Number(stockQty),
       videoUrl: videoUrl.trim() || null,
       popupVideoUrl: popupVideoUrl.trim() || null,
@@ -274,6 +333,12 @@ export default function ProductForm({
 
     if (payload.images.length === 0) {
       setError("Please add at least one product photo.");
+      setLoading(false);
+      return;
+    }
+
+    if (salePercentError) {
+      setError(salePercentError);
       setLoading(false);
       return;
     }
@@ -588,10 +653,216 @@ export default function ProductForm({
 
         {/* Right Col (1 span): Pricing, Category, Media, Video, Stock */}
         <div className="space-y-6">
-          {/* Pricing & Category Card */}
+          {/* Pricing */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
-              Pricing & Classification
+            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 uppercase tracking-wider">
+              <Tag className="w-4 h-4 text-[#c0282b]" />
+              Pricing
+            </h3>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Regular Price (৳ Taka) *
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 font-bold text-sm">
+                  ৳
+                </span>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  step="any"
+                  value={priceTaka}
+                  onChange={(e) => setPriceTaka(parseFloat(e.target.value) || 0)}
+                  placeholder="9999"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-[#c0282b]"
+                />
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">
+                What the product is worth before any discount.
+              </p>
+            </div>
+
+            {/* On sale. The toggle is the presence of a percentage, not a
+                separate flag, so the two can never contradict each other. */}
+            <div className="rounded-lg border border-gray-200 p-3.5 space-y-3">
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="text-xs font-semibold text-gray-800">On Sale</span>
+                <span className="relative inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={onSale}
+                    onChange={(e) => setOnSale(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <span className="w-9 h-5 bg-gray-200 rounded-full peer-checked:bg-[#c0282b] transition-colors" />
+                  <span className="absolute left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4" />
+                </span>
+              </label>
+
+              {onSale && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Sale Percentage
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={MIN_SALE_PERCENT}
+                      max={MAX_SALE_PERCENT}
+                      step={1}
+                      value={salePercent}
+                      onChange={(e) => setSalePercent(e.target.value)}
+                      className={`w-full pl-3.5 pr-8 py-2 border rounded-lg text-sm font-semibold focus:outline-none ${
+                        salePercentError
+                          ? "border-red-400 focus:border-red-500"
+                          : "border-gray-300 focus:border-[#c0282b]"
+                      }`}
+                    />
+                    <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 font-bold text-sm">
+                      %
+                    </span>
+                  </div>
+                  {salePercentError && (
+                    <p className="text-[11px] text-red-600 mt-1">{salePercentError}</p>
+                  )}
+                </div>
+              )}
+
+              {/* The preview is produced by resolvePricing — the same function
+                  the product card, the detail page and the order writer use. */}
+              <div className="rounded-md bg-gray-50 border border-gray-200 px-3 py-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                  Customer sees
+                </p>
+                <div className="mt-1 flex items-baseline gap-2 flex-wrap">
+                  <span className="text-lg font-bold text-gray-900 font-display">
+                    {formatPrice(previewPricing.effectiveCents)}
+                  </span>
+                  {previewPricing.originalCents !== null && (
+                    <span className="text-xs text-gray-400 line-through">
+                      {formatPrice(previewPricing.originalCents)}
+                    </span>
+                  )}
+                  {previewPricing.percentOff !== null && (
+                    <span className="text-[10px] font-bold bg-[#c0282b] text-white px-1.5 py-0.5 rounded">
+                      {previewPricing.percentOff}% OFF
+                    </span>
+                  )}
+                </div>
+                {!previewPricing.onSale && (
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    No sale badge will be shown.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Compare At / Original Price (৳ Taka)
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 font-bold text-sm">
+                  ৳
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  disabled={onSale}
+                  value={onSale ? "" : compareAtPriceTaka}
+                  onChange={(e) => setCompareAtPriceTaka(e.target.value)}
+                  placeholder={onSale ? "Not used during a sale" : "Optional original price"}
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b] disabled:bg-gray-50 disabled:text-gray-400"
+                />
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">
+                {onSale
+                  ? "A percentage sale already uses the regular price as the original, so this is cleared on save."
+                  : "For a permanent markdown with no percentage. Must be above the regular price to show."}
+              </p>
+            </div>
+          </div>
+
+          {/* Inventory */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 uppercase tracking-wider">
+              <Boxes className="w-4 h-4 text-[#c0282b]" />
+              Inventory
+            </h3>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Stock Count
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={stockQty}
+                onChange={(e) => setStockQty(parseInt(e.target.value) || 0)}
+                className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+              />
+            </div>
+
+            <div>
+              <span className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Availability
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSoldOut(false)}
+                  className={`py-2 px-3 text-xs font-semibold rounded-lg border transition-all ${
+                    !soldOut
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                      : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  }`}
+                >
+                  Available
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSoldOut(true)}
+                  className={`py-2 px-3 text-xs font-semibold rounded-lg border transition-all ${
+                    soldOut
+                      ? "border-[#c0282b] bg-red-50 text-[#c0282b]"
+                      : "border-gray-200 text-gray-600 hover:border-gray-300"
+                  }`}
+                >
+                  Sold Out
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1.5">
+                Sold Out holds the product back even while stock remains. It is
+                never changed by receiving or selling stock.
+              </p>
+            </div>
+
+            {/* Resolved by resolveAvailability, the same call the storefront
+                and the order validation make. */}
+            <div className="rounded-md bg-gray-50 border border-gray-200 px-3 py-2.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                Customers can
+              </p>
+              <p
+                className={`text-sm font-bold mt-0.5 ${
+                  previewAvailability.purchasable ? "text-emerald-600" : "text-[#c0282b]"
+                }`}
+              >
+                {previewAvailability.purchasable
+                  ? "Buy this product"
+                  : `Browse only — ${previewAvailability.label}`}
+              </p>
+            </div>
+          </div>
+
+          {/* Merchandising */}
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 uppercase tracking-wider">
+              <ArrowUpDown className="w-4 h-4 text-[#c0282b]" />
+              Merchandising
             </h3>
 
             <div>
@@ -637,71 +908,23 @@ export default function ProductForm({
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Regular Price (৳ Taka) *
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 font-bold text-sm">
-                  ৳
-                </span>
-                <input
-                  type="number"
-                  required
-                  min={1}
-                  step="any"
-                  value={priceTaka}
-                  onChange={(e) => setPriceTaka(parseFloat(e.target.value) || 0)}
-                  placeholder="9999"
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-[#c0282b]"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Compare At / Discount Original (৳ Taka)
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 font-bold text-sm">
-                  ৳
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  step="any"
-                  value={compareAtPriceTaka}
-                  onChange={(e) => setCompareAtPriceTaka(e.target.value)}
-                  placeholder="Optional original price"
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Inventory Stock Count
+                Category Display Order
               </label>
               <input
                 type="number"
                 min={0}
-                value={stockQty}
-                onChange={(e) => setStockQty(parseInt(e.target.value) || 0)}
+                step={1}
+                value={categoryOrder}
+                onChange={(e) => setCategoryOrder(e.target.value)}
                 className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
               />
+              <p className="text-[11px] text-gray-400 mt-1">
+                Lower numbers come first in the category listing. Equal numbers
+                fall back to newest first.
+              </p>
             </div>
 
             <div className="pt-2 border-t border-gray-100 space-y-3">
-              <label className="flex items-center gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={inStock}
-                  onChange={(e) => setInStock(e.target.checked)}
-                  className="w-4 h-4 text-accent rounded focus:ring-0"
-                />
-                <span className="text-xs font-semibold text-gray-800">
-                  Available in Stock
-                </span>
-              </label>
-
               <label className="flex items-center gap-2.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -713,6 +936,26 @@ export default function ProductForm({
                   Featured on Homepage
                 </span>
               </label>
+
+              {featured && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Featured Display Order
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={featuredOrder}
+                    onChange={(e) => setFeaturedOrder(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Independent of the category order — a product can lead the
+                    featured rail and still sit far down its category.
+                  </p>
+                </div>
+              )}
 
               <label className="flex items-center gap-2.5 cursor-pointer">
                 <input

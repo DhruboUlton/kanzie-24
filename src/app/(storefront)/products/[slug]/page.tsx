@@ -11,6 +11,7 @@ import ProductCard from "@/components/ProductCard";
 import ProductGallery from "@/components/ProductGallery";
 import ProductDescription from "@/components/ProductDescription";
 import ProductVideoPopup from "@/components/ProductVideoPopup";
+import { resolveAvailability, resolvePricing } from "@/lib/product-pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,12 @@ export default async function ProductPage(
   const { slug } = await props.params;
   const product = await getProductBySlug(slug);
   if (!product) notFound();
+
+  // Resolved once and shared by the price block and the buy controls below,
+  // so the page cannot show a sale badge next to a disabled button priced
+  // from a different number.
+  const pricing = resolvePricing(product);
+  const availability = resolveAvailability(product);
 
   const related = (await getProductsByCategory(product.category)).filter(
     (p) => p.id !== product.id,
@@ -49,15 +56,25 @@ export default async function ProductPage(
             {product.name}
           </h1>
 
-          <div className="mt-3 flex items-center gap-3">
-            {product.compareAtPriceCents && (
+          <div className="mt-3 flex items-center gap-3 flex-wrap">
+            {pricing.originalCents !== null && (
               <span className="text-black/40 line-through text-lg">
-                {formatPrice(product.compareAtPriceCents)}
+                {formatPrice(pricing.originalCents)}
               </span>
             )}
             <span className="text-accent font-display text-2xl">
-              {formatPrice(product.priceCents)}
+              {formatPrice(pricing.effectiveCents)}
             </span>
+            {pricing.onSale && (
+              <span className="bg-accent text-white text-xs font-bold px-2 py-1 rounded">
+                {pricing.percentOff}% OFF
+              </span>
+            )}
+            {!availability.purchasable && (
+              <span className="bg-ink text-white text-xs font-bold px-2.5 py-1 rounded uppercase tracking-wide">
+                {availability.label}
+              </span>
+            )}
           </div>
 
           <ProductDescription

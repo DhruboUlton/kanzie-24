@@ -10,6 +10,19 @@ import {
   restoreCouponForOrder,
 } from "@/lib/coupons";
 import { CouponError } from "@/lib/coupons-shared";
+import { resolveAvailability, resolvePricing } from "@/lib/product-pricing";
+
+/**
+ * A problem with the basket the customer is allowed to read: a product that
+ * has gone unavailable between adding it and checking out. Distinct from an
+ * internal fault, whose text must never reach the storefront.
+ */
+export class UnavailableProductError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnavailableProductError";
+  }
+}
 
 export type CreateOrderItemInput = {
   slug: string;
@@ -47,7 +60,21 @@ export async function createPendingOrder(params: {
       throw new Error(`Product not found: ${item.slug}`);
     }
 
-    const itemTotal = product.priceCents * item.qty;
+    // The authoritative availability check. Disabling the button is a
+    // courtesy; this is the part that cannot be clicked around, whether the
+    // request came from the cart, Buy Now, the video widget or curl.
+    const availability = resolveAvailability(product);
+    if (!availability.purchasable) {
+      throw new UnavailableProductError(
+        `${product.name} is ${availability.label.toLowerCase()} and can no longer be ordered.`,
+      );
+    }
+
+    // Priced from the catalogue by the same function the storefront used, so
+    // a sale the customer was shown is the sale they are charged, and a stale
+    // price posted by a client is ignored.
+    const unitPriceCents = resolvePricing(product).effectiveCents;
+    const itemTotal = unitPriceCents * item.qty;
     subtotalCents += itemTotal;
 
     lineItemsData.push({
@@ -55,7 +82,7 @@ export async function createPendingOrder(params: {
       productName: product.name,
       productSku: product.sku,
       productSlug: product.slug,
-      unitPriceCents: product.priceCents,
+      unitPriceCents,
       qty: item.qty,
       totalPriceCents: itemTotal,
     });
@@ -130,7 +157,7 @@ export async function createPendingOrder(params: {
     // Only a coupon problem is the customer's to see and act on. Matching on
     // the error type rather than on the word "Coupon" appearing in the text
     // keeps an unrelated database message from being shown as one.
-    if (error instanceof CouponError) {
+    if (error instanceof CouponError || error instanceof UnavailableProductError) {
       throw error;
     }
     return null;

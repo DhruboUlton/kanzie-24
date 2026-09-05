@@ -25,6 +25,7 @@ export type Product = {
   category: string; // Category["slug"]
   categoryId?: string;
   priceCents: number;
+  salePercent?: number | null;
   compareAtPriceCents?: number;
   scale: string;
   shortDescription: string;
@@ -33,8 +34,11 @@ export type Product = {
   specs: { label: string; value: string }[];
   images: string[];
   featured: boolean;
+  featuredOrder?: number;
   isNew?: boolean;
+  categoryOrder?: number;
   inStock: boolean;
+  soldOut?: boolean;
   stockQty?: number;
   videoUrl?: string;
   popupVideoUrl?: string;
@@ -579,6 +583,45 @@ export const FALLBACK_PRODUCTS: Product[] = [
   },
 ];
 
+/**
+ * How every product list is sorted.
+ *
+ * The admin's number leads; createdAt breaks ties so an unordered catalogue
+ * (every row still at the default 0) keeps showing newest-first exactly as it
+ * did before these fields existed; id settles the rest so two products
+ * created in the same millisecond cannot swap places between page loads.
+ */
+const CATEGORY_ORDER = [
+  { categoryOrder: "asc" as const },
+  { createdAt: "desc" as const },
+  { id: "asc" as const },
+];
+
+/** Featured ordering is a separate axis — see Product.featuredOrder. */
+const FEATURED_ORDER = [
+  { featuredOrder: "asc" as const },
+  { createdAt: "desc" as const },
+  { id: "asc" as const },
+];
+
+/** Mirrors CATEGORY_ORDER for the in-memory seed catalogue. */
+function byCategoryOrder(a: Product, b: Product): number {
+  const order = (a.categoryOrder ?? 0) - (b.categoryOrder ?? 0);
+  if (order !== 0) return order;
+  const created =
+    (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0);
+  return created !== 0 ? created : a.id.localeCompare(b.id);
+}
+
+/** Mirrors FEATURED_ORDER for the in-memory seed catalogue. */
+function byFeaturedOrder(a: Product, b: Product): number {
+  const order = (a.featuredOrder ?? 0) - (b.featuredOrder ?? 0);
+  if (order !== 0) return order;
+  const created =
+    (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0);
+  return created !== 0 ? created : a.id.localeCompare(b.id);
+}
+
 // Helper to normalize Prisma Product record to our Product type
 function mapDbProduct(p: any): Product {
   return {
@@ -590,6 +633,7 @@ function mapDbProduct(p: any): Product {
     category: p.category?.slug ?? p.categoryId ?? "",
     categoryId: p.categoryId,
     priceCents: p.priceCents,
+    salePercent: p.salePercent ?? null,
     compareAtPriceCents: p.compareAtPriceCents ?? undefined,
     scale: p.scale,
     shortDescription: p.shortDescription,
@@ -598,8 +642,11 @@ function mapDbProduct(p: any): Product {
     specs: Array.isArray(p.specs) ? p.specs : JSON.parse(p.specs || "[]"),
     images: Array.isArray(p.images) ? p.images : JSON.parse(p.images || "[]"),
     featured: Boolean(p.featured),
+    featuredOrder: p.featuredOrder ?? 0,
     isNew: Boolean(p.isNew),
+    categoryOrder: p.categoryOrder ?? 0,
     inStock: Boolean(p.inStock),
+    soldOut: Boolean(p.soldOut),
     stockQty: p.stockQty ?? undefined,
     videoUrl: p.videoUrl || undefined,
     popupVideoUrl: p.popupVideoUrl || undefined,
@@ -614,7 +661,7 @@ export async function getProducts(): Promise<Product[]> {
     const products = await db.product.findMany({
       where: { archivedAt: null },
       include: { category: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: CATEGORY_ORDER,
     });
     if (products.length > 0) {
       return products.map(mapDbProduct);
@@ -630,7 +677,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
     const products = await db.product.findMany({
       where: { archivedAt: null, featured: true },
       include: { category: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: FEATURED_ORDER,
     });
     if (products.length > 0) {
       return products.map(mapDbProduct);
@@ -638,7 +685,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
   } catch (error) {
     console.warn("DB getFeaturedProducts fallback:", error);
   }
-  return FALLBACK_PRODUCTS.filter((p) => p.featured);
+  return FALLBACK_PRODUCTS.filter((p) => p.featured).sort(byFeaturedOrder);
 }
 
 export async function getNewArrivals(): Promise<Product[]> {
@@ -646,7 +693,7 @@ export async function getNewArrivals(): Promise<Product[]> {
     const products = await db.product.findMany({
       where: { archivedAt: null, isNew: true },
       include: { category: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: CATEGORY_ORDER,
     });
     if (products.length > 0) {
       return products.map(mapDbProduct);
@@ -654,7 +701,7 @@ export async function getNewArrivals(): Promise<Product[]> {
   } catch (error) {
     console.warn("DB getNewArrivals fallback:", error);
   }
-  return FALLBACK_PRODUCTS.filter((p) => p.isNew);
+  return FALLBACK_PRODUCTS.filter((p) => p.isNew).sort(byCategoryOrder);
 }
 
 export async function getProductsByCategory(categorySlug: string): Promise<Product[]> {
@@ -672,7 +719,7 @@ export async function getProductsByCategory(categorySlug: string): Promise<Produ
         ],
       },
       include: { category: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: CATEGORY_ORDER,
     });
     if (products.length > 0) {
       return products.map(mapDbProduct);
@@ -680,7 +727,9 @@ export async function getProductsByCategory(categorySlug: string): Promise<Produ
   } catch (error) {
     console.warn("DB getProductsByCategory fallback:", error);
   }
-  return FALLBACK_PRODUCTS.filter((p) => p.category === categorySlug);
+  return FALLBACK_PRODUCTS.filter((p) => p.category === categorySlug).sort(
+    byCategoryOrder,
+  );
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | undefined> {

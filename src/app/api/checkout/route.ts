@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getProductBySlug } from "@/lib/products";
 import { createPendingOrder } from "@/lib/orders";
 import { CouponError } from "@/lib/coupons-shared";
+import { UnavailableProductError } from "@/lib/orders";
 
 const bodySchema = z.object({
   items: z
@@ -101,7 +102,9 @@ export async function POST(req: NextRequest) {
     // A coupon problem is worth telling the customer about; anything else is
     // an internal fault, and echoing its message back would leak the shape of
     // the database or the stack into a public response.
-    if (error instanceof CouponError) {
+    // A coupon or availability problem is the customer's to see and act on;
+    // anything else is an internal fault whose message stays on the server.
+    if (error instanceof CouponError || error instanceof UnavailableProductError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     console.error("Checkout failed:", error);

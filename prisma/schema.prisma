@@ -8,25 +8,25 @@ datasource db {
 }
 
 model AdminUser {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String
-  name         String
+  id               String        @id @default(cuid())
+  email            String        @unique
+  passwordHash     String
+  name             String
   // Nullable so the column could be added to an existing table without a
   // default. A user with no role has no permissions and is refused at
   // login — roles are assigned explicitly, never inferred.
-  roleId       String?
-  role         Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  isActive     Boolean   @default(true)
-  lastLoginAt  DateTime?
+  roleId           String?
+  role             Role?         @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  isActive         Boolean       @default(true)
+  lastLoginAt      DateTime?
   // Sessions issued before this instant are rejected by getAdminContext.
   // Stamped on password change/reset so a leaked or stale 7-day JWT stops
   // working the moment the password moves. Null means no boundary yet, so
   // existing tokens keep working until the next password change.
   sessionValidFrom DateTime?
-  activityLogs ActivityLog[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  activityLogs     ActivityLog[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([roleId])
 }
@@ -94,25 +94,47 @@ model Category {
 }
 
 model Product {
-  id                  String      @id @default(cuid())
-  slug                String      @unique
+  id                  String          @id @default(cuid())
+  slug                String          @unique
   name                String
   brand               String
-  sku                 String      @unique
+  sku                 String          @unique
   categoryId          String
-  category            Category    @relation(fields: [categoryId], references: [id])
+  category            Category        @relation(fields: [categoryId], references: [id])
+  // The list price, and the single source of truth for what the product is
+  // worth before any discount. Never rewritten by a sale.
   priceCents          Int
+  // A percentage sale off priceCents. Null means no sale is running — the
+  // "On sale" toggle in the admin is exactly this field being set or cleared,
+  // so there is no separate boolean to fall out of step with it.
+  salePercent         Int?
+  // A manually typed original price, for a product that was always sold at a
+  // markdown rather than being put on a percentage sale. Ignored while
+  // salePercent is set: see resolvePricing() for the precedence.
   compareAtPriceCents Int?
   scale               String
-  shortDescription    String      @db.Text
-  description         String      @db.Text
-  features            Json        // Array of strings: ["feature 1", "feature 2"]
-  specs               Json        // Array of objects: [{"label": "Scale", "value": "1:14"}]
-  images              Json        // Array of strings: ["/img1.jpg", "/img2.jpg"]
-  featured            Boolean     @default(false)
-  isNew               Boolean     @default(false)
-  inStock             Boolean     @default(true)
-  stockQty            Int         @default(10)
+  shortDescription    String          @db.Text
+  description         String          @db.Text
+  features            Json // Array of strings: ["feature 1", "feature 2"]
+  specs               Json // Array of objects: [{"label": "Scale", "value": "1:14"}]
+  images              Json // Array of strings: ["/img1.jpg", "/img2.jpg"]
+  featured            Boolean         @default(false)
+  // Where this product sits among the featured products. Independent of
+  // categoryOrder — a product can lead the featured rail and sit eighth in
+  // its category. Lower first; ties fall back to newest.
+  featuredOrder       Int             @default(0)
+  isNew               Boolean         @default(false)
+  // Where this product sits within its category listing. Lower first.
+  categoryOrder       Int             @default(0)
+  // Derived, not typed by hand: recordStockChange rewrites this to
+  // (stockQty > 0) on every movement, so it cannot be used to hold an
+  // admin's intent — a restock would quietly undo it. See soldOut.
+  inStock             Boolean         @default(true)
+  // The admin's manual override. Set by a person, never by the stock
+  // pipeline, and it wins over any quantity on hand: stock can exist while
+  // the product is deliberately not for sale.
+  soldOut             Boolean         @default(false)
+  stockQty            Int             @default(10)
   // What the unit cost us. Optional — only set for products the owner has
   // entered a buy price for; drives the inventory valuation totals.
   costPriceCents      Int?
@@ -120,51 +142,55 @@ model Product {
   // SiteSetting("inventory_low_stock_threshold").
   lowStockThreshold   Int?
   // Plays inline in the gallery as a slide next to the photos.
-  videoUrl            String?     @db.VarChar(500)
+  videoUrl            String?         @db.VarChar(500)
   // Separate clip for the auto-opening floating corner widget — distinct
   // content from videoUrl, not just an alternate source for the same one.
-  popupVideoUrl       String?     @db.VarChar(500)
+  popupVideoUrl       String?         @db.VarChar(500)
   archivedAt          DateTime?
   orderItems          OrderItem[]
   stockMovements      StockMovement[]
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
   @@index([categoryId])
+  // The listing queries sort on these, so let MySQL do it from the index
+  // rather than filesorting every product on each page view.
+  @@index([categoryId, categoryOrder])
+  @@index([featured, featuredOrder])
 }
 
 model Order {
-  id              String       @id @default(cuid())
-  tranId          String       @unique
-  valId           String?
-  bankTranId      String?
-  cardType        String?
-  status          String       @default("PENDING") // PENDING, CALLED, CONFIRMED, CANCELLED, PACKED, SHIPPED, DELIVERED — no payment gateway; CALLED means someone rang the customer, CONFIRMED means they said yes
-  totalAmountCents Int
-  currency        String       @default("BDT")
-  customerName    String
-  customerEmail   String
-  customerPhone   String
-  customerAddress String       @db.Text
-  customerCity    String
-  trackingNumber  String?
-  adminNotes      String?      @db.Text
+  id                  String        @id @default(cuid())
+  tranId              String        @unique
+  valId               String?
+  bankTranId          String?
+  cardType            String?
+  status              String        @default("PENDING") // PENDING, CALLED, CONFIRMED, CANCELLED, PACKED, SHIPPED, DELIVERED — no payment gateway; CALLED means someone rang the customer, CONFIRMED means they said yes
+  totalAmountCents    Int
+  currency            String        @default("BDT")
+  customerName        String
+  customerEmail       String
+  customerPhone       String
+  customerAddress     String        @db.Text
+  customerCity        String
+  trackingNumber      String?
+  adminNotes          String?       @db.Text
   // Who rang the customer, and when. Set once the order reaches CALLED and
   // kept afterwards, so a confirmed or cancelled order still shows who made
   // the call that decided it. Denormalised name so the record survives the
   // staff account being renamed or deleted.
-  calledAt        DateTime?
-  calledById      String?
-  calledByName    String?
-  couponId        String?
-  coupon          Coupon?      @relation(fields: [couponId], references: [id], onDelete: SetNull)
-  couponCode      String?
-  discountAmountCents Int      @default(0)
-  items           OrderItem[]
-  events          OrderEvent[]
-  couponUsages    CouponUsage[]
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  calledAt            DateTime?
+  calledById          String?
+  calledByName        String?
+  couponId            String?
+  coupon              Coupon?       @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCode          String?
+  discountAmountCents Int           @default(0)
+  items               OrderItem[]
+  events              OrderEvent[]
+  couponUsages        CouponUsage[]
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
   @@index([couponId])
 }
@@ -211,11 +237,11 @@ model StockMovement {
   // than recomputed so history stays readable even after later edits.
   delta     Int
   resultQty Int
-  reason    String   // RESTOCK, SALE, RETURN, DAMAGE, LOST, CORRECTION
+  reason    String // RESTOCK, SALE, RETURN, DAMAGE, LOST, CORRECTION
   note      String?  @db.Text
   // Set when an order drove the change, so a movement links back to it.
   orderId   String?
-  actorName String?  // admin who made the change, or "System" for order-driven
+  actorName String? // admin who made the change, or "System" for order-driven
   createdAt DateTime @default(now())
 
   @@index([productId])
@@ -231,10 +257,10 @@ model SiteSetting {
 model Coupon {
   id                      String        @id @default(cuid())
   code                    String        @unique
-  discountType            String        // "PERCENTAGE" | "FIXED"
-  discountValue           Int           // percentage (e.g. 20) or fixed cents (e.g. 50000 = ৳500)
-  minimumOrderAmountCents Int?          // in cents, null for no minimum
-  usageLimit              Int?          // null = unlimited
+  discountType            String // "PERCENTAGE" | "FIXED"
+  discountValue           Int // percentage (e.g. 20) or fixed cents (e.g. 50000 = ৳500)
+  minimumOrderAmountCents Int? // in cents, null for no minimum
+  usageLimit              Int? // null = unlimited
   usageCount              Int           @default(0)
   note                    String?       @db.Text
   isActive                Boolean       @default(true)
@@ -249,23 +275,23 @@ model Coupon {
 }
 
 model CouponUsage {
-  id                   String   @id @default(cuid())
-  couponId             String
-  coupon               Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
-  couponCode           String   // denormalized snapshot
-  orderId              String
-  order                Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  customerName         String?
-  customerEmail        String?
-  customerPhone        String?
-  discountAmountCents  Int
-  orderSubtotalCents   Int
+  id                    String    @id @default(cuid())
+  couponId              String
+  coupon                Coupon    @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  couponCode            String // denormalized snapshot
+  orderId               String
+  order                 Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerName          String?
+  customerEmail         String?
+  customerPhone         String?
+  discountAmountCents   Int
+  orderSubtotalCents    Int
   finalOrderAmountCents Int
   // Set when the order was cancelled and the redemption handed back. The row
   // is kept rather than deleted so the audit trail stays append-only, but a
   // released row no longer counts towards redemptions or discount totals.
-  releasedAt           DateTime?
-  createdAt            DateTime @default(now())
+  releasedAt            DateTime?
+  createdAt             DateTime  @default(now())
 
   @@index([couponId])
   @@index([releasedAt])

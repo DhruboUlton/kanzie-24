@@ -6,6 +6,7 @@ import Link from "next/link";
 import { PlayCircle, X, ShoppingCart, Maximize2, Volume2, VolumeX, Loader2 } from "lucide-react";
 import { parseVideoUrl, VideoInfo } from "@/lib/video";
 import { useCartStore } from "@/lib/cart-store";
+import { resolveAvailability, resolvePricing } from "@/lib/product-pricing";
 import { formatPrice } from "@/lib/format";
 import { Product } from "@/lib/products";
 
@@ -80,11 +81,10 @@ export default function ProductVideoPopup({ product }: { product: Product }) {
 
   if (!videoInfo) return null;
 
-  const compareAt = product.compareAtPriceCents;
-  const discountPct =
-    compareAt && compareAt > product.priceCents
-      ? Math.round((1 - product.priceCents / compareAt) * 100)
-      : null;
+  // Was a second, private discount calculation that only understood
+  // compareAtPriceCents and so would have ignored a percentage sale entirely.
+  const pricing = resolvePricing(product);
+  const availability = resolveAvailability(product);
 
   const isHtml5 =
     !useFallback &&
@@ -252,16 +252,16 @@ export default function ProductVideoPopup({ product }: { product: Product }) {
                     </Link>
                     <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5">
                       <span className="text-accent font-semibold text-xs sm:text-sm">
-                        {formatPrice(product.priceCents)}
+                        {formatPrice(pricing.effectiveCents)}
                       </span>
-                      {compareAt && (
+                      {pricing.originalCents !== null && (
                         <span className="text-[11px] sm:text-xs text-black/40 line-through">
-                          {formatPrice(compareAt)}
+                          {formatPrice(pricing.originalCents)}
                         </span>
                       )}
-                      {discountPct !== null && (
+                      {pricing.onSale && (
                         <span className="text-[9px] sm:text-[10px] font-semibold bg-accent/10 text-accent px-1 sm:px-1.5 py-0.5 rounded">
-                          {discountPct}% OFF
+                          {pricing.percentOff}% OFF
                         </span>
                       )}
                     </div>
@@ -269,20 +269,23 @@ export default function ProductVideoPopup({ product }: { product: Product }) {
                 </div>
                 <button
                   type="button"
-                  disabled={!product.inStock}
-                  onClick={() =>
+                  disabled={!availability.purchasable}
+                  onClick={() => {
+                    if (!availability.purchasable) return;
                     addItem({
                       productId: product.id,
                       slug: product.slug,
                       name: product.name,
-                      priceCents: product.priceCents,
+                      priceCents: pricing.effectiveCents,
                       image: product.images[0],
-                    })
-                  }
+                    });
+                  }}
                   className="mt-2.5 sm:mt-3 w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark disabled:bg-black/20 disabled:cursor-not-allowed transition-colors text-white font-display text-xs sm:text-sm tracking-wide py-2 sm:py-2.5 rounded cursor-pointer"
                 >
                   <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  {product.inStock ? "ADD TO CART" : "OUT OF STOCK"}
+                  {availability.purchasable
+                    ? "ADD TO CART"
+                    : availability.label.toUpperCase()}
                 </button>
               </div>
             )}

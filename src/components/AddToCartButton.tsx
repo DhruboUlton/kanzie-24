@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Minus, Plus } from "lucide-react";
 import { useCartStore, setBuyNowItem } from "@/lib/cart-store";
 import { Product } from "@/lib/products";
+import { resolveAvailability, resolvePricing } from "@/lib/product-pricing";
 
 export default function AddToCartButton({ product }: { product: Product }) {
   const [qty, setQty] = useState(1);
@@ -12,18 +13,29 @@ export default function AddToCartButton({ product }: { product: Product }) {
   const addItem = useCartStore((s) => s.addItem);
   const router = useRouter();
 
+  const availability = resolveAvailability(product);
+  const pricing = resolvePricing(product);
+
   const item = {
     productId: product.id,
     slug: product.slug,
     name: product.name,
-    priceCents: product.priceCents,
+    // The discounted figure, so the cart shows what the order will charge.
+    // The server re-derives it from the catalogue regardless.
+    priceCents: pricing.effectiveCents,
     image: product.images[0],
   };
 
   function handleBuyNow() {
+    if (!availability.purchasable) return;
     setBuying(true);
     setBuyNowItem({ ...item, qty });
     router.push("/checkout");
+  }
+
+  function handleAddToCart() {
+    if (!availability.purchasable) return;
+    addItem(item, qty);
   }
 
   return (
@@ -47,19 +59,25 @@ export default function AddToCartButton({ product }: { product: Product }) {
           </button>
         </div>
         <button
-          disabled={!product.inStock}
-          onClick={() => addItem(item, qty)}
+          disabled={!availability.purchasable}
+          onClick={handleAddToCart}
           className="flex-1 bg-white border border-accent hover:bg-accent/5 disabled:bg-black/5 disabled:border-black/20 disabled:text-black/40 disabled:cursor-not-allowed transition-colors text-accent font-display tracking-wide py-3.5 rounded"
         >
-          {product.inStock ? "ADD TO CART" : "OUT OF STOCK"}
+          {availability.purchasable
+            ? "ADD TO CART"
+            : availability.label.toUpperCase()}
         </button>
       </div>
       <button
-        disabled={!product.inStock || buying}
+        disabled={!availability.purchasable || buying}
         onClick={handleBuyNow}
         className="bg-accent hover:bg-accent-dark disabled:bg-black/20 disabled:cursor-not-allowed transition-colors text-white font-display tracking-wide py-3.5 rounded"
       >
-        {buying ? "REDIRECTING…" : "BUY NOW"}
+        {!availability.purchasable
+          ? availability.label.toUpperCase()
+          : buying
+          ? "REDIRECTING…"
+          : "BUY NOW"}
       </button>
     </div>
   );
