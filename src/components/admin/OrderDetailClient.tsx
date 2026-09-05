@@ -303,13 +303,31 @@ export default function OrderDetailClient({
                 {order.items?.map((item: any) => (
                   <tr key={item.id} className="hover:bg-gray-50/50">
                     <td className="px-6 py-4 font-semibold text-gray-900">
-                      <Link
-                        href={`/products/${item.productSlug}`}
-                        target="_blank"
-                        className="hover:text-accent transition-colors"
-                      >
-                        {item.productName}
-                      </Link>
+                      {item.productDeletedAt ? (
+                        // No link: the storefront page is gone with the
+                        // product. The order keeps what it sold and says
+                        // what became of it.
+                        <>
+                          <span>{item.productName}</span>
+                          <span className="block text-[11px] font-medium text-red-600 mt-0.5">
+                            Product deleted
+                            {item.productDeletedBy ? ` by ${item.productDeletedBy}` : ""} on{" "}
+                            {new Date(item.productDeletedAt).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </span>
+                        </>
+                      ) : (
+                        <Link
+                          href={`/products/${item.productSlug}`}
+                          target="_blank"
+                          className="hover:text-accent transition-colors"
+                        >
+                          {item.productName}
+                        </Link>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-xs font-mono text-gray-500">
                       {item.productSku}

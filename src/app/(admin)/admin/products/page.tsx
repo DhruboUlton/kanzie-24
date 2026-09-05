@@ -19,14 +19,17 @@ import { formatPrice } from "@/lib/format";
 import { archiveProductAction, restoreProductAction } from "@/lib/actions/product";
 import { requirePageAccess } from "@/lib/admin-guard";
 import NoAccess from "@/components/admin/NoAccess";
+import ProductDeleteButton from "@/components/admin/ProductDeleteButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminProductsPage(props: {
   searchParams?: Promise<{ q?: string; category?: string; status?: string }>;
 }) {
-  const { allowed } = await requirePageAccess("PRODUCTS_VIEW");
+  const { ctx, allowed } = await requirePageAccess("PRODUCTS_VIEW");
   if (!allowed) return <NoAccess what="the product catalogue" />;
+
+  const canDelete = ctx.permissions.includes("PRODUCTS_DELETE");
 
   const searchParams = (await props.searchParams) || {};
   const query = searchParams.q?.toLowerCase() || "";
@@ -334,6 +337,14 @@ export default async function AdminProductsPage(props: {
                             </button>
                           </form>
                         )}
+
+                        {canDelete && (
+                          <ProductDeleteButton
+                            productId={product.id}
+                            productName={product.name}
+                            compact
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -492,6 +503,14 @@ export default async function AdminProductsPage(props: {
                                   <RotateCcw className="w-4 h-4" />
                                 </button>
                               </form>
+                            )}
+
+                            {canDelete && (
+                              <ProductDeleteButton
+                                productId={product.id}
+                                productName={product.name}
+                                compact
+                              />
                             )}
                           </div>
                         </td>

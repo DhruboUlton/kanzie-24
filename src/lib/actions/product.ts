@@ -6,6 +6,7 @@ import { requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
 import { productSchema } from "@/lib/schemas/product";
 import { sanitizeDescriptionHtml } from "@/lib/sanitize-html";
+import { collectMediaUrls, deleteProductMedia } from "@/lib/product-media";
 
 export async function createProductAction(data: any) {
   let ctx;
@@ -312,6 +313,120 @@ export async function restoreProductAction(id: string) {
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to restore product" };
+  }
+}
+
+/**
+ * How many orders a product appears on, so the admin can be told before
+ * deleting it rather than after.
+ */
+export async function getProductDeletionImpact(id: string): Promise<{
+  success: boolean;
+  error?: string;
+  name?: string;
+  orderCount?: number;
+  soldQty?: number;
+  mediaCount?: number;
+}> {
+  try {
+    await requirePermission("PRODUCTS_DELETE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
+
+  try {
+    const product = await db.product.findUnique({
+      where: { id },
+      select: { name: true, images: true, videoUrl: true, popupVideoUrl: true },
+    });
+    if (!product) return { success: false, error: "Product not found." };
+
+    const items = await db.orderItem.findMany({
+      where: { productId: id },
+      select: { orderId: true, qty: true },
+    });
+
+    return {
+      success: true,
+      name: product.name,
+      orderCount: new Set(items.map((i) => i.orderId)).size,
+      soldQty: items.reduce((sum, i) => sum + i.qty, 0),
+      mediaCount: collectMediaUrls(product).length,
+    };
+  } catch {
+    return { success: false, error: "Couldn't read the product." };
+  }
+}
+
+/**
+ * Permanently deletes a product, its stock history, and its uploaded media.
+ *
+ * Order history is never destroyed with it. Each line item already carries
+ * its own copy of the name, SKU and price it sold at, and the foreign key
+ * nulls the product link rather than removing the line — so the order still
+ * totals correctly. What the line loses is any way to explain the gap, which
+ * is why it is stamped with who deleted the product and when, in the same
+ * transaction as the deletion itself.
+ *
+ * Media is removed after the transaction commits, not inside it: files are
+ * not transactional, and a rolled-back delete that had already unlinked the
+ * photos would leave a live product with no images.
+ */
+export async function deleteProductAction(id: string) {
+  let ctx;
+  try {
+    ctx = await requirePermission("PRODUCTS_DELETE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
+
+  try {
+    const product = await db.product.findUnique({ where: { id } });
+    if (!product) return { success: false, error: "Product not found." };
+
+    const mediaUrls = collectMediaUrls(product);
+    const deletedAt = new Date();
+
+    const soldItems = await db.$transaction(async (tx) => {
+      const stamped = await tx.orderItem.updateMany({
+        where: { productId: id },
+        data: { productDeletedAt: deletedAt, productDeletedBy: ctx.name },
+      });
+
+      // Cascades the stock movements; nulls productId on the stamped lines.
+      await tx.product.delete({ where: { id } });
+
+      return stamped.count;
+    });
+
+    const media = await deleteProductMedia(mediaUrls);
+
+    revalidatePath("/");
+    revalidatePath("/products");
+    revalidatePath(`/products/${product.slug}`);
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/inventory");
+
+    await logActivity({
+      actor: ctx,
+      action: "PRODUCT_DELETED",
+      entityType: "PRODUCT",
+      entityId: product.id,
+      description: `Deleted ${product.name}`,
+      metadata: {
+        sku: product.sku,
+        slug: product.slug,
+        orderLinesStamped: soldItems,
+        mediaFilesRemoved: media.deleted,
+        mediaFilesKept: media.kept,
+      },
+    });
+
+    return { success: true, orderLines: soldItems, mediaRemoved: media.deleted };
+  } catch (error) {
+    console.error("Product delete failed", error);
+    return { success: false, error: "Couldn't delete that product." };
   }
 }
 

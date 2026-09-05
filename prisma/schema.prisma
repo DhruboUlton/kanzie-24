@@ -207,6 +207,13 @@ model OrderItem {
   unitPriceCents  Int
   qty             Int
   totalPriceCents Int
+  // Stamped when the product this line sold is deleted from the catalogue.
+  // productId is nulled by the foreign key at that moment, so without this
+  // the order could no longer say what happened to the item it sold. Held on
+  // the line rather than looked up by SKU, because a later product may take
+  // the freed SKU and would otherwise inherit this history.
+  productDeletedAt   DateTime?
+  productDeletedBy   String?
   createdAt       DateTime @default(now())
 
   @@index([orderId])

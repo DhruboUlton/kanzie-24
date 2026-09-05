@@ -13,6 +13,9 @@ export const PERMISSIONS = {
   PRODUCTS_CREATE: "Add new products",
   PRODUCTS_EDIT: "Edit existing products",
   PRODUCTS_ARCHIVE: "Archive and restore products",
+  // Deliberately absent from every system role but Owner: archiving is
+  // reversible, this is not.
+  PRODUCTS_DELETE: "Permanently delete products and their media",
 
   ORDERS_VIEW: "See orders and customer contact details",
   ORDERS_EDIT: "Add notes and tracking numbers to orders",
@@ -72,7 +75,16 @@ export function sanitizePermissions(values: unknown): Permission[] {
 
 // Grouping is presentation only — it drives the role editor's layout.
 export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
-  { label: "Products", keys: ["PRODUCTS_VIEW", "PRODUCTS_CREATE", "PRODUCTS_EDIT", "PRODUCTS_ARCHIVE"] },
+  {
+    label: "Products",
+    keys: [
+      "PRODUCTS_VIEW",
+      "PRODUCTS_CREATE",
+      "PRODUCTS_EDIT",
+      "PRODUCTS_ARCHIVE",
+      "PRODUCTS_DELETE",
+    ],
+  },
   { label: "Orders", keys: ["ORDERS_VIEW", "ORDERS_EDIT", "ORDERS_STATUS_CHANGE", "ORDERS_CANCEL"] },
   { label: "Inventory", keys: ["INVENTORY_VIEW", "INVENTORY_ADJUST"] },
   { label: "Categories", keys: ["CATEGORIES_VIEW", "CATEGORIES_MANAGE"] },
