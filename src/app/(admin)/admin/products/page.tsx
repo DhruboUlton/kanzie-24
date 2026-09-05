@@ -11,6 +11,7 @@ import {
   Sparkles,
   Package,
   FileSpreadsheet,
+  ArrowUpDown,
 } from "lucide-react";
 import { db } from "@/lib/db";
 import { getProducts, getCategories } from "@/lib/products";
@@ -112,6 +113,13 @@ export default async function AdminProductsPage(props: {
         </div>
 
         <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <Link
+            href="/admin/products/arrange"
+            className="justify-center inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 text-xs sm:text-sm font-semibold border border-gray-300 rounded-lg shadow-sm transition-colors"
+          >
+            <ArrowUpDown className="w-4 h-4" />
+            <span>Arrange</span>
+          </Link>
           <Link
             href="/admin/products/import"
             className="justify-center inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 text-xs sm:text-sm font-semibold border border-gray-300 rounded-lg shadow-sm transition-colors"
