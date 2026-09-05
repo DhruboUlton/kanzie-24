@@ -25,3 +25,14 @@ body {
   font-weight: 700;
   letter-spacing: 0;
 }
+
+/* Horizontal category strip in the desktop header — scrolls, but the bar
+   itself would eat vertical space and clash with the black nav. */
+.nav-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.nav-scroll::-webkit-scrollbar {
+  display: none;
+}

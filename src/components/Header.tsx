@@ -2,11 +2,23 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
-import { ChevronDown, Menu, ShoppingCart, X, PackageSearch } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  ShoppingCart,
+  X,
+  PackageSearch,
+} from "lucide-react";
 import { useCartStore, cartTotalItems } from "@/lib/cart-store";
 import { CategoryNode } from "@/lib/products";
 import { SITE_NAME } from "@/lib/site-config";
+
+// min-w-52 resolves to 182px here — globals.css sets the root font size to 87.5%.
+const DROPDOWN_WIDTH = 182;
+const SCROLL_STEP = 240;
 
 export default function Header({ tree = [] }: { tree?: CategoryNode[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -15,14 +27,92 @@ export default function Header({ tree = [] }: { tree?: CategoryNode[] }) {
   const openCart = useCartStore((s) => s.open);
   const count = cartTotalItems(items);
 
+  const headerRef = useRef<HTMLElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  // The strip clips its overflow, so an absolutely positioned submenu would be
+  // cut off. Submenus render fixed instead, anchored to their parent link.
+  const [dropdown, setDropdown] = useState<{
+    slug: string;
+    left: number;
+    top: number;
+  } | null>(null);
+  const anchorRef = useRef<HTMLElement | null>(null);
+
+  const syncScrollState = useCallback(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    const max = strip.scrollWidth - strip.clientWidth;
+    setCanScrollLeft(strip.scrollLeft > 1);
+    setCanScrollRight(strip.scrollLeft < max - 1);
+  }, []);
+
+  useEffect(() => {
+    const strip = stripRef.current;
+    if (!strip) return;
+    syncScrollState();
+    const observer = new ResizeObserver(syncScrollState);
+    observer.observe(strip);
+    for (const child of Array.from(strip.children)) observer.observe(child);
+    window.addEventListener("resize", syncScrollState);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncScrollState);
+    };
+  }, [syncScrollState, tree]);
+
+  const placeDropdown = useCallback((slug: string, anchor: HTMLElement) => {
+    const rect = anchor.getBoundingClientRect();
+    const headerBottom =
+      headerRef.current?.getBoundingClientRect().bottom ?? rect.bottom;
+    setDropdown({
+      slug,
+      // Keep the panel inside the viewport when a category sits near the edge.
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - DROPDOWN_WIDTH - 16)),
+      top: headerBottom,
+    });
+  }, []);
+
+  const anchorDropdown = (slug: string, anchor: HTMLElement) => {
+    anchorRef.current = anchor;
+    placeDropdown(slug, anchor);
+  };
+
+  // The strip can scroll while a submenu is open — a wheel, an arrow, or the
+  // browser scrolling a focused submenu link into view. Follow the category
+  // instead of closing, and only drop the panel once its category is gone.
+  const handleStripScroll = () => {
+    syncScrollState();
+    const strip = stripRef.current;
+    const anchor = anchorRef.current;
+    if (!dropdown || !strip || !anchor) return;
+    const anchorRect = anchor.getBoundingClientRect();
+    const stripRect = strip.getBoundingClientRect();
+    const centre = anchorRect.left + anchorRect.width / 2;
+    if (centre < stripRect.left || centre > stripRect.right) {
+      anchorRef.current = null;
+      setDropdown(null);
+      return;
+    }
+    placeDropdown(dropdown.slug, anchor);
+  };
+
+  const nudge = (direction: -1 | 1) => {
+    stripRef.current?.scrollBy({ left: direction * SCROLL_STEP, behavior: "smooth" });
+  };
+
   const closeMobile = () => {
     setMenuOpen(false);
     setOpenGroup(null);
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-black text-paper border-b border-white/10">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-40 bg-black text-paper border-b border-white/10"
+    >
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-6 lg:gap-12">
         <button
           className="lg:hidden p-2 -ml-2"
           aria-label="Toggle menu"
@@ -31,61 +121,110 @@ export default function Header({ tree = [] }: { tree?: CategoryNode[] }) {
           {menuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
 
-        <Link href="/" className="flex items-center select-none">
+        <Link href="/" className="flex items-center select-none shrink-0">
+          {/* Trimmed of the source art's uneven transparent margin, which sat
+              1783px above the mark and 1252px below and pushed the logo ~3px
+              off the header's centre line. These heights are the wordmark
+              itself, so it now centres on its own. */}
           <Image
-            src="/kanzie-logo-full.png"
+            src="/kanzie-logo.png"
             alt={SITE_NAME}
-            width={160}
-            height={90}
+            width={1000}
+            height={193}
             priority
-            className="h-11 sm:h-14 w-auto"
+            className="h-[12px] sm:h-4 w-auto"
           />
         </Link>
 
-        <nav className="hidden lg:flex items-center gap-8 font-display text-base tracking-wide">
-          <Link href="/" className="hover:text-accent transition-colors">
+        <nav className="hidden lg:flex items-center justify-center gap-8 min-w-0 flex-1 font-display text-base tracking-wide">
+          <Link href="/" className="shrink-0 hover:text-accent transition-colors">
             HOME
           </Link>
-          <Link href="/products" className="hover:text-accent transition-colors">
+          <Link
+            href="/products"
+            className="shrink-0 hover:text-accent transition-colors"
+          >
             SHOP ALL
           </Link>
 
-          {tree.map((parent) => (
-            <div key={parent.slug} className="relative group">
-              <Link
-                href={`/products?category=${parent.slug}`}
-                className="flex items-center gap-1 hover:text-accent transition-colors py-5"
-              >
-                {parent.name.toUpperCase()}
-                {parent.children.length > 0 && (
-                  <ChevronDown
-                    size={14}
-                    className="transition-transform group-hover:rotate-180"
-                  />
-                )}
-              </Link>
+          {tree.length > 0 && (
+            <div className="relative flex items-center min-w-0">
+              {canScrollLeft && (
+                <button
+                  type="button"
+                  aria-label="Scroll categories left"
+                  onClick={() => nudge(-1)}
+                  className="absolute left-0 z-10 h-full w-10 flex items-center justify-start bg-gradient-to-r from-black from-40% to-transparent text-paper/70 hover:text-accent transition-colors"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+              )}
 
-              {parent.children.length > 0 && (
-                <div className="absolute left-0 top-full min-w-52 bg-black border border-white/10 rounded-b-lg shadow-xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-150">
-                  {parent.children.map((child) => (
+              <div
+                ref={stripRef}
+                onScroll={handleStripScroll}
+                className="nav-scroll flex items-center gap-8 min-w-0 overflow-x-auto overscroll-x-contain"
+              >
+                {tree.map((parent) => (
+                  <div
+                    key={parent.slug}
+                    className="relative group shrink-0"
+                    onMouseEnter={(e) => {
+                      if (parent.children.length > 0)
+                        anchorDropdown(parent.slug, e.currentTarget);
+                    }}
+                  >
                     <Link
-                      key={child.slug}
-                      href={`/products?category=${child.slug}`}
-                      className="block px-4 py-2 text-sm font-sans tracking-normal text-paper/80 hover:text-accent hover:bg-white/5 transition-colors"
+                      href={`/products?category=${parent.slug}`}
+                      className="flex items-center gap-1 whitespace-nowrap hover:text-accent transition-colors py-5"
                     >
-                      {child.name}
+                      {parent.name.toUpperCase()}
+                      {parent.children.length > 0 && (
+                        <ChevronDown
+                          size={14}
+                          className="transition-transform group-hover:rotate-180"
+                        />
+                      )}
                     </Link>
-                  ))}
-                </div>
+
+                    {parent.children.length > 0 && dropdown?.slug === parent.slug && (
+                      <div
+                        style={{ left: dropdown.left, top: dropdown.top }}
+                        className="fixed min-w-52 bg-black border border-white/10 rounded-b-lg shadow-xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-opacity duration-150"
+                      >
+                        {parent.children.map((child) => (
+                          <Link
+                            key={child.slug}
+                            href={`/products?category=${child.slug}`}
+                            className="block px-4 py-2 text-sm font-sans tracking-normal text-paper/80 hover:text-accent hover:bg-white/5 transition-colors"
+                          >
+                            {child.name}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {canScrollRight && (
+                <button
+                  type="button"
+                  aria-label="Scroll categories right"
+                  onClick={() => nudge(1)}
+                  className="absolute right-0 z-10 h-full w-10 flex items-center justify-end bg-gradient-to-l from-black from-40% to-transparent text-paper/70 hover:text-accent transition-colors"
+                >
+                  <ChevronRight size={18} />
+                </button>
               )}
             </div>
-          ))}
+          )}
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Link
             href="/track"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/20 hover:border-accent text-paper hover:text-white text-xs font-semibold tracking-wide transition-colors"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/20 hover:border-accent text-paper hover:text-white text-xs font-semibold tracking-wide transition-colors whitespace-nowrap"
             title="Track your order"
           >
             <PackageSearch size={14} className="text-accent" />
