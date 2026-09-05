@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, Tag, X } from "lucide-react";
 import { CartItem, useCartStore, cartTotalCents, takeBuyNowItem } from "@/lib/cart-store";
 import { formatPrice } from "@/lib/format";
 import {
@@ -20,18 +20,40 @@ type Customer = {
   city: string;
 };
 
+type AppliedCoupon = {
+  id: string;
+  code: string;
+  discountType: "PERCENTAGE" | "FIXED";
+  discountValue: number;
+  discountAmountCents: number;
+  finalSubtotalCents: number;
+  /**
+   * The cart subtotal this discount was priced against. A percentage coupon
+   * is worth a different amount the moment the cart changes, and the cart
+   * drawer is reachable from this page, so the figure on screen has to be
+   * re-checked against the live subtotal rather than trusted once.
+   */
+  pricedAtSubtotalCents: number;
+};
+
 // Full recap shown once an order is submitted — items, final total, and
 // exactly where/who it's shipping to — so the customer can see what they
 // committed to while it's processing, not just a spinner.
 function OrderRecap({
   items,
   total,
+  discountAmountCents = 0,
+  couponCode,
   customer,
 }: {
   items: CartItem[];
   total: number;
+  discountAmountCents?: number;
+  couponCode?: string | null;
   customer: Customer;
 }) {
+  const finalTotal = Math.max(0, total - discountAmountCents);
+
   return (
     <div className="bg-paper rounded-lg p-6 text-left">
       <h2 className="font-display text-lg tracking-wide mb-4">ORDER SUMMARY</h2>
@@ -45,9 +67,27 @@ function OrderRecap({
           </div>
         ))}
       </div>
-      <div className="flex justify-between font-display text-lg tracking-wide border-t border-black/10 pt-4">
-        <span>TOTAL</span>
-        <span>{formatPrice(total)}</span>
+
+      <div className="border-t border-black/10 pt-4 space-y-2 text-sm">
+        <div className="flex justify-between text-black/70">
+          <span>Subtotal</span>
+          <span>{formatPrice(total)}</span>
+        </div>
+
+        {discountAmountCents > 0 && (
+          <div className="flex justify-between text-emerald-600 font-medium">
+            <span className="flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5" />
+              <span>Coupon ({couponCode})</span>
+            </span>
+            <span>-{formatPrice(discountAmountCents)}</span>
+          </div>
+        )}
+
+        <div className="flex justify-between font-display text-lg tracking-wide border-t border-black/10 pt-3 text-ink">
+          <span>TOTAL</span>
+          <span>{formatPrice(finalTotal)}</span>
+        </div>
       </div>
 
       <div className="mt-6 pt-6 border-t border-black/10 text-sm space-y-1">
@@ -77,13 +117,25 @@ export default function CheckoutPage() {
   );
   const [orderId, setOrderId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Coupon state
+  const [couponCodeInput, setCouponCodeInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
   // Snapshot of what was actually submitted — clearCart() on success empties
   // the live cart items, so the recap on the processing/success/error
   // screens reads from here instead of the (by then possibly empty) live
   // cart derivation below.
-  const [submitted, setSubmitted] = useState<{ items: CartItem[]; total: number } | null>(
-    null,
-  );
+  const [submitted, setSubmitted] = useState<{
+    items: CartItem[];
+    total: number;
+    discountAmountCents: number;
+    couponCode: string | null;
+  } | null>(null);
+  const [revalidatingCoupon, setRevalidatingCoupon] = useState(false);
+
   const [customer, setCustomer] = useState<Customer>({
     name: "",
     email: "",
@@ -107,10 +159,65 @@ export default function CheckoutPage() {
 
   // undefined = still checking sessionStorage; render nothing until then so
   // a real cart doesn't flash "nothing to check out" first.
+  const items = buyNowItem ? [buyNowItem] : cartItems;
+  const subtotal = cartTotalCents(items);
+
+  // Re-prices an applied coupon against the live subtotal. The server is the
+  // authority on the discount either way, so leaving a stale figure on screen
+  // only means showing the customer a total the order will not match — a 20%
+  // coupon applied to a ৳10,000 cart is worth ৳4,000 once that cart doubles.
+  const appliedCode = appliedCoupon?.code ?? null;
+  const pricedAt = appliedCoupon?.pricedAtSubtotalCents ?? null;
+
+  useEffect(() => {
+    if (!appliedCode || pricedAt === null || pricedAt === subtotal) return;
+
+    let abandoned = false;
+    setRevalidatingCoupon(true);
+
+    (async () => {
+      try {
+        const res = await fetch("/api/coupons/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: appliedCode, subtotalCents: subtotal }),
+        });
+        const data = await res.json();
+        if (abandoned) return;
+
+        if (!res.ok || !data.valid) {
+          // Most often the cart has dropped below the coupon's minimum order.
+          setAppliedCoupon(null);
+          setCouponCodeInput(appliedCode);
+          setCouponError(
+            data.error ||
+              "Your cart changed and this coupon no longer applies. Try applying it again.",
+          );
+        } else {
+          setAppliedCoupon({ ...data.coupon, pricedAtSubtotalCents: subtotal });
+        }
+      } catch {
+        // Offline mid-edit: drop the stale figure rather than show a total
+        // the order will not honour.
+        if (!abandoned) {
+          setAppliedCoupon(null);
+          setCouponCodeInput(appliedCode);
+          setCouponError("Couldn't re-check your coupon. Please apply it again.");
+        }
+      } finally {
+        if (!abandoned) setRevalidatingCoupon(false);
+      }
+    })();
+
+    return () => {
+      abandoned = true;
+    };
+  }, [appliedCode, pricedAt, subtotal]);
+
   if (buyNowItem === undefined) return null;
 
-  const items = buyNowItem ? [buyNowItem] : cartItems;
-  const total = cartTotalCents(items);
+  const discountAmount = appliedCoupon ? appliedCoupon.discountAmountCents : 0;
+  const finalTotal = Math.max(0, subtotal - discountAmount);
 
   function updateField(field: keyof Customer) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -125,8 +232,51 @@ export default function CheckoutPage() {
     setCustomer((c) => ({ ...c, phone: next }));
   }
 
+  async function handleApplyCoupon(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    const code = couponCodeInput.trim();
+    if (!code) return;
+
+    setCouponLoading(true);
+    setCouponError(null);
+
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          subtotalCents: subtotal,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        setCouponError(data.error || "Coupon could not be applied.");
+        setAppliedCoupon(null);
+      } else {
+        setAppliedCoupon({ ...data.coupon, pricedAtSubtotalCents: subtotal });
+        setCouponError(null);
+      }
+    } catch {
+      setCouponError("Unable to validate coupon. Please try again.");
+    } finally {
+      setCouponLoading(false);
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null);
+    setCouponError(null);
+    setCouponCodeInput("");
+  }
+
   async function handleCheckout() {
-    setSubmitted({ items, total });
+    setSubmitted({
+      items,
+      total: subtotal,
+      discountAmountCents: discountAmount,
+      couponCode: appliedCoupon ? appliedCoupon.code : null,
+    });
     setStage("processing");
     setError(null);
     try {
@@ -136,6 +286,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           items: items.map((i) => ({ slug: i.slug, qty: i.qty })),
           customer,
+          couponCode: appliedCoupon ? appliedCoupon.code : undefined,
         }),
       });
       const data = await res.json();
@@ -149,6 +300,16 @@ export default function CheckoutPage() {
       // been recorded (a no-op for a "buy now" purchase, which never
       // touched the persisted cart).
       setOrderId(data.orderId);
+      // Replace the browser's arithmetic with what was actually written, so
+      // the confirmation can never quote a total the order does not hold.
+      if (typeof data.totalAmountCents === "number") {
+        setSubmitted({
+          items,
+          total: data.subtotalCents,
+          discountAmountCents: data.discountAmountCents ?? 0,
+          couponCode: data.couponCode ?? null,
+        });
+      }
       clearCart();
       setStage("success");
     } catch {
@@ -158,7 +319,9 @@ export default function CheckoutPage() {
   }
 
   const recapItems = submitted?.items ?? items;
-  const recapTotal = submitted?.total ?? total;
+  const recapTotal = submitted?.total ?? subtotal;
+  const recapDiscount = submitted?.discountAmountCents ?? discountAmount;
+  const recapCouponCode = submitted?.couponCode ?? appliedCoupon?.code;
 
   if (items.length === 0 && stage === "form") {
     return (
@@ -183,7 +346,13 @@ export default function CheckoutPage() {
         <p className="text-sm text-black/50 mb-8">
           Please don&apos;t close or refresh this page.
         </p>
-        <OrderRecap items={recapItems} total={recapTotal} customer={customer} />
+        <OrderRecap
+          items={recapItems}
+          total={recapTotal}
+          discountAmountCents={recapDiscount}
+          couponCode={recapCouponCode}
+          customer={customer}
+        />
       </div>
     );
   }
@@ -207,7 +376,13 @@ export default function CheckoutPage() {
           <span className="font-semibold text-ink">{customer.phone}</span> shortly
           to confirm your order before it ships. Payment is cash on delivery.
         </p>
-        <OrderRecap items={recapItems} total={recapTotal} customer={customer} />
+        <OrderRecap
+          items={recapItems}
+          total={recapTotal}
+          discountAmountCents={recapDiscount}
+          couponCode={recapCouponCode}
+          customer={customer}
+        />
         <Link
           href="/products"
           className="mt-6 inline-block bg-accent hover:bg-accent-dark transition-colors text-white font-display tracking-wide px-8 py-3.5 rounded"
@@ -228,7 +403,13 @@ export default function CheckoutPage() {
         <p className="inline-block text-sm text-accent-dark bg-accent/10 border border-accent/30 rounded px-4 py-3 mb-8">
           {error}
         </p>
-        <OrderRecap items={recapItems} total={recapTotal} customer={customer} />
+        <OrderRecap
+          items={recapItems}
+          total={recapTotal}
+          discountAmountCents={recapDiscount}
+          couponCode={recapCouponCode}
+          customer={customer}
+        />
         <button
           onClick={() => setStage("form")}
           className="mt-6 w-full bg-accent hover:bg-accent-dark transition-colors text-white font-display tracking-wide py-3.5 rounded"
@@ -264,11 +445,91 @@ export default function CheckoutPage() {
             </div>
           ))}
         </div>
-        <div className="flex justify-between font-display text-lg tracking-wide border-t border-black/10 pt-4">
-          <span>SUBTOTAL</span>
-          <span>{formatPrice(total)}</span>
+
+        {/* Coupon Code Section */}
+        <div className="border-t border-black/10 pt-4 pb-4">
+          {appliedCoupon ? (
+            <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3.5 py-2.5">
+              <div className="flex items-center gap-2">
+                <Tag className="w-4 h-4 text-emerald-600" />
+                <div>
+                  <span className="font-mono font-bold text-xs text-emerald-800 tracking-wider">
+                    {appliedCoupon.code}
+                  </span>
+                  <span className="text-xs text-emerald-600 ml-2">
+                    ({appliedCoupon.discountType === "PERCENTAGE"
+                      ? `${appliedCoupon.discountValue}% off`
+                      : `${formatPrice(appliedCoupon.discountValue)} off`})
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemoveCoupon}
+                className="text-emerald-700 hover:text-emerald-900 p-1 hover:bg-emerald-100 rounded transition-colors"
+                title="Remove coupon"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleApplyCoupon} className="space-y-2">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-black/40" />
+                  <input
+                    type="text"
+                    placeholder="Enter coupon code (e.g. SALE20)"
+                    value={couponCodeInput}
+                    onChange={(e) => setCouponCodeInput(e.target.value.toUpperCase())}
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-white border border-black/15 rounded focus:outline-none focus:border-accent uppercase font-mono placeholder:normal-case placeholder:font-sans"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={couponLoading || !couponCodeInput.trim()}
+                  className="px-4 py-2 bg-ink text-white hover:bg-black disabled:opacity-50 text-xs font-semibold rounded transition-colors flex items-center gap-1.5 shrink-0"
+                >
+                  {couponLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Apply</span>
+                </button>
+              </div>
+              {couponError && (
+                <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{couponError}</span>
+                </p>
+              )}
+            </form>
+          )}
         </div>
-        <p className="text-xs text-black/50 mt-1">
+
+        {/* Pricing Breakdown */}
+        <div className="space-y-2 border-t border-black/10 pt-4 text-sm">
+          <div className="flex justify-between text-black/70">
+            <span>Subtotal</span>
+            <span>{formatPrice(subtotal)}</span>
+          </div>
+
+          {appliedCoupon && (
+            <div className="flex justify-between text-emerald-600 font-medium">
+              <span className="flex items-center gap-1">
+                <span>Discount</span>
+                <span className="text-xs font-mono">({appliedCoupon.code})</span>
+              </span>
+              <span className={revalidatingCoupon ? "opacity-50" : undefined}>
+                -{formatPrice(appliedCoupon.discountAmountCents)}
+              </span>
+            </div>
+          )}
+
+          <div className="flex justify-between font-display text-lg tracking-wide border-t border-black/10 pt-3 text-ink">
+            <span>TOTAL</span>
+            <span>{formatPrice(finalTotal)}</span>
+          </div>
+        </div>
+
+        <p className="text-xs text-black/50 mt-2">
           Shipping & taxes calculated on the next step.
         </p>
       </div>
@@ -352,10 +613,10 @@ export default function CheckoutPage() {
 
       <button
         onClick={handleCheckout}
-        disabled={!customerComplete}
+        disabled={!customerComplete || revalidatingCoupon}
         className="mt-6 w-full bg-accent hover:bg-accent-dark disabled:opacity-60 transition-colors text-white font-display tracking-wide py-3.5 rounded"
       >
-        CONFIRM ORDER
+        {revalidatingCoupon ? "UPDATING TOTAL…" : "CONFIRM ORDER"}
       </button>
       <p className="mt-3 text-xs text-black/40 text-center">
         No online payment — we&apos;ll call to confirm your order, then you pay

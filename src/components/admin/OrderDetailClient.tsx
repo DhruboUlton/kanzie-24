@@ -6,12 +6,10 @@ import Link from "next/link";
 import {
   ArrowLeft,
   CheckCircle2,
-  Clock,
   Truck,
   Box,
   Check,
   XCircle,
-  MessageSquare,
   Loader2,
   MapPin,
   Mail,
@@ -106,21 +104,21 @@ export default function OrderDetailClient({
   return (
     <div className="space-y-8 max-w-6xl">
       {/* Top action header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 sm:pb-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <Link
             href="/admin/orders"
-            className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors"
+            className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-bold font-mono text-gray-900">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h2 className="text-lg sm:text-xl font-bold font-mono text-gray-900 truncate">
                 #{order.tranId}
               </h2>
               <span
-                className={`inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold border ${
+                className={`inline-flex items-center px-2.5 sm:px-3 py-0.5 rounded-full text-xs font-bold border ${
                   ORDER_STATUS_BADGES[order.status] || "bg-gray-100 text-gray-700"
                 }`}
               >
@@ -130,7 +128,7 @@ export default function OrderDetailClient({
             <p className="text-xs text-gray-500 mt-0.5">
               Placed on{" "}
               {new Date(order.createdAt).toLocaleDateString("en-US", {
-                month: "long",
+                month: "short",
                 day: "numeric",
                 year: "numeric",
                 hour: "2-digit",
@@ -140,23 +138,23 @@ export default function OrderDetailClient({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <PackingSlip order={order} />
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
           {error}
         </div>
       )}
 
       {/* Grid: 2 Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         {/* Left Column (2 span): Items, Order Status Workflow, Timeline */}
         <div className="lg:col-span-2 space-y-6">
           {/* Status Workflow Action Card */}
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+          <div className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
             <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
               Fulfillment Workflow Actions
             </h3>
@@ -182,15 +180,13 @@ export default function OrderDetailClient({
             )}
 
             <div className="flex flex-wrap gap-2.5">
-              {/* Ringing the customer is its own step. Whether they actually
-                  wanted the order is the next question, not this one — plenty
-                  of buyers cancel on the call. */}
+              {/* Ringing the customer */}
               {order.status === "PENDING" && (
                 <button
                   type="button"
                   disabled={loading}
                   onClick={handleMarkCalled}
-                  className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="w-full sm:w-auto justify-center px-3.5 py-2.5 sm:py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                 >
                   {loading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -207,7 +203,7 @@ export default function OrderDetailClient({
                     type="button"
                     disabled={loading}
                     onClick={() => handleStatusChange("CONFIRMED")}
-                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="w-full sm:w-auto justify-center px-3.5 py-2.5 sm:py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Customer Confirmed</span>
@@ -216,7 +212,7 @@ export default function OrderDetailClient({
                     type="button"
                     disabled={loading}
                     onClick={() => handleStatusChange("CANCELLED")}
-                    className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="w-full sm:w-auto justify-center px-3.5 py-2.5 sm:py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                   >
                     <XCircle className="w-3.5 h-3.5" />
                     <span>Customer Cancelled</span>
@@ -229,7 +225,7 @@ export default function OrderDetailClient({
                   type="button"
                   disabled={loading}
                   onClick={() => handleStatusChange("PACKED")}
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="w-full sm:w-auto justify-center px-3.5 py-2.5 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                 >
                   <Box className="w-3.5 h-3.5" />
                   <span>Mark as Packed</span>
@@ -237,19 +233,19 @@ export default function OrderDetailClient({
               )}
 
               {(order.status === "PACKED" || order.status === "CONFIRMED") && (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                   <input
                     type="text"
                     value={trackingNumber}
                     onChange={(e) => setTrackingNumber(e.target.value)}
                     placeholder="Tracking / Courier Code (e.g. STEADFAST-123)"
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs w-64 focus:outline-none focus:border-indigo-600"
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-xs w-full sm:w-64 focus:outline-none focus:border-indigo-600"
                   />
                   <button
                     type="button"
                     disabled={loading}
                     onClick={() => handleStatusChange("SHIPPED")}
-                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="justify-center px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 shrink-0"
                   >
                     <Truck className="w-3.5 h-3.5" />
                     <span>Dispatch / Shipped</span>
@@ -262,7 +258,7 @@ export default function OrderDetailClient({
                   type="button"
                   disabled={loading}
                   onClick={() => handleStatusChange("DELIVERED")}
-                  className="px-3.5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="w-full sm:w-auto justify-center px-3.5 py-2.5 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span>Mark as Delivered</span>
@@ -276,7 +272,7 @@ export default function OrderDetailClient({
                   type="button"
                   disabled={loading}
                   onClick={() => handleStatusChange("CANCELLED")}
-                  className="px-3.5 py-2 bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 ml-auto"
+                  className="w-full sm:w-auto justify-center px-3.5 py-2 bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 sm:ml-auto"
                 >
                   <XCircle className="w-3.5 h-3.5" />
                   <span>Cancel Order</span>
@@ -334,13 +330,36 @@ export default function OrderDetailClient({
             </div>
 
             {/* Total Footer */}
-            <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-500 uppercase">
-                Grand Total (Inc. delivery)
-              </span>
-              <span className="text-xl font-extrabold text-gray-900 font-display">
-                {formatPrice(order.totalAmountCents)}
-              </span>
+            <div className="p-6 bg-gray-50 border-t border-gray-100 space-y-2">
+              {order.discountAmountCents > 0 && (
+                <>
+                  <div className="flex justify-between items-center text-xs text-gray-500">
+                    <span>Items Subtotal</span>
+                    <span className="font-semibold text-gray-700">
+                      {formatPrice(order.totalAmountCents + order.discountAmountCents)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs text-emerald-600 font-medium">
+                    <span className="flex items-center gap-1.5">
+                      <span className="font-bold">Coupon Applied:</span>
+                      {order.couponCode && (
+                        <span className="font-mono bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[11px] text-emerald-800">
+                          {order.couponCode}
+                        </span>
+                      )}
+                    </span>
+                    <span>-{formatPrice(order.discountAmountCents)}</span>
+                  </div>
+                </>
+              )}
+              <div className="flex justify-between items-center pt-2 border-t border-gray-200/60">
+                <span className="text-xs font-bold text-gray-500 uppercase">
+                  Grand Total (Inc. delivery)
+                </span>
+                <span className="text-xl font-extrabold text-gray-900 font-display">
+                  {formatPrice(order.totalAmountCents)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -420,7 +439,12 @@ export default function OrderDetailClient({
 
               <div className="flex items-start gap-2 text-gray-700">
                 <Phone className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
-                <span className="font-mono">{order.customerPhone}</span>
+                <a
+                  href={`tel:${order.customerPhone}`}
+                  className="font-mono text-indigo-600 hover:underline"
+                >
+                  {order.customerPhone}
+                </a>
               </div>
 
               <div className="flex items-start gap-2 text-gray-700">

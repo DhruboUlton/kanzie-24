@@ -32,6 +32,10 @@ export type ActivityAction =
   | "COURIER_CREDENTIALS_UPDATED"
   | "BANNER_UPDATED"
   | "INTEGRATIONS_UPDATED"
+  | "COUPON_CREATED"
+  | "COUPONS_BATCH_GENERATED"
+  | "COUPON_UPDATED"
+  | "COUPON_STATUS_TOGGLED"
   | "OWNER_BOOTSTRAPPED";
 
 export type ActivityEntity =
@@ -43,7 +47,8 @@ export type ActivityEntity =
   | "INVENTORY"
   | "SETTINGS"
   | "BANNER"
-  | "INTEGRATIONS";
+  | "INTEGRATIONS"
+  | "COUPON";
 
 export type ActivityLogRow = {
   id: string;

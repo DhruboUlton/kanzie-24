@@ -19,6 +19,9 @@ export default function AdminHeader({
     if (pathname.startsWith("/admin/products")) return "Products Catalog";
     if (pathname.startsWith("/admin/orders/")) return "Order Details";
     if (pathname.startsWith("/admin/orders")) return "Orders Management";
+    if (pathname.startsWith("/admin/coupons/usage")) return "Coupon Usage History";
+    if (pathname.startsWith("/admin/coupons/")) return "Coupon Details";
+    if (pathname.startsWith("/admin/coupons")) return "Coupons & Discounts";
     if (pathname.startsWith("/admin/analytics")) return "Analytics";
     if (pathname.startsWith("/admin/inventory")) return "Inventory";
     if (pathname.startsWith("/admin/staff")) return "Staff";
@@ -27,22 +30,23 @@ export default function AdminHeader({
     if (pathname.startsWith("/admin/categories")) return "Categories";
     if (pathname.startsWith("/admin/banner")) return "Homepage Banner";
     if (pathname.startsWith("/admin/fraud-check")) return "Fraud Checking";
+    if (pathname.startsWith("/admin/integrations")) return "Integrations";
     if (pathname.startsWith("/admin/settings")) return "Store Settings";
     return "Admin";
   };
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 px-4 sm:px-6 flex items-center justify-between gap-3 shrink-0">
-      <div className="flex items-center gap-2 min-w-0">
+    <header className="h-16 bg-white border-b border-gray-200 px-3 sm:px-6 flex items-center justify-between gap-2 sm:gap-3 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
         <button
           type="button"
           onClick={onMenuClick}
           aria-label="Toggle navigation menu"
-          className="lg:hidden p-2 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
+          className="lg:hidden w-10 h-10 -ml-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors shrink-0 flex items-center justify-center"
         >
           <Menu className="w-5 h-5" />
         </button>
-        <h1 className="text-base sm:text-xl font-bold text-gray-900 truncate">
+        <h1 className="text-sm sm:text-lg md:text-xl font-bold text-gray-900 truncate">
           {getTitle()}
         </h1>
       </div>

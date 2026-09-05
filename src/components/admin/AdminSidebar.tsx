@@ -16,12 +16,12 @@ import {
   Settings,
   ExternalLink,
   LogOut,
-  Truck,
-  Layers,
   ShieldAlert,
   Images,
   Boxes,
   Plug,
+  TicketPercent,
+  X,
 } from "lucide-react";
 import { logoutAdminAction } from "@/lib/actions/auth";
 import { Permission } from "@/lib/permissions";
@@ -42,6 +42,7 @@ const STORE_NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/products", label: "Products", icon: Package, permission: "PRODUCTS_VIEW" },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart, permission: "ORDERS_VIEW" },
+  { href: "/admin/coupons", label: "Coupons", icon: TicketPercent, permission: "COUPONS_VIEW" },
   { href: "/admin/analytics", label: "Analytics", icon: ChartColumn, permission: "ANALYTICS_VIEW" },
   { href: "/admin/inventory", label: "Inventory", icon: Boxes, permission: "INVENTORY_VIEW" },
   { href: "/admin/categories", label: "Categories", icon: FolderTree, permission: "CATEGORIES_VIEW" },
@@ -63,6 +64,7 @@ export default function AdminSidebar({
   roleName,
   permissions = [],
   open = false,
+  onClose,
   onNavigate,
 }: {
   adminName?: string;
@@ -70,6 +72,7 @@ export default function AdminSidebar({
   roleName?: string | null;
   permissions?: Permission[];
   open?: boolean;
+  onClose?: () => void;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
@@ -89,8 +92,8 @@ export default function AdminSidebar({
     >
       {/* Brand Header */}
       <div>
-        <div className="h-16 px-6 flex items-center justify-between border-b border-white/10">
-          <Link href="/admin" className="flex items-center gap-2.5">
+        <div className="h-16 px-5 sm:px-6 flex items-center justify-between border-b border-white/10">
+          <Link href="/admin" onClick={onNavigate} className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-md bg-[#c0282b] flex items-center justify-center font-bold text-white tracking-wider text-sm shadow-md shadow-[#c0282b]/30">
               KZ
             </div>
@@ -103,6 +106,16 @@ export default function AdminSidebar({
               </span>
             </div>
           </Link>
+
+          {/* Close button for mobile drawer */}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close navigation sidebar"
+            className="lg:hidden p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation Items */}
@@ -121,7 +134,7 @@ export default function AdminSidebar({
                 key={item.href}
                 href={item.href}
                 onClick={onNavigate}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center gap-3 px-3 py-2.5 min-h-[42px] rounded-lg text-sm font-medium transition-all ${
                   isActive
                     ? "bg-[#c0282b] text-white shadow-sm font-semibold"
                     : "text-white/70 hover:text-white hover:bg-white/5"
@@ -147,7 +160,7 @@ export default function AdminSidebar({
                     key={item.href}
                     href={item.href}
                     onClick={onNavigate}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex items-center gap-3 px-3 py-2.5 min-h-[42px] rounded-lg text-sm font-medium transition-all ${
                       isActive
                         ? "bg-[#c0282b] text-white shadow-sm font-semibold"
                         : "text-white/70 hover:text-white hover:bg-white/5"

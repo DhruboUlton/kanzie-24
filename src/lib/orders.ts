@@ -1,7 +1,15 @@
 import { db } from "@/lib/db";
 import { getProductBySlug } from "@/lib/products";
 import { recordStockChange } from "@/lib/inventory";
-import { STOCK_COMMITTED_STATUSES } from "@/lib/order-status";
+import { STOCK_COMMITTED_STATUSES, holdsCouponRedemption } from "@/lib/order-status";
+
+import {
+  validateCouponForCheckout,
+  redeemCouponInTransaction,
+  releaseCouponForOrder,
+  restoreCouponForOrder,
+} from "@/lib/coupons";
+import { CouponError } from "@/lib/coupons-shared";
 
 export type CreateOrderItemInput = {
   slug: string;
@@ -20,8 +28,9 @@ export async function createPendingOrder(params: {
   tranId: string;
   customer: CustomerInput;
   items: CreateOrderItemInput[];
+  couponCode?: string;
 }) {
-  let totalAmountCents = 0;
+  let subtotalCents = 0;
   const lineItemsData: {
     productId?: string;
     productName: string;
@@ -39,7 +48,7 @@ export async function createPendingOrder(params: {
     }
 
     const itemTotal = product.priceCents * item.qty;
-    totalAmountCents += itemTotal;
+    subtotalCents += itemTotal;
 
     lineItemsData.push({
       productId: product.id && product.id.length > 5 ? product.id : undefined,
@@ -52,35 +61,78 @@ export async function createPendingOrder(params: {
     });
   }
 
+  let discountAmountCents = 0;
+  let appliedCouponId: string | undefined = undefined;
+  let appliedCouponCode: string | undefined = undefined;
+
+  if (params.couponCode && params.couponCode.trim()) {
+    const validation = await validateCouponForCheckout(params.couponCode, subtotalCents);
+    if (!validation.valid || !validation.coupon) {
+      throw new CouponError(validation.error || "That coupon could not be applied.");
+    }
+    discountAmountCents = validation.coupon.discountAmountCents;
+    appliedCouponId = validation.coupon.id;
+    appliedCouponCode = validation.coupon.code;
+  }
+
+  const finalTotalAmountCents = Math.max(0, subtotalCents - discountAmountCents);
+
   try {
-    const order = await db.order.create({
-      data: {
-        tranId: params.tranId,
-        status: "PENDING",
-        totalAmountCents,
-        currency: "BDT",
-        customerName: params.customer.name,
-        customerEmail: params.customer.email,
-        customerPhone: params.customer.phone,
-        customerAddress: params.customer.address,
-        customerCity: params.customer.city,
-        items: {
-          create: lineItemsData,
-        },
-        events: {
-          create: {
-            status: "PENDING",
-            note: "Order initiated via checkout",
+    const order = await db.$transaction(async (tx) => {
+      const createdOrder = await tx.order.create({
+        data: {
+          tranId: params.tranId,
+          status: "PENDING",
+          totalAmountCents: finalTotalAmountCents,
+          discountAmountCents,
+          couponId: appliedCouponId ?? null,
+          couponCode: appliedCouponCode ?? null,
+          currency: "BDT",
+          customerName: params.customer.name,
+          customerEmail: params.customer.email,
+          customerPhone: params.customer.phone,
+          customerAddress: params.customer.address,
+          customerCity: params.customer.city,
+          items: {
+            create: lineItemsData,
+          },
+          events: {
+            create: {
+              status: "PENDING",
+              note: appliedCouponCode
+                ? `Order initiated via checkout with coupon ${appliedCouponCode}`
+                : "Order initiated via checkout",
+            },
           },
         },
-      },
-      include: {
-        items: true,
-      },
+        include: {
+          items: true,
+        },
+      });
+
+      if (appliedCouponId) {
+        await redeemCouponInTransaction(tx, {
+          couponId: appliedCouponId,
+          orderId: createdOrder.id,
+          discountAmountCents,
+          orderSubtotalCents: subtotalCents,
+          finalOrderAmountCents: finalTotalAmountCents,
+          customer: params.customer,
+        });
+      }
+
+      return createdOrder;
     });
+
     return order;
   } catch (error) {
     console.warn("DB order create skipped/error (running in fallback mode if DB not yet connected):", error);
+    // Only a coupon problem is the customer's to see and act on. Matching on
+    // the error type rather than on the word "Coupon" appearing in the text
+    // keeps an unrelated database message from being shown as one.
+    if (error instanceof CouponError) {
+      throw error;
+    }
     return null;
   }
 }
@@ -168,6 +220,19 @@ export async function updateOrderStatus(
       // A confirmed order that gets cancelled used to leave its units
       // deducted forever; put them back on the shelf instead.
       await applyOrderStock(existing.items, orderId, "RETURN", 1);
+    }
+
+    // The coupon redemption moves on the same principle as the stock, but on
+    // a wider set of statuses: the use is spent from PENDING onwards and is
+    // only given back by a cancellation. Guarded on the previous status, so
+    // cancelling twice never credits the coupon twice.
+    const heldCoupon = holdsCouponRedemption(existing.status);
+    const holdsCoupon = holdsCouponRedemption(status);
+
+    if (heldCoupon && !holdsCoupon) {
+      await db.$transaction((tx) => releaseCouponForOrder(tx, orderId));
+    } else if (!heldCoupon && holdsCoupon) {
+      await db.$transaction((tx) => restoreCouponForOrder(tx, orderId));
     }
 
     return updated;

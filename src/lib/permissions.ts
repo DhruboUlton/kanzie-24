@@ -50,6 +50,9 @@ export const PERMISSIONS = {
   ROLES_MANAGE: "Create roles and change their permissions",
 
   ACTIVITY_LOG_VIEW: "See the admin activity log",
+
+  COUPONS_VIEW: "See coupons, analytics and redemption history",
+  COUPONS_MANAGE: "Edit coupons and toggle active status",
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -82,6 +85,7 @@ export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
   { label: "Staff", keys: ["STAFF_VIEW", "STAFF_CREATE", "STAFF_EDIT", "STAFF_DISABLE", "STAFF_DELETE"] },
   { label: "Roles", keys: ["ROLES_VIEW", "ROLES_MANAGE"] },
   { label: "Activity log", keys: ["ACTIVITY_LOG_VIEW"] },
+  { label: "Coupons", keys: ["COUPONS_VIEW", "COUPONS_MANAGE"] },
 ];
 
 // The role every system starts with. OWNER is special in code as well as
@@ -196,6 +200,12 @@ export function isRoleAdmin(
   ctx: Pick<AdminContext, "roleKey"> | null,
 ): boolean {
   return !!ctx?.roleKey && ROLE_ADMIN_ROLE_KEYS.includes(ctx.roleKey);
+}
+
+export function isOwner(
+  ctx: Pick<AdminContext, "roleKey"> | null,
+): boolean {
+  return ctx?.roleKey === OWNER_ROLE_KEY;
 }
 
 export const ROLE_ADMIN_DENIED =

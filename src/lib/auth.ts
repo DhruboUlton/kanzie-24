@@ -177,6 +177,18 @@ export async function requireAnyPermission(
 }
 
 /**
+ * Gate strictly for Owner-only operations (e.g. creating/generating coupons).
+ * Non-owners are forbidden regardless of any permission flags.
+ */
+export async function requireOwner(): Promise<AdminContext> {
+  const ctx = await requireAdmin();
+  if (ctx.roleKey !== OWNER_ROLE_KEY) {
+    throw new ForbiddenError("Only the store owner can perform this action.");
+  }
+  return ctx;
+}
+
+/**
  * Turns an authorization failure into a result object for server actions
  * that report errors in the UI rather than throwing to an error boundary.
  * Anything else is re-thrown — a database fault must not be reported to

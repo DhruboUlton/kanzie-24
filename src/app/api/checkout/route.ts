@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getProductBySlug } from "@/lib/products";
 import { createPendingOrder } from "@/lib/orders";
+import { CouponError } from "@/lib/coupons-shared";
 
 const bodySchema = z.object({
   items: z
@@ -20,6 +21,7 @@ const bodySchema = z.object({
     address: z.string().min(1).max(200),
     city: z.string().min(1).max(100),
   }),
+  couponCode: z.string().trim().optional(),
 });
 
 // Prices are always re-looked-up server-side from the product catalog —
@@ -69,18 +71,43 @@ export async function POST(req: NextRequest) {
   // as the order's unique ID, shown to the customer on success and to the
   // admin in the dashboard. Prices are re-looked-up from the catalog
   // inside createPendingOrder itself, never trusted from the client.
-  const order = await createPendingOrder({
-    tranId: tran_id,
-    customer: parsed.data.customer,
-    items: parsed.data.items,
-  });
+  try {
+    const order = await createPendingOrder({
+      tranId: tran_id,
+      customer: parsed.data.customer,
+      items: parsed.data.items,
+      couponCode: parsed.data.couponCode,
+    });
 
-  if (!order) {
+    if (!order) {
+      return NextResponse.json(
+        { error: "Couldn't place your order right now. Please try again or contact us." },
+        { status: 502 },
+      );
+    }
+
+    // The totals come back so the confirmation screen can show what was
+    // actually written, not what the browser had computed. The two can differ
+    // whenever the cart moved after a coupon was applied, and the customer
+    // should be shown the figure that is in the order.
+    return NextResponse.json({
+      orderId: order.tranId,
+      subtotalCents: order.totalAmountCents + order.discountAmountCents,
+      discountAmountCents: order.discountAmountCents,
+      totalAmountCents: order.totalAmountCents,
+      couponCode: order.couponCode,
+    });
+  } catch (error) {
+    // A coupon problem is worth telling the customer about; anything else is
+    // an internal fault, and echoing its message back would leak the shape of
+    // the database or the stack into a public response.
+    if (error instanceof CouponError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    console.error("Checkout failed:", error);
     return NextResponse.json(
       { error: "Couldn't place your order right now. Please try again or contact us." },
       { status: 502 },
     );
   }
-
-  return NextResponse.json({ orderId: order.tranId });
 }

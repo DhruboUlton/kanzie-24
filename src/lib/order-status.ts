@@ -37,6 +37,21 @@ export const STOCK_COMMITTED_STATUSES: OrderStatus[] = [
  */
 export const REVENUE_STATUSES: OrderStatus[] = STOCK_COMMITTED_STATUSES;
 
+/**
+ * Statuses where the order still holds the coupon redemption it took when it
+ * was placed. Unlike stock, the claim starts at PENDING: the use was spent
+ * the moment the customer checked out with the code, and a limited coupon
+ * must not be handed out twice while an order using it is still alive. Only
+ * cancelling gives it back.
+ */
+export const COUPON_HELD_STATUSES: OrderStatus[] = ORDER_STATUSES.filter(
+  (status) => status !== "CANCELLED",
+);
+
+export function holdsCouponRedemption(status: string): boolean {
+  return (COUPON_HELD_STATUSES as string[]).includes(status);
+}
+
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   PENDING: "#f59e0b",
   CALLED: "#0ea5e9",

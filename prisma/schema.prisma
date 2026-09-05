@@ -156,10 +156,17 @@ model Order {
   calledAt        DateTime?
   calledById      String?
   calledByName    String?
+  couponId        String?
+  coupon          Coupon?      @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCode      String?
+  discountAmountCents Int      @default(0)
   items           OrderItem[]
   events          OrderEvent[]
+  couponUsages    CouponUsage[]
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
+
+  @@index([couponId])
 }
 
 model OrderItem {
@@ -219,4 +226,51 @@ model SiteSetting {
   key       String   @id
   value     String   @db.Text
   updatedAt DateTime @updatedAt
+}
+
+model Coupon {
+  id                      String        @id @default(cuid())
+  code                    String        @unique
+  discountType            String        // "PERCENTAGE" | "FIXED"
+  discountValue           Int           // percentage (e.g. 20) or fixed cents (e.g. 50000 = ৳500)
+  minimumOrderAmountCents Int?          // in cents, null for no minimum
+  usageLimit              Int?          // null = unlimited
+  usageCount              Int           @default(0)
+  note                    String?       @db.Text
+  isActive                Boolean       @default(true)
+  orders                  Order[]
+  usages                  CouponUsage[]
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+  @@index([createdAt])
+}
+
+model CouponUsage {
+  id                   String   @id @default(cuid())
+  couponId             String
+  coupon               Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  couponCode           String   // denormalized snapshot
+  orderId              String
+  order                Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerName         String?
+  customerEmail        String?
+  customerPhone        String?
+  discountAmountCents  Int
+  orderSubtotalCents   Int
+  finalOrderAmountCents Int
+  // Set when the order was cancelled and the redemption handed back. The row
+  // is kept rather than deleted so the audit trail stays append-only, but a
+  // released row no longer counts towards redemptions or discount totals.
+  releasedAt           DateTime?
+  createdAt            DateTime @default(now())
+
+  @@index([couponId])
+  @@index([releasedAt])
+  @@index([orderId])
+  @@index([customerEmail])
+  @@index([customerPhone])
+  @@index([createdAt])
 }
