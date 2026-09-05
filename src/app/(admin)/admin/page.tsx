@@ -135,22 +135,22 @@ export default async function AdminDashboardPage() {
 
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Top Banner / Welcome */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-gray-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-xs">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">
             Welcome to KANZIE Dashboard
           </h2>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
             Monitor inventory, process customer orders, and update store content.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           {canSeeProducts && can("PRODUCTS_CREATE") && (
           <Link
             href="/admin/products/new"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#c0282b] hover:bg-[#8f1e20] text-white text-sm font-semibold rounded-lg shadow-sm transition-colors"
+            className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-[#c0282b] hover:bg-[#8f1e20] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm transition-colors"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Add Product</span>
@@ -159,7 +159,7 @@ export default async function AdminDashboardPage() {
           {canSeeOrders && (
           <Link
             href="/admin/orders"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-semibold rounded-lg transition-colors"
+            className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs sm:text-sm font-semibold rounded-lg transition-colors"
           >
             <ShoppingCart className="w-4 h-4" />
             <span>Orders</span>
@@ -169,25 +169,25 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
             <div
               key={card.title}
-              className={`bg-white p-6 rounded-xl border ${card.border} shadow-xs flex items-start justify-between`}
+              className={`bg-white p-4 sm:p-6 rounded-xl border ${card.border} shadow-xs flex items-start justify-between`}
             >
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <p className="text-[11px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   {card.title}
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-2 font-display">
+                <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1.5 sm:mt-2 font-display">
                   {card.value}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">{card.subtitle}</p>
+                <p className="text-[11px] sm:text-xs text-gray-400 mt-1">{card.subtitle}</p>
               </div>
-              <div className={`p-3 rounded-lg ${card.iconBg}`}>
-                <Icon className="w-5 h-5" />
+              <div className={`p-2.5 sm:p-3 rounded-lg ${card.iconBg}`}>
+                <Icon className="w-4 sm:w-5 h-4 sm:h-5" />
               </div>
             </div>
           );
@@ -195,13 +195,13 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Main Split: Recent Orders & Alerts/Quick Links */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         {/* Recent Orders List (2 Cols) */}
         {canSeeOrders && (
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
-          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-gray-900 text-base">Recent Orders</h3>
+              <h3 className="font-bold text-gray-900 text-sm sm:text-base">Recent Orders</h3>
               <p className="text-xs text-gray-500 mt-0.5">
                 Latest customer purchases and gateway transactions
               </p>
@@ -217,7 +217,7 @@ export default async function AdminDashboardPage() {
 
           <div className="overflow-x-auto">
             {recentOrders.length === 0 ? (
-              <div className="p-12 text-center text-gray-400">
+              <div className="p-8 sm:p-12 text-center text-gray-400">
                 <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                 <p className="text-sm">No orders recorded yet.</p>
                 <p className="text-xs text-gray-400 mt-1">
@@ -228,11 +228,11 @@ export default async function AdminDashboardPage() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b border-gray-100">
                   <tr>
-                    <th className="px-6 py-3">Order ID</th>
-                    <th className="px-6 py-3">Customer</th>
-                    <th className="px-6 py-3">Total</th>
-                    <th className="px-6 py-3">Status</th>
-                    <th className="px-6 py-3 text-right">Action</th>
+                    <th className="px-4 sm:px-6 py-3">Order ID</th>
+                    <th className="px-4 sm:px-6 py-3">Customer</th>
+                    <th className="px-4 sm:px-6 py-3">Total</th>
+                    <th className="px-4 sm:px-6 py-3">Status</th>
+                    <th className="px-4 sm:px-6 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -248,30 +248,30 @@ export default async function AdminDashboardPage() {
 
                     return (
                       <tr key={order.id} className="hover:bg-gray-50/70 transition-colors">
-                        <td className="px-6 py-4 font-mono text-xs font-semibold text-gray-900">
+                        <td className="px-4 sm:px-6 py-3.5 font-mono text-xs font-semibold text-gray-900 whitespace-nowrap">
                           {order.tranId}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-gray-900">
+                        <td className="px-4 sm:px-6 py-3.5">
+                          <div className="font-medium text-gray-900 text-xs sm:text-sm">
                             {order.customerName}
                           </div>
-                          <div className="text-xs text-gray-400">
+                          <div className="text-[11px] text-gray-400">
                             {order.customerCity}
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-semibold text-gray-900">
+                        <td className="px-4 sm:px-6 py-3.5 font-semibold text-gray-900 text-xs sm:text-sm whitespace-nowrap font-display">
                           {formatPrice(order.totalAmountCents)}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-3.5">
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                            className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-semibold border whitespace-nowrap ${
                               statusColors[order.status] || "bg-gray-100 text-gray-700"
                             }`}
                           >
                             {order.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-4 sm:px-6 py-3.5 text-right">
                           <Link
                             href={`/admin/orders/${order.id}`}
                             className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"

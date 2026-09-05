@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 import { Permission } from "@/lib/permissions";
@@ -23,12 +23,24 @@ export default function AdminShell({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Prevent scroll bleed on mobile when drawer is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [sidebarOpen]);
+
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100 font-sans text-gray-900">
       <div
         aria-hidden={!sidebarOpen}
         onClick={() => setSidebarOpen(false)}
-        className={`lg:hidden fixed inset-0 bg-black/50 z-40 transition-opacity ${
+        className={`lg:hidden fixed inset-0 bg-black/50 z-40 transition-opacity backdrop-blur-xs ${
           sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
       />
@@ -39,6 +51,7 @@ export default function AdminShell({
         roleName={roleName}
         permissions={permissions}
         open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
         onNavigate={() => setSidebarOpen(false)}
       />
 
@@ -47,7 +60,7 @@ export default function AdminShell({
           adminName={adminName}
           onMenuClick={() => setSidebarOpen((o) => !o)}
         />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>

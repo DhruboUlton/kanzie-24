@@ -32,7 +32,10 @@ export default function CartPage() {
       </h1>
 
       <div className="grid lg:grid-cols-3 gap-12">
-        <div className="lg:col-span-2 flex flex-col gap-6">
+        {/* min-w-0: a grid item's default min-width is its min-content, so the
+            item row's controls pushed this column past the viewport and the
+            whole page scrolled sideways on a 320px screen. */}
+        <div className="lg:col-span-2 min-w-0 flex flex-col gap-6">
           {items.map((item) => (
             <div
               key={item.productId}

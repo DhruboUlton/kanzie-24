@@ -82,7 +82,7 @@ export default async function AdminOrdersPage(props: {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-gray-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4">
         <form method="GET" className="w-full md:w-80 relative">
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -95,12 +95,12 @@ export default async function AdminOrdersPage(props: {
         </form>
 
         {/* Status pill selectors */}
-        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg overflow-x-auto w-full md:w-auto text-xs">
+        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg overflow-x-auto w-full md:w-auto text-xs scrollbar-none">
           {statuses.map((st) => (
             <Link
               key={st.value}
               href={`/admin/orders?status=${st.value}${query ? `&q=${query}` : ""}`}
-              className={`px-3 py-1.5 rounded-md font-medium transition-colors whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-md font-medium transition-colors whitespace-nowrap shrink-0 ${
                 statusFilter === st.value
                   ? "bg-white text-gray-900 font-bold shadow-xs"
                   : "text-gray-600 hover:text-gray-900"
@@ -112,129 +112,236 @@ export default async function AdminOrdersPage(props: {
         </div>
       </div>
 
-      {/* Orders Table */}
+      {/* Orders Container */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          {filteredOrders.length === 0 ? (
-            <div className="p-12 text-center text-gray-400">
-              <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-              <p className="text-sm">No orders found.</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Completed checkout sessions will automatically be recorded here.
-              </p>
-            </div>
-          ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-3.5">Transaction ID</th>
-                  <th className="px-6 py-3.5">Date & Time</th>
-                  <th className="px-6 py-3.5">Customer & City</th>
-                  <th className="px-6 py-3.5">Items</th>
-                  <th className="px-6 py-3.5">Total Amount</th>
-                  <th className="px-6 py-3.5">Status</th>
-                  {canFraudCheck && <th className="px-6 py-3.5">Courier History</th>}
-                  <th className="px-6 py-3.5 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredOrders.map((order) => {
-                  const itemCount = order.items?.reduce(
+        {filteredOrders.length === 0 ? (
+          <div className="p-8 sm:p-12 text-center text-gray-400">
+            <ShoppingCart className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+            <p className="text-sm">No orders found.</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Completed checkout sessions will automatically be recorded here.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Mobile Cards View (below md) */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {filteredOrders.map((order) => {
+                const itemCount =
+                  order.items?.reduce(
                     (acc: number, item: any) => acc + item.qty,
                     0
                   ) || 1;
 
-                  return (
-                    <tr
-                      key={order.id}
-                      className="hover:bg-gray-50/70 transition-colors"
-                    >
-                      {/* TranID & Gateway */}
-                      <td className="px-6 py-4">
+                return (
+                  <div
+                    key={order.id}
+                    className="p-4 space-y-3 hover:bg-gray-50/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
                         <Link
                           href={`/admin/orders/${order.id}`}
-                          className="font-mono text-xs font-bold text-gray-900 hover:text-accent transition-colors"
+                          className="font-mono text-xs font-bold text-gray-900 hover:text-accent"
                         >
-                          {order.tranId}
+                          #{order.tranId}
                         </Link>
                         {order.cardType && (
-                          <span className="block text-[11px] text-gray-400">
-                            {order.cardType}
+                          <span className="text-[10px] text-gray-400 ml-1.5">
+                            ({order.cardType})
                           </span>
                         )}
-                      </td>
-
-                      {/* Date */}
-                      <td className="px-6 py-4 text-xs text-gray-500">
-                        {new Date(order.createdAt).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </td>
-
-                      {/* Customer */}
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-900">
-                          {order.customerName}
-                        </div>
-                        <div className="text-xs text-gray-400 font-mono">
-                          {order.customerPhone} &middot; {order.customerCity}
-                        </div>
-                      </td>
-
-                      {/* Items */}
-                      <td className="px-6 py-4 text-xs text-gray-600">
-                        {itemCount} {itemCount === 1 ? "unit" : "units"}
-                      </td>
-
-                      {/* Total */}
-                      <td className="px-6 py-4 font-bold text-gray-900 font-display">
-                        {formatPrice(order.totalAmountCents)}
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-6 py-4">
+                        <span className="text-[11px] text-gray-400 block mt-0.5">
+                          {new Date(order.createdAt).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+                      <div className="text-right">
                         <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
-                            ORDER_STATUS_BADGES[order.status] || "bg-gray-100 text-gray-700"
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                            ORDER_STATUS_BADGES[order.status] ||
+                            "bg-gray-100 text-gray-700"
                           }`}
                         >
                           {order.status}
                         </span>
                         {order.calledByName && (
-                          <span className="block text-[11px] text-gray-400 mt-1">
-                            Called by {order.calledByName}
+                          <span className="block text-[10px] text-gray-400 mt-0.5">
+                            by {order.calledByName}
                           </span>
                         )}
-                      </td>
+                      </div>
+                    </div>
 
-                      {/* Courier history — fetched on click, never on load */}
-                      {canFraudCheck && (
-                        <td className="px-6 py-4">
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-50">
+                      <div className="min-w-0 pr-2">
+                        <p className="font-semibold text-gray-900 truncate">
+                          {order.customerName}
+                        </p>
+                        <p className="text-[11px] text-gray-500 font-mono truncate">
+                          <a
+                            href={`tel:${order.customerPhone}`}
+                            className="text-indigo-600 hover:underline"
+                          >
+                            {order.customerPhone}
+                          </a>{" "}
+                          &middot; {order.customerCity}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-bold text-gray-900 text-sm font-display">
+                          {formatPrice(order.totalAmountCents)}
+                        </p>
+                        <p className="text-[11px] text-gray-400">
+                          {itemCount} {itemCount === 1 ? "unit" : "units"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
+                      <div className="min-w-0">
+                        {canFraudCheck && (
                           <OrderFraudCheck phone={order.customerPhone} />
-                        </td>
-                      )}
+                        )}
+                      </div>
+                      <Link
+                        href={`/admin/orders/${order.id}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-lg transition-colors ml-auto shrink-0"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>View Details</span>
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
 
-                      {/* Actions */}
-                      <td className="px-6 py-4 text-right">
-                        <Link
-                          href={`/admin/orders/${order.id}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-lg transition-colors"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>View Details</span>
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+            {/* Desktop Table View (md and up) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-3.5">Transaction ID</th>
+                    <th className="px-6 py-3.5">Date &amp; Time</th>
+                    <th className="px-6 py-3.5">Customer &amp; City</th>
+                    <th className="px-6 py-3.5">Items</th>
+                    <th className="px-6 py-3.5">Total Amount</th>
+                    <th className="px-6 py-3.5">Status</th>
+                    {canFraudCheck && (
+                      <th className="px-6 py-3.5">Courier History</th>
+                    )}
+                    <th className="px-6 py-3.5 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredOrders.map((order) => {
+                    const itemCount =
+                      order.items?.reduce(
+                        (acc: number, item: any) => acc + item.qty,
+                        0
+                      ) || 1;
+
+                    return (
+                      <tr
+                        key={order.id}
+                        className="hover:bg-gray-50/70 transition-colors"
+                      >
+                        {/* TranID & Gateway */}
+                        <td className="px-6 py-4">
+                          <Link
+                            href={`/admin/orders/${order.id}`}
+                            className="font-mono text-xs font-bold text-gray-900 hover:text-accent transition-colors"
+                          >
+                            {order.tranId}
+                          </Link>
+                          {order.cardType && (
+                            <span className="block text-[11px] text-gray-400">
+                              {order.cardType}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Date */}
+                        <td className="px-6 py-4 text-xs text-gray-500">
+                          {new Date(order.createdAt).toLocaleDateString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )}
+                        </td>
+
+                        {/* Customer */}
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-gray-900">
+                            {order.customerName}
+                          </div>
+                          <div className="text-xs text-gray-400 font-mono">
+                            {order.customerPhone} &middot; {order.customerCity}
+                          </div>
+                        </td>
+
+                        {/* Items */}
+                        <td className="px-6 py-4 text-xs text-gray-600">
+                          {itemCount} {itemCount === 1 ? "unit" : "units"}
+                        </td>
+
+                        {/* Total */}
+                        <td className="px-6 py-4 font-bold text-gray-900 font-display">
+                          {formatPrice(order.totalAmountCents)}
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${
+                              ORDER_STATUS_BADGES[order.status] ||
+                              "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {order.status}
+                          </span>
+                          {order.calledByName && (
+                            <span className="block text-[11px] text-gray-400 mt-1">
+                              Called by {order.calledByName}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Courier history */}
+                        {canFraudCheck && (
+                          <td className="px-6 py-4">
+                            <OrderFraudCheck phone={order.customerPhone} />
+                          </td>
+                        )}
+
+                        {/* Actions */}
+                        <td className="px-6 py-4 text-right">
+                          <Link
+                            href={`/admin/orders/${order.id}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-lg transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View Details</span>
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

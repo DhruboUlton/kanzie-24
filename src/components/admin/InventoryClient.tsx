@@ -236,19 +236,19 @@ export default function InventoryClient({
             reordering
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={exportCsv}
-            className="inline-flex items-center gap-2 px-3.5 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-semibold rounded-lg transition-colors"
+            className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-2 px-3.5 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs sm:text-sm font-semibold rounded-lg transition-colors"
           >
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Export CSV</span>
+            <span>Export CSV</span>
           </button>
           <button
             type="button"
             onClick={() => setReceiving(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#c0282b] hover:bg-[#8f1e20] text-white text-sm font-semibold rounded-lg shadow-sm transition-colors"
+            className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-2 px-4 py-2 bg-[#c0282b] hover:bg-[#8f1e20] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm transition-colors"
           >
             <PackagePlus className="w-4 h-4" />
             <span>Receive stock</span>
@@ -257,25 +257,25 @@ export default function InventoryClient({
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+        <div className="p-3.5 sm:p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
           <TriangleAlert className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {/* Summary */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-xs">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="p-3.5 sm:p-4 bg-white rounded-xl border border-gray-200 shadow-xs">
           <div className="flex items-center gap-2 text-gray-500">
             <Boxes className="w-4 h-4" />
-            <span className="text-[11px] font-semibold uppercase tracking-wide">
+            <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide">
               Units on hand
             </span>
           </div>
-          <p className="text-2xl font-bold text-gray-900 mt-1">
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">
             {summary.unitCount}
           </p>
-          <p className="text-[11px] text-gray-400 mt-0.5">
+          <p className="text-[10px] sm:text-[11px] text-gray-400 mt-0.5">
             across {summary.skuCount} products
           </p>
         </div>
@@ -331,7 +331,7 @@ export default function InventoryClient({
       </div>
 
       {/* Alerts */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
         {alertChips.map((chip) => (
           <button
             key={chip.id}
@@ -486,7 +486,7 @@ export default function InventoryClient({
                             onClick={() => quickAdjust(r, -1)}
                             disabled={busyId === r.id || r.stockQty <= 0}
                             aria-label={`Remove one ${r.name}`}
-                            className="p-1 text-gray-400 hover:text-gray-900 hover:bg-gray-200 rounded disabled:opacity-30 transition-colors"
+                            className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-200 rounded disabled:opacity-30 transition-colors"
                           >
                             <Minus className="w-3.5 h-3.5" />
                           </button>
@@ -502,7 +502,7 @@ export default function InventoryClient({
                             onClick={() => quickAdjust(r, 1)}
                             disabled={busyId === r.id}
                             aria-label={`Add one ${r.name}`}
-                            className="p-1 text-gray-400 hover:text-gray-900 hover:bg-gray-200 rounded disabled:opacity-30 transition-colors"
+                            className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-200 rounded disabled:opacity-30 transition-colors"
                           >
                             <Plus className="w-3.5 h-3.5" />
                           </button>

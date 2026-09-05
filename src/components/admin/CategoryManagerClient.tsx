@@ -273,7 +273,7 @@ export default function CategoryManagerClient({
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Categories Management</h2>
           <p className="text-xs text-gray-500 mt-0.5">
@@ -281,7 +281,7 @@ export default function CategoryManagerClient({
             reorder among parents, subcategories within their parent.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 self-start sm:self-auto">
           {savingOrder && (
             <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -317,7 +317,7 @@ export default function CategoryManagerClient({
       {editingId && (
         <form
           onSubmit={handleSave}
-          className="bg-white p-6 rounded-xl border border-accent shadow-sm space-y-4"
+          className="bg-white p-4 sm:p-6 rounded-xl border border-accent shadow-sm space-y-4"
         >
           <h3 className="text-sm font-bold text-gray-900 uppercase">
             {editingId === "new" ? "New Category" : "Edit Category"}
@@ -408,13 +408,13 @@ export default function CategoryManagerClient({
       {/* Category List */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-        <table className="w-full min-w-[34rem] text-left text-sm">
+        <table className="w-full text-left text-sm">
           <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b border-gray-100">
             <tr>
-              <th className="w-10 pl-4 py-3.5" aria-label="Reorder" />
-              <th className="px-6 py-3.5">Category Name</th>
-              <th className="px-6 py-3.5">URL Slug</th>
-              <th className="px-6 py-3.5 text-right">Actions</th>
+              <th className="w-8 sm:w-10 pl-3 sm:pl-4 py-3 sm:py-3.5" aria-label="Reorder" />
+              <th className="px-3 sm:px-6 py-3 sm:py-3.5">Category Name</th>
+              <th className="hidden sm:table-cell px-6 py-3.5">URL Slug</th>
+              <th className="px-3 sm:px-6 py-3 sm:py-3.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -444,31 +444,31 @@ export default function CategoryManagerClient({
                   isDragging ? "opacity-40" : ""
                 } ${isOver ? "bg-accent/5 outline outline-2 -outline-offset-2 outline-accent" : ""}`}
               >
-                <td className="w-10 pl-4 py-4">
+                <td className="w-8 sm:w-10 pl-3 sm:pl-4 py-3 sm:py-4">
                   <div className="flex items-center gap-1 text-gray-300">
                     <GripVertical
-                      className={`w-4 h-4 shrink-0 ${
+                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${
                         cat.id ? "cursor-grab active:cursor-grabbing text-gray-400" : ""
                       }`}
                     />
-                    <span className="text-[11px] font-mono text-gray-400 tabular-nums">
+                    <span className="text-[10px] sm:text-[11px] font-mono text-gray-400 tabular-nums">
                       {pos >= 0 ? pos + 1 : "—"}
                     </span>
                   </div>
                 </td>
-                <td className="px-6 py-4 font-bold text-gray-900">
+                <td className="px-3 sm:px-6 py-3 sm:py-4 font-bold text-gray-900">
                   <div
-                    className={`flex items-center gap-2.5 ${isChild ? "pl-6" : ""}`}
+                    className={`flex items-center gap-2 sm:gap-2.5 ${isChild ? "pl-3 sm:pl-6" : ""}`}
                   >
                     {isChild ? (
-                      <CornerDownRight className="w-4 h-4 text-gray-300 shrink-0" />
+                      <CornerDownRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-300 shrink-0" />
                     ) : (
-                      <FolderTree className="w-4 h-4 text-accent shrink-0" />
+                      <FolderTree className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent shrink-0" />
                     )}
                     {/* Whether a cover is set is the thing you want to see at
                         a glance; an empty frame says "still borrowing a
                         product photo". */}
-                    <span className="shrink-0 w-9 h-9 rounded border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
+                    <span className="shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
                       {cat.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -480,22 +480,29 @@ export default function CategoryManagerClient({
                         <ImageIcon className="w-3.5 h-3.5 text-gray-300" />
                       )}
                     </span>
-                    <span className={isChild ? "font-semibold" : ""}>{cat.name}</span>
-                    {!isChild && (
-                      <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
-                        {categories.filter((c) => c.parentId === cat.id).length ||
-                          ""}
-                        {categories.filter((c) => c.parentId === cat.id).length
-                          ? " sub"
-                          : ""}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`text-xs sm:text-sm ${isChild ? "font-semibold" : ""}`}>{cat.name}</span>
+                        {!isChild && (
+                          <span className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                            {categories.filter((c) => c.parentId === cat.id).length ||
+                              ""}
+                            {categories.filter((c) => c.parentId === cat.id).length
+                              ? " sub"
+                              : ""}
+                          </span>
+                        )}
+                      </div>
+                      <span className="block sm:hidden text-[10px] font-mono text-gray-400 font-normal truncate max-w-[140px]">
+                        {cat.slug}
                       </span>
-                    )}
+                    </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 font-mono text-xs text-gray-600">
+                <td className="hidden sm:table-cell px-6 py-4 font-mono text-xs text-gray-600">
                   {cat.slug}
                 </td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-3 sm:px-6 py-3 sm:py-4 text-right">
                   <div className="flex items-center justify-end gap-2">
                     {/* HTML5 drag does nothing on touch, so the same move is
                         always available as a button. */}
