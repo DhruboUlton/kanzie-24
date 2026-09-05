@@ -32,12 +32,12 @@ export default function CategoryTiles({
               {cover && (
                 <Image
                   src={cover}
-                  alt={cat.name}
+                  // The tile prints the category name right below, so a
+                  // matching alt makes a screen reader say it twice. The
+                  // photo is decoration on top of that label.
+                  alt=""
                   fill
                   sizes="(min-width: 640px) 288px, 70vw"
-                  // Uploads are streamed from outside the app root, so the
-                  // optimizer can't resolve them.
-                  unoptimized={cover.startsWith("/api/uploads/")}
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               )}

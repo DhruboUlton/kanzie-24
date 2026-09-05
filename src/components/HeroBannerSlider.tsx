@@ -89,7 +89,6 @@ export default function HeroBannerSlider({
                 fill
                 sizes="100vw"
                 priority={i === 0}
-                unoptimized={slide.src.startsWith("/api/uploads/")}
                 className="object-cover"
               />
 

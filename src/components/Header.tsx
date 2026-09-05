@@ -132,6 +132,10 @@ export default function Header({ tree = [] }: { tree?: CategoryNode[] }) {
             width={1000}
             height={193}
             priority
+            // Without this the srcset is built off the declared 1000px and a
+            // retina phone pulls a 2048px-wide file for a 16px-tall logo.
+            // The rendered width is the height times the 1000:193 ratio.
+            sizes="(min-width: 640px) 83px, 62px"
             className="h-[12px] sm:h-4 w-auto"
           />
         </Link>

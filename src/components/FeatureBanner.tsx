@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, ShieldCheck, Zap } from "lucide-react";
 import { BodyBannerContent } from "@/lib/body-banner";
 
@@ -84,15 +85,28 @@ export default function FeatureBanner({
           {hasImage && (
             <div className="col-span-7 relative flex items-center justify-center">
               <div className="relative w-full h-60 sm:h-72 md:h-[400px] lg:h-[480px] transition-transform duration-500 hover:scale-105">
-                {/* Plain img: the source can be an uploaded file served from
-                    outside the app root or an arbitrary external URL, neither
-                    of which the image optimizer can resolve. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={content.image}
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-contain drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)]"
-                />
+                {/* Same-origin sources go through the optimizer, which is
+                    what stops a 1400px banner PNG being shipped whole to a
+                    phone showing it at 210px. Uploads count as same-origin:
+                    /api/uploads serves them over HTTP, which the optimizer
+                    fetches like any other path. Only an arbitrary external
+                    URL, which it cannot resolve, falls back to a plain img. */}
+                {content.image.startsWith("/") ? (
+                  <Image
+                    src={content.image}
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 60vw, (max-width: 1024px) 45vw, 480px"
+                    className="object-contain drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)]"
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={content.image}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-contain drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)]"
+                  />
+                )}
               </div>
             </div>
           )}

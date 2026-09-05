@@ -5,12 +5,6 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight, Play, Video } from "lucide-react";
 import { parseVideoUrl, VideoInfo } from "@/lib/video";
 
-// Runtime-uploaded media is streamed from outside the app root, so the
-// image optimizer can't resolve it — those load directly instead.
-function isUpload(src: string) {
-  return src.startsWith("/api/uploads/");
-}
-
 // Below this the gesture is treated as a tap and the track springs back.
 const COMMIT_RATIO = 0.18;
 const COMMIT_MIN_PX = 40;
@@ -174,7 +168,6 @@ export default function ProductGallery({
                   fill
                   sizes="(min-width: 640px) 50vw, 100vw"
                   priority={i === 0}
-                  unoptimized={isUpload(item.src)}
                   onLoad={(e) => {
                     const img = e.currentTarget;
                     if (img.naturalWidth && img.naturalHeight) {
@@ -277,7 +270,6 @@ export default function ProductGallery({
                   alt={`${name} — thumb ${i + 1}`}
                   fill
                   sizes="120px"
-                  unoptimized={isUpload(item.src)}
                   className="object-contain p-1"
                 />
               ) : (
@@ -289,7 +281,6 @@ export default function ProductGallery({
                         alt="Product video preview"
                         fill
                         sizes="120px"
-                        unoptimized={isUpload(images[0])}
                         className="object-cover opacity-50"
                       />
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
