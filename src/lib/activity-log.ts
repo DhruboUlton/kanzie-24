@@ -37,7 +37,10 @@ export type ActivityAction =
   | "COUPONS_BATCH_GENERATED"
   | "COUPON_UPDATED"
   | "COUPON_STATUS_TOGGLED"
-  | "OWNER_BOOTSTRAPPED";
+  | "OWNER_BOOTSTRAPPED"
+  | "MEDIA_UPLOADED"
+  | "MEDIA_UPDATED"
+  | "MEDIA_DELETED";
 
 export type ActivityEntity =
   | "STAFF"
@@ -49,7 +52,8 @@ export type ActivityEntity =
   | "SETTINGS"
   | "BANNER"
   | "INTEGRATIONS"
-  | "COUPON";
+  | "COUPON"
+  | "MEDIA";
 
 export type ActivityLogRow = {
   id: string;

@@ -155,6 +155,7 @@ model Product {
   archivedAt          DateTime?
   orderItems          OrderItem[]
   stockMovements      StockMovement[]
+  productMedia        ProductMedia[]
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
@@ -312,4 +313,43 @@ model CouponUsage {
   @@index([customerEmail])
   @@index([customerPhone])
   @@index([createdAt])
+}
+
+model Media {
+  id           String         @id @default(cuid())
+  type         String         // "IMAGE" | "VIDEO"
+  url          String         @db.VarChar(1000)
+  thumbnailUrl String?        @db.VarChar(1000)
+  filename     String
+  mimeType     String
+  size         Int            // bytes
+  // sha256 of the file bytes. Dedup keys off this, not filename/size, so two
+  // different files that happen to share a name and byte count never collapse
+  // into one Media row.
+  contentHash  String         @default("") @db.VarChar(64)
+  title        String?
+  altText      String?
+  productMedia ProductMedia[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([type])
+  @@index([createdAt])
+  @@index([url])
+  @@index([contentHash])
+}
+
+model ProductMedia {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  mediaId   String
+  media     Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  sortOrder Int      @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([productId, mediaId])
+  @@index([productId, sortOrder])
+  @@index([mediaId])
 }

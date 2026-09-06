@@ -6,7 +6,7 @@ import { requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
 import { productSchema } from "@/lib/schemas/product";
 import { sanitizeDescriptionHtml } from "@/lib/sanitize-html";
-import { collectMediaUrls, deleteProductMedia } from "@/lib/product-media";
+import { collectMediaUrls } from "@/lib/product-media";
 
 export async function createProductAction(data: any) {
   let ctx;
@@ -106,6 +106,8 @@ export async function createProductAction(data: any) {
         popupVideoUrl: popupVideoUrl || null,
       },
     });
+
+    await syncProductMediaRelations(product.id, images);
 
     revalidatePath("/");
     revalidatePath("/products");
@@ -229,6 +231,8 @@ export async function updateProductAction(id: string, data: any) {
       },
     });
 
+    await syncProductMediaRelations(updated.id, images);
+
     revalidatePath("/");
     revalidatePath("/products");
     revalidatePath(`/products/${slug}`);
@@ -247,6 +251,42 @@ export async function updateProductAction(id: string, data: any) {
   } catch (error: any) {
     console.error("updateProduct error:", error);
     return { success: false, error: error.message || "Failed to update product" };
+  }
+}
+
+async function syncProductMediaRelations(productId: string, images: string[]) {
+  try {
+    await db.productMedia.deleteMany({ where: { productId } });
+    if (!images || images.length === 0) return;
+
+    const matchedMedia = await db.media.findMany({
+      where: { url: { in: images } },
+    });
+    const mediaByUrl = new Map(matchedMedia.map((m) => [m.url, m.id]));
+    const data: { productId: string; mediaId: string; sortOrder: number; isPrimary: boolean }[] = [];
+    const seenMediaIds = new Set<string>();
+
+    for (let i = 0; i < images.length; i++) {
+      const mediaId = mediaByUrl.get(images[i]);
+      if (mediaId && !seenMediaIds.has(mediaId)) {
+        seenMediaIds.add(mediaId);
+        data.push({
+          productId,
+          mediaId,
+          sortOrder: i,
+          isPrimary: i === 0,
+        });
+      }
+    }
+
+    if (data.length > 0) {
+      await db.productMedia.createMany({
+        data,
+        skipDuplicates: true,
+      });
+    }
+  } catch (err) {
+    console.warn("Failed to sync ProductMedia relations:", err);
   }
 }
 
@@ -384,7 +424,6 @@ export async function deleteProductAction(id: string) {
     const product = await db.product.findUnique({ where: { id } });
     if (!product) return { success: false, error: "Product not found." };
 
-    const mediaUrls = collectMediaUrls(product);
     const deletedAt = new Date();
 
     const soldItems = await db.$transaction(async (tx) => {
@@ -394,12 +433,11 @@ export async function deleteProductAction(id: string) {
       });
 
       // Cascades the stock movements; nulls productId on the stamped lines.
+      // Cascades ProductMedia associations without deleting the underlying Media assets.
       await tx.product.delete({ where: { id } });
 
       return stamped.count;
     });
-
-    const media = await deleteProductMedia(mediaUrls);
 
     revalidatePath("/");
     revalidatePath("/products");
@@ -413,17 +451,15 @@ export async function deleteProductAction(id: string) {
       action: "PRODUCT_DELETED",
       entityType: "PRODUCT",
       entityId: product.id,
-      description: `Deleted ${product.name}`,
+      description: `Deleted ${product.name} (media library assets preserved)`,
       metadata: {
         sku: product.sku,
         slug: product.slug,
         orderLinesStamped: soldItems,
-        mediaFilesRemoved: media.deleted,
-        mediaFilesKept: media.kept,
       },
     });
 
-    return { success: true, orderLines: soldItems, mediaRemoved: media.deleted };
+    return { success: true, orderLines: soldItems };
   } catch (error) {
     console.error("Product delete failed", error);
     return { success: false, error: "Couldn't delete that product." };

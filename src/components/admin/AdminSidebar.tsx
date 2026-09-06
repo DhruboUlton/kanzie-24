@@ -41,6 +41,7 @@ type NavItem = {
 const STORE_NAV: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/products", label: "Products", icon: Package, permission: "PRODUCTS_VIEW" },
+  { href: "/admin/media", label: "Media Library", icon: Images, permission: "MEDIA_VIEW" },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart, permission: "ORDERS_VIEW" },
   { href: "/admin/coupons", label: "Coupons", icon: TicketPercent, permission: "COUPONS_VIEW" },
   { href: "/admin/analytics", label: "Analytics", icon: ChartColumn, permission: "ANALYTICS_VIEW" },

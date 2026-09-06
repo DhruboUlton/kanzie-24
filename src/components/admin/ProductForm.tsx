@@ -17,10 +17,16 @@ import {
   Tag,
   Boxes,
   ArrowUpDown,
+  GripVertical,
+  Star,
+  UploadCloud,
+  Film,
 } from "lucide-react";
 import { parseVideoUrl } from "@/lib/video";
 import { createProductAction, updateProductAction } from "@/lib/actions/product";
 import RichTextEditor from "./RichTextEditor";
+import MediaPickerModal from "./media/MediaPickerModal";
+import { MediaItem } from "./media/types";
 import { formatPrice } from "@/lib/format";
 import {
   MAX_SALE_PERCENT,
@@ -48,8 +54,6 @@ export default function ProductForm({
 }: ProductFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form Fields
@@ -110,7 +114,6 @@ export default function ProductForm({
   const [popupVideoUrl, setPopupVideoUrl] = useState(
     initialData?.popupVideoUrl || ""
   );
-  const [uploadingPopupVideo, setUploadingPopupVideo] = useState(false);
 
   // Pricing. The "on sale" switch is the presence of salePercent rather than
   // a boolean of its own, so the toggle and the number cannot disagree.
@@ -175,107 +178,66 @@ export default function ProductForm({
     }
   };
 
-  // Image Upload handler
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (files.length === 0) return;
+  // Centralized Media Picker State
+  const [mediaPickerMode, setMediaPickerMode] = useState<"photos" | "video" | "popupVideo" | null>(null);
+  const [draggedPhotoIndex, setDraggedPhotoIndex] = useState<number | null>(null);
+  const [dragOverPhotoIndex, setDragOverPhotoIndex] = useState<number | null>(null);
 
-    setUploading(true);
-    setError(null);
-    const failed: string[] = [];
-    try {
-      // Sequential, not Promise.all — keeps upload order matching selection
-      // order, and each successful file is appended to the gallery as soon
-      // as it lands instead of all-or-nothing.
-      for (const file of files) {
-        try {
-          const formData = new FormData();
-          formData.append("file", file);
-
-          const res = await fetch("/api/admin/upload", {
-            method: "POST",
-            body: formData,
-          });
-
-          const data = await res.json();
-          if (!res.ok || !data.url) {
-            throw new Error(data.error || "Image upload failed");
-          }
-
-          setImages((prev) => [...prev, data.url]);
-        } catch (err) {
-          failed.push(
-            `${file.name}: ${err instanceof Error ? err.message : "upload failed"}`
-          );
-        }
+  const handleMediaSelect = (selected: MediaItem[]) => {
+    if (mediaPickerMode === "photos") {
+      const newUrls = selected.map((s) => s.url);
+      setImages((prev) => Array.from(new Set([...prev, ...newUrls])));
+    } else if (mediaPickerMode === "video") {
+      if (selected[0]) {
+        setVideoUrl(selected[0].url);
       }
-      if (failed.length > 0) {
-        setError(`Some photos failed to upload — ${failed.join("; ")}`);
+    } else if (mediaPickerMode === "popupVideo") {
+      if (selected[0]) {
+        setPopupVideoUrl(selected[0].url);
       }
-    } finally {
-      setUploading(false);
-      e.target.value = "";
+    }
+    setMediaPickerMode(null);
+  };
+
+  const handleSetPrimary = (index: number) => {
+    if (index <= 0 || index >= images.length) return;
+    const newImages = [...images];
+    const [primary] = newImages.splice(index, 1);
+    newImages.unshift(primary);
+    setImages(newImages);
+  };
+
+  const handlePhotoDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedPhotoIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handlePhotoDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverPhotoIndex !== index) {
+      setDragOverPhotoIndex(index);
     }
   };
 
-  // Video Upload handler
-  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingVideo(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/admin/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || "Video upload failed");
-      }
-
-      setVideoUrl(data.url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload video.");
-    } finally {
-      setUploadingVideo(false);
-      e.target.value = "";
+  const handlePhotoDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    if (draggedPhotoIndex === null || draggedPhotoIndex === targetIndex) {
+      setDraggedPhotoIndex(null);
+      setDragOverPhotoIndex(null);
+      return;
     }
+    const newImages = [...images];
+    const [moved] = newImages.splice(draggedPhotoIndex, 1);
+    newImages.splice(targetIndex, 0, moved);
+    setImages(newImages);
+    setDraggedPhotoIndex(null);
+    setDragOverPhotoIndex(null);
   };
 
-  // Popup Video Upload handler
-  const handlePopupVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingPopupVideo(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/admin/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || "Video upload failed");
-      }
-
-      setPopupVideoUrl(data.url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload video.");
-    } finally {
-      setUploadingPopupVideo(false);
-      e.target.value = "";
-    }
+  const handlePhotoDragEnd = () => {
+    setDraggedPhotoIndex(null);
+    setDragOverPhotoIndex(null);
   };
 
   const handleAddImageUrl = () => {
@@ -396,7 +358,7 @@ export default function ProductForm({
           </button>
           <button
             type="submit"
-            disabled={loading || uploading}
+            disabled={loading}
             className="px-5 py-2.5 bg-[#c0282b] hover:bg-[#8f1e20] text-white text-sm font-semibold rounded-lg shadow-sm flex items-center gap-2 disabled:opacity-50 transition-colors"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -971,87 +933,130 @@ export default function ProductForm({
             </div>
           </div>
 
-          {/* Product Photos Upload & List */}
+          {/* Product Photos Section */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
                 Product Photos ({images.length})
               </h3>
-            </div>
-
-            {/* Direct Upload Button */}
-            <div>
-              <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-[#c0282b] bg-gray-50/70 hover:bg-gray-50 rounded-xl p-4 cursor-pointer transition-colors">
-                <Upload className="w-5 h-5 text-gray-400 mb-1" />
-                <span className="text-xs font-semibold text-gray-700">
-                  {uploading ? "Uploading..." : "Click to Upload Photos"}
-                </span>
-                <span className="text-[10px] text-gray-400 mt-0.5">
-                  JPEG, PNG, WebP (Max 10MB each) — select multiple at once
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                  className="hidden"
-                />
-              </label>
-            </div>
-
-            {/* Add by URL input */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newImageUrl}
-                onChange={(e) => setNewImageUrl(e.target.value)}
-                placeholder="/products-dev/... or https://..."
-                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-[#c0282b]"
-              />
               <button
                 type="button"
-                onClick={handleAddImageUrl}
-                className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-semibold hover:bg-black transition-colors"
+                onClick={() => setMediaPickerMode("photos")}
+                className="px-3 py-1.5 bg-[#c0282b] hover:bg-[#a51f22] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                Add URL
+                <Plus className="w-3.5 h-3.5" />
+                <span>Select / Add Photos</span>
               </button>
             </div>
 
-            {/* Thumbnails grid */}
-            <div className="grid grid-cols-3 gap-2.5 pt-2">
-              {images.map((img, i) => (
-                <div
-                  key={i}
-                  className="group relative aspect-square bg-gray-50 rounded-lg overflow-hidden border border-gray-200"
-                >
-                  <Image
-                    src={img}
-                    alt={`Photo ${i + 1}`}
-                    fill
-                    // Uploads are streamed from outside the app root, so the
-                    // image optimizer can't resolve them — load them directly.
-                    unoptimized={img.startsWith("/api/uploads/")}
-                    className="object-contain p-1"
-                  />
-                  {i === 0 && (
-                    <span className="absolute bottom-1 left-1 bg-black/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                      Primary
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveImage(i)}
-                    className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Select or upload photos from the Media Library. Drag and drop thumbnails to reorder them. The first image is the Primary photo.
+            </p>
+
+            {/* Drag and Drop Thumbnail Grid */}
+            {images.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2.5 pt-1">
+                {images.map((img, i) => (
+                  <div
+                    key={`${img}-${i}`}
+                    draggable
+                    onDragStart={(e) => handlePhotoDragStart(e, i)}
+                    onDragOver={(e) => handlePhotoDragOver(e, i)}
+                    onDrop={(e) => handlePhotoDrop(e, i)}
+                    onDragEnd={handlePhotoDragEnd}
+                    className={`group relative aspect-square bg-gray-50 rounded-xl overflow-hidden border-2 transition-all cursor-move select-none ${
+                      dragOverPhotoIndex === i
+                        ? "border-[#c0282b] scale-[1.03] shadow-md ring-2 ring-[#c0282b]/20"
+                        : draggedPhotoIndex === i
+                        ? "opacity-40 border-dashed border-gray-400"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
                   >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
+                    <Image
+                      src={img}
+                      alt={`Photo ${i + 1}`}
+                      fill
+                      unoptimized={img.startsWith("/api/uploads/")}
+                      className="object-contain p-1 pointer-events-none"
+                    />
+
+                    {/* Drag Handle Indicator */}
+                    <div className="absolute top-1.5 left-1.5 p-1 rounded bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <GripVertical className="w-3 h-3" />
+                    </div>
+
+                    {/* Primary Badge */}
+                    {i === 0 ? (
+                      <span className="absolute bottom-1.5 left-1.5 bg-black/85 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-xs flex items-center gap-1">
+                        <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                        Primary
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSetPrimary(i);
+                        }}
+                        title="Set as Primary photo"
+                        className="absolute bottom-1.5 left-1.5 bg-white/90 hover:bg-white text-gray-800 text-[9px] font-bold px-1.5 py-0.5 rounded shadow-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 cursor-pointer border border-gray-200"
+                      >
+                        <Star className="w-2.5 h-2.5 text-gray-500" />
+                        Set Primary
+                      </button>
+                    )}
+
+                    {/* Remove from Product */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveImage(i);
+                      }}
+                      title="Remove from product (keeps in Media Library)"
+                      className="absolute top-1.5 right-1.5 p-1 bg-red-600 hover:bg-red-700 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-xs"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                onClick={() => setMediaPickerMode("photos")}
+                className="p-6 border-2 border-dashed border-gray-300 hover:border-[#c0282b] bg-gray-50/70 hover:bg-gray-50 rounded-xl cursor-pointer text-center transition-colors space-y-1.5"
+              >
+                <UploadCloud className="w-8 h-8 text-gray-400 mx-auto" />
+                <div className="text-xs font-semibold text-gray-700">No photos added yet</div>
+                <div className="text-[11px] text-gray-400">Click to open Media Library and select or upload photos</div>
+              </div>
+            )}
+
+            {/* Add by URL input */}
+            <div className="pt-2 border-t border-gray-100 space-y-1">
+              <span className="text-[11px] font-medium text-gray-500">
+                Or add photo by external URL:
+              </span>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newImageUrl}
+                  onChange={(e) => setNewImageUrl(e.target.value)}
+                  placeholder="/products-dev/... or https://..."
+                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:border-[#c0282b]"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddImageUrl}
+                  className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-semibold hover:bg-black transition-colors"
+                >
+                  Add URL
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Video Integration Card */}
+          {/* Product Video Section */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-gray-900 font-bold text-sm">
@@ -1071,37 +1076,25 @@ export default function ProductForm({
             </div>
 
             <p className="text-xs text-gray-500 leading-relaxed">
-              Upload a video file directly (MP4, WebM, MOV) or paste a YouTube / Google Drive link.
+              Plays inline in the gallery as a slide next to photos. Select a video from your Media Library or paste an external YouTube / Google Drive link.
             </p>
 
-            {/* Direct Video File Upload */}
-            <div>
-              <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-[#c0282b] bg-gray-50/70 hover:bg-gray-50 rounded-xl p-4 cursor-pointer transition-colors">
-                {uploadingVideo ? (
-                  <Loader2 className="w-5 h-5 text-accent animate-spin mb-1" />
-                ) : (
-                  <Upload className="w-5 h-5 text-gray-400 mb-1" />
-                )}
-                <span className="text-xs font-semibold text-gray-700">
-                  {uploadingVideo ? "Uploading video..." : "Click to Upload Video File"}
-                </span>
-                <span className="text-[10px] text-gray-400 mt-0.5">
-                  MP4, WebM, QuickTime MOV (Max 100MB)
-                </span>
-                <input
-                  type="file"
-                  accept="video/mp4,video/webm,video/quicktime,video/*"
-                  onChange={handleVideoUpload}
-                  disabled={uploadingVideo}
-                  className="hidden"
-                />
-              </label>
+            {/* Select from Media Library Button */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMediaPickerMode("video")}
+                className="flex-1 py-2.5 px-4 bg-gray-50 hover:bg-gray-100 border border-gray-300 rounded-xl text-xs font-semibold text-gray-800 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              >
+                <Film className="w-4 h-4 text-[#c0282b]" />
+                <span>{videoUrl ? "Change Video from Media Library" : "Select Video from Media Library"}</span>
+              </button>
             </div>
 
             {/* URL Input Alternative */}
             <div className="space-y-1">
               <span className="text-[11px] font-medium text-gray-500">
-                Or enter video URL / link:
+                Or enter external video URL / link:
               </span>
               <input
                 type="text"
@@ -1121,7 +1114,7 @@ export default function ProductForm({
                       <CheckCircle2 className="w-4 h-4 shrink-0" />
                       <span>
                         Valid video ({parsedVideo.type.toUpperCase()})
-                        {parsedVideo.type === "direct" && " — Uploaded Video File"}
+                        {parsedVideo.type === "direct" && " — Media Library Video File"}
                       </span>
                     </div>
                   ) : (
@@ -1161,8 +1154,7 @@ export default function ProductForm({
             )}
           </div>
 
-          {/* Popup Video Card — separate clip from the gallery video above,
-              plays in the auto-opening floating corner widget. */}
+          {/* Popup Video Section */}
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-gray-900 font-bold text-sm">
@@ -1182,39 +1174,25 @@ export default function ProductForm({
             </div>
 
             <p className="text-xs text-gray-500 leading-relaxed">
-              Auto-opens in a floating corner widget a few seconds after a
-              visitor lands on the product page. Separate clip from the
-              gallery video above — upload a file or paste a link.
+              Auto-opens in a floating corner widget a few seconds after a visitor lands on the product page. Separate clip from the gallery video above.
             </p>
 
-            {/* Direct Video File Upload */}
-            <div>
-              <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-[#c0282b] bg-gray-50/70 hover:bg-gray-50 rounded-xl p-4 cursor-pointer transition-colors">
-                {uploadingPopupVideo ? (
-                  <Loader2 className="w-5 h-5 text-accent animate-spin mb-1" />
-                ) : (
-                  <Upload className="w-5 h-5 text-gray-400 mb-1" />
-                )}
-                <span className="text-xs font-semibold text-gray-700">
-                  {uploadingPopupVideo ? "Uploading video..." : "Click to Upload Video File"}
-                </span>
-                <span className="text-[10px] text-gray-400 mt-0.5">
-                  MP4, WebM, QuickTime MOV (Max 100MB)
-                </span>
-                <input
-                  type="file"
-                  accept="video/mp4,video/webm,video/quicktime,video/*"
-                  onChange={handlePopupVideoUpload}
-                  disabled={uploadingPopupVideo}
-                  className="hidden"
-                />
-              </label>
+            {/* Select from Media Library Button */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMediaPickerMode("popupVideo")}
+                className="flex-1 py-2.5 px-4 bg-gray-50 hover:bg-gray-100 border border-gray-300 rounded-xl text-xs font-semibold text-gray-800 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              >
+                <Film className="w-4 h-4 text-[#c0282b]" />
+                <span>{popupVideoUrl ? "Change Video from Media Library" : "Select Video from Media Library"}</span>
+              </button>
             </div>
 
             {/* URL Input Alternative */}
             <div className="space-y-1">
               <span className="text-[11px] font-medium text-gray-500">
-                Or enter video URL / link:
+                Or enter external video URL / link:
               </span>
               <input
                 type="text"
@@ -1234,7 +1212,7 @@ export default function ProductForm({
                       <CheckCircle2 className="w-4 h-4 shrink-0" />
                       <span>
                         Valid video ({parsedPopupVideo.type.toUpperCase()})
-                        {parsedPopupVideo.type === "direct" && " — Uploaded Video File"}
+                        {parsedPopupVideo.type === "direct" && " — Media Library Video File"}
                       </span>
                     </div>
                   ) : (
@@ -1275,6 +1253,23 @@ export default function ProductForm({
           </div>
         </div>
       </div>
+
+      {/* WordPress Media Picker Modal */}
+      <MediaPickerModal
+        isOpen={mediaPickerMode !== null}
+        onClose={() => setMediaPickerMode(null)}
+        onSelect={handleMediaSelect}
+        allowedTypes={mediaPickerMode === "photos" ? ["IMAGE"] : ["VIDEO"]}
+        multiple={mediaPickerMode === "photos"}
+        title={
+          mediaPickerMode === "photos"
+            ? "Select Product Photos"
+            : mediaPickerMode === "video"
+            ? "Select Product Video"
+            : "Select Popup Video"
+        }
+        confirmText={mediaPickerMode === "photos" ? "Insert Photos" : "Select Video"}
+      />
     </form>
   );
 }

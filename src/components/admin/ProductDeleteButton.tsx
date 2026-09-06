@@ -117,7 +117,7 @@ function describeImpact(impact: {
 
   if (impact.mediaCount > 0) {
     parts.push(
-      `${impact.mediaCount} uploaded ${impact.mediaCount === 1 ? "file" : "files"} will be removed from the server.`,
+      `${impact.mediaCount} attached ${impact.mediaCount === 1 ? "photo/video" : "photos/videos"} stay in the Media Library and are not deleted.`,
     );
   }
 

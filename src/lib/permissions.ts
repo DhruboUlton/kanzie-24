@@ -56,6 +56,10 @@ export const PERMISSIONS = {
 
   COUPONS_VIEW: "See coupons, analytics and redemption history",
   COUPONS_MANAGE: "Edit coupons and toggle active status",
+
+  MEDIA_VIEW: "See media library",
+  MEDIA_UPLOAD: "Upload files to media library",
+  MEDIA_DELETE: "Permanently delete media assets",
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -98,6 +102,7 @@ export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
   { label: "Roles", keys: ["ROLES_VIEW", "ROLES_MANAGE"] },
   { label: "Activity log", keys: ["ACTIVITY_LOG_VIEW"] },
   { label: "Coupons", keys: ["COUPONS_VIEW", "COUPONS_MANAGE"] },
+  { label: "Media", keys: ["MEDIA_VIEW", "MEDIA_UPLOAD", "MEDIA_DELETE"] },
 ];
 
 // The role every system starts with. OWNER is special in code as well as
@@ -129,6 +134,7 @@ export const SYSTEM_ROLES: {
       "FRAUD_CHECK_VIEW",
       "PRODUCTS_VIEW",
       "INVENTORY_VIEW",
+      "MEDIA_VIEW",
     ],
   },
   {
@@ -145,6 +151,8 @@ export const SYSTEM_ROLES: {
       "INVENTORY_ADJUST",
       "CATEGORIES_VIEW",
       "CATEGORIES_MANAGE",
+      "MEDIA_VIEW",
+      "MEDIA_UPLOAD",
     ],
   },
   {
@@ -159,6 +167,8 @@ export const SYSTEM_ROLES: {
       "PRODUCTS_EDIT",
       "CATEGORIES_VIEW",
       "CATEGORIES_MANAGE",
+      "MEDIA_VIEW",
+      "MEDIA_UPLOAD",
     ],
   },
 ];
