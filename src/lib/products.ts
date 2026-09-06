@@ -7,7 +7,7 @@ export type Category = {
   sortOrder?: number;
   /** Cover image for the homepage tiles. Null = fall back to a product photo. */
   imageUrl?: string | null;
-  /** Whether the homepage features this category. Does not affect the shop. */
+  /** Whether the homepage gives this category a product rail. Nothing else. */
   showOnHomepage?: boolean;
   // Set when this category is a subcategory. Categories nest one level:
   // a parent groups subcategories, and products live on the leaves.

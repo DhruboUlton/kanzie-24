@@ -27,10 +27,12 @@ export default async function Home() {
       getBodyBannerContent(),
     ]);
 
-  // Which categories the front page leads with, chosen in /admin/categories.
-  // Undefined counts as visible so a row written before the flag existed, or
-  // a fallback category that has no database row at all, still appears.
-  const homepageCategories = categories.filter((c) => c.showOnHomepage !== false);
+  // Which categories get a product rail on the front page, chosen in
+  // /admin/categories. Only the rails: the "Shop by machine" strip above
+  // them always lists everything. Undefined counts as shown, so a row
+  // written before the flag existed, or a fallback category with no database
+  // row at all, still gets its rail.
+  const railCategories = categories.filter((c) => c.showOnHomepage !== false);
 
   return (
     <>
@@ -63,9 +65,12 @@ export default async function Home() {
         </div>
       </section>
 
-      <CategoryTiles categories={homepageCategories} products={allProducts} />
+      {/* Every category, always. This strip is how a shopper browses the
+          whole catalogue, so it stays complete no matter which categories
+          were chosen to get a product rail below. */}
+      <CategoryTiles categories={categories} products={allProducts} />
 
-      {homepageCategories.map((category) => {
+      {railCategories.map((category) => {
         const categoryProducts = allProducts
           .filter((p) => p.category === category.slug)
           .slice(0, 4);

@@ -306,8 +306,9 @@ export default function CategoryManagerClient({
           <p className="text-xs text-gray-500 mt-0.5">
             Drag a row by its handle to set the order shoppers see. Parents
             reorder among parents, subcategories within their parent. The eye
-            decides which categories the homepage features — a hidden one
-            keeps its page, its nav link and its place in the shop filter.
+            decides which categories get their own row of products on the
+            homepage — everything still appears in the &ldquo;Shop by
+            machine&rdquo; strip, the nav and the shop filter either way.
           </p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto">
