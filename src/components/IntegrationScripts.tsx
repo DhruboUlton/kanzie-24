@@ -1,107 +1,114 @@
-"use client";
-
-import { useEffect } from "react";
-import {
-  Integration,
-  IntegrationPlacement,
-  STAFF_MARKER_COOKIE,
-} from "@/lib/integrations-shared";
+import { Integration, STAFF_MARKER_COOKIE } from "@/lib/integrations-shared";
+import IntegrationScriptsBody from "./IntegrationScriptsBody";
 
 // Injects the tracking snippets an admin pasted into /adpnl/integrations.
 //
 // Two things this deliberately does not do:
 //
 // 1. It never runs in the admin panel. This component is only rendered from
-//    the storefront layout, so /admin has no tracking code in it at all —
+//    the storefront layout, so /adpnl has no tracking code in it at all —
 //    admin page views and clicks are invisible to GTM, Pixel and the rest.
 //
 // 2. It bails out for signed-in staff. The session cookie is httpOnly and
 //    unreadable here, so sign-in also sets a plain marker cookie purely for
 //    this check. Staff browsing the shop therefore don't show up as traffic
-//    either.
+//    either. That check is the reason this runs in the browser rather than
+//    being rendered straight into the markup: reading a cookie on the server
+//    would make every storefront page dynamic.
 //
-// Injection happens after hydration rather than as server-rendered <script>
-// tags, which keeps the storefront pages static and cacheable. Pixel
-// helpers and tag assistants read the live DOM, so tags still verify.
+// The snippets used to be injected from a useEffect, which meant they waited
+// for React to hydrate the whole page first — measured at 3.7s after load on
+// the live site, against a 0.56s load. Tags that late miss the visitors who
+// bounce, and Tag Assistant and GTM preview scan long before they appear and
+// report no container at all. The bootstrap below is plain inline script
+// instead, so it runs while the document is still parsing and the tags are in
+// the DOM within milliseconds, without giving up static rendering.
+//
+// Only head placements can take that route. React owns <body>'s children and
+// reconciles away anything injected there before hydration, so those are left
+// to IntegrationScriptsBody — see that file for why the wait is harmless.
 
+const DATA_ID = "kanzie-integrations";
 const DONE_ATTR = "data-kanzie-integrations";
 
-function hasStaffCookie(): boolean {
-  return document.cookie
-    .split(";")
-    .some((c) => c.trim().startsWith(`${STAFF_MARKER_COOKIE}=`));
-}
+// Kept as a string rather than a module: it has to execute during parse, and
+// anything imported would arrive with the client bundle, which is the delay
+// this exists to avoid.
+const BOOTSTRAP = `(function(){
+  try {
+    if (document.querySelector('[${DONE_ATTR}]')) return;
+    if (document.cookie.split(';').some(function(c){
+      return c.trim().indexOf('${STAFF_MARKER_COOKIE}=') === 0;
+    })) return;
 
-function targetFor(placement: IntegrationPlacement): {
-  parent: HTMLElement;
-  prepend: boolean;
-} {
-  if (placement === "head") return { parent: document.head, prepend: false };
-  if (placement === "body_start") return { parent: document.body, prepend: true };
-  return { parent: document.body, prepend: false };
-}
+    var el = document.getElementById('${DATA_ID}');
+    if (!el) return;
+    var list = JSON.parse(el.textContent || '[]');
 
-/**
- * innerHTML does not execute script tags, so each one is rebuilt as a fresh
- * element. Everything else (noscript, img beacons, iframes) is moved across
- * untouched.
- */
-function inject(integration: Integration) {
-  const { parent, prepend } = targetFor(integration.placement);
+    for (var i = 0; i < list.length; i++) {
+      var item = list[i];
+      try {
+        var tpl = document.createElement('template');
+        tpl.innerHTML = item.code;
 
-  const template = document.createElement("template");
-  template.innerHTML = integration.code;
+        var frag = document.createDocumentFragment();
+        var kids = Array.prototype.slice.call(tpl.content.childNodes);
+        for (var k = 0; k < kids.length; k++) {
+          var node = kids[k];
+          // innerHTML never executes a script, so each one is rebuilt as a
+          // fresh element. Everything else — noscript, img beacons, iframes —
+          // moves across untouched.
+          if (node.nodeName === 'SCRIPT') {
+            var s = document.createElement('script');
+            for (var a = 0; a < node.attributes.length; a++) {
+              s.setAttribute(node.attributes[a].name, node.attributes[a].value);
+            }
+            s.text = node.text;
+            node = s;
+          } else {
+            node = node.cloneNode(true);
+          }
+          if (node.nodeType === 1) node.setAttribute('${DONE_ATTR}', item.id);
+          frag.appendChild(node);
+        }
 
-  const nodes: Node[] = [];
-  template.content.childNodes.forEach((node) => {
-    if (node.nodeName === "SCRIPT") {
-      const original = node as HTMLScriptElement;
-      const script = document.createElement("script");
-      for (const attr of Array.from(original.attributes)) {
-        script.setAttribute(attr.name, attr.value);
+        document.head.appendChild(frag);
+      } catch (err) {
+        // One broken snippet must not stop the rest, and must never take the
+        // storefront down.
+        console.warn('Integration "' + item.name + '" failed to load:', err);
       }
-      script.text = original.text;
-      nodes.push(script);
-    } else {
-      nodes.push(node.cloneNode(true));
     }
-  });
-
-  const fragment = document.createDocumentFragment();
-  for (const node of nodes) {
-    if (node instanceof Element) node.setAttribute(DONE_ATTR, integration.id);
-    fragment.appendChild(node);
+  } catch (err) {
+    console.warn('Integrations failed to load:', err);
   }
-
-  if (prepend && parent.firstChild) {
-    parent.insertBefore(fragment, parent.firstChild);
-  } else {
-    parent.appendChild(fragment);
-  }
-}
+})();`;
 
 export default function IntegrationScripts({
   integrations,
 }: {
   integrations: Integration[];
 }) {
-  useEffect(() => {
-    if (integrations.length === 0) return;
-    if (hasStaffCookie()) return;
-    // A client-side navigation remounts nothing here, but a Fast Refresh in
-    // development would otherwise double-inject.
-    if (document.querySelector(`[${DONE_ATTR}]`)) return;
+  const head = integrations.filter((i) => i.placement === "head");
+  const body = integrations.filter((i) => i.placement !== "head");
 
-    for (const integration of integrations) {
-      try {
-        inject(integration);
-      } catch (err) {
-        // One broken snippet must not stop the rest, and must never take the
-        // storefront down.
-        console.warn(`Integration "${integration.name}" failed to load:`, err);
-      }
-    }
-  }, [integrations]);
-
-  return null;
+  return (
+    <>
+      {head.length > 0 && (
+        <>
+          <script
+            id={DATA_ID}
+            type="application/json"
+            // A pasted snippet contains "</script>" of its own, which would
+            // end this tag early and spill the rest into the page as markup.
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(head).replace(/</g, "\\u003c"),
+            }}
+          />
+          <script dangerouslySetInnerHTML={{ __html: BOOTSTRAP }} />
+        </>
+      )}
+      <IntegrationScriptsBody integrations={body} />
+    </>
+  );
 }
