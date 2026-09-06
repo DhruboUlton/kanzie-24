@@ -1,25 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { Images, PanelBottom } from "lucide-react";
+import { Images, PanelBottom, Tags } from "lucide-react";
 import HeroBannerForm from "@/components/admin/HeroBannerForm";
 import BodyBannerForm from "@/components/admin/BodyBannerForm";
+import BrandStripForm from "@/components/admin/BrandStripForm";
 import { HeroContent } from "@/lib/hero";
 import { BodyBannerContent } from "@/lib/body-banner";
+import { BrandStripContent } from "@/lib/brand-strip";
 
-// Two separate banners on the homepage, each with its own save — kept on
-// one screen because "banner" is where an admin looks for either.
+// The homepage's editable furniture, each piece with its own save — kept
+// on one screen because "banner" is where an admin looks for any of them.
 const TABS = [
   { id: "hero", label: "Hero Banner", icon: Images },
   { id: "body", label: "Body Banner", icon: PanelBottom },
+  { id: "brands", label: "Brand Strip", icon: Tags },
 ] as const;
 
 export default function BannerManagerClient({
   hero,
   body,
+  brandStrip,
 }: {
   hero: HeroContent;
   body: BodyBannerContent;
+  brandStrip: BrandStripContent;
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("hero");
 
@@ -49,6 +54,9 @@ export default function BannerManagerClient({
       </div>
       <div hidden={tab !== "body"}>
         <BodyBannerForm initial={body} />
+      </div>
+      <div hidden={tab !== "brands"}>
+        <BrandStripForm initial={brandStrip} />
       </div>
     </div>
   );

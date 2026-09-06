@@ -2,7 +2,7 @@ import Link from "next/link";
 import Hero from "@/components/Hero";
 import { getHeroContent } from "@/lib/hero";
 import { getBodyBannerContent } from "@/lib/body-banner";
-import UspStrip from "@/components/UspStrip";
+import { getBrandStrip } from "@/lib/brand-strip";
 import FeatureBanner from "@/components/FeatureBanner";
 import ProductCard from "@/components/ProductCard";
 import CategoryTiles from "@/components/CategoryTiles";
@@ -17,15 +17,23 @@ import {
 } from "@/lib/products";
 
 export default async function Home() {
-  const [featured, newArrivals, allProducts, categories, heroContent, bodyBanner] =
-    await Promise.all([
-      getFeaturedProducts(),
-      getNewArrivals(),
-      getProducts(),
-      getCategories(),
-      getHeroContent(),
-      getBodyBannerContent(),
-    ]);
+  const [
+    featured,
+    newArrivals,
+    allProducts,
+    categories,
+    heroContent,
+    bodyBanner,
+    brandStrip,
+  ] = await Promise.all([
+    getFeaturedProducts(),
+    getNewArrivals(),
+    getProducts(),
+    getCategories(),
+    getHeroContent(),
+    getBodyBannerContent(),
+    getBrandStrip(),
+  ]);
 
   // Which categories get a product rail on the front page, chosen in
   // /admin/categories. Only the rails: the "Shop by machine" strip above
@@ -49,9 +57,6 @@ export default async function Home() {
         </div>
       </section>
 
-      <BrandLogoStrip />
-
-      <UspStrip />
       <FeatureBanner content={bodyBanner} />
 
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
@@ -64,6 +69,8 @@ export default async function Home() {
           ))}
         </div>
       </section>
+
+      <BrandLogoStrip content={brandStrip} />
 
       {/* Every category, always. This strip is how a shopper browses the
           whole catalogue, so it stays complete no matter which categories

@@ -1,22 +1,17 @@
-// Decorative wordmark strip — placeholder logos (fictional, not real
-// companies) matching the reference theme's demo brand row. Swap for real
-// press mentions or retailer logos once you have them.
-const MARKS = [
-  { name: "Backyard Builder", className: "font-display tracking-wide" },
-  { name: "Kidville Times", className: "font-serif italic" },
-  { name: "PlayScout", className: "font-sans font-black" },
-  { name: "The Toy Weekly", className: "font-serif" },
-  { name: "Rugged & Little", className: "font-display tracking-widest" },
-];
+import { BrandStripContent, classNameFor } from "@/lib/brand-strip";
 
-export default function BrandLogoStrip() {
+// A row of wordmarks under New Arrivals. The names are whatever the admin
+// set in /admin/banner — retailers, brands stocked, press, or nothing.
+export default function BrandLogoStrip({ content }: { content: BrandStripContent }) {
+  if (!content.enabled || content.marks.length === 0) return null;
+
   return (
     <section className="border-y border-black/10 bg-white py-10">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
-        {MARKS.map((mark) => (
+        {content.marks.map((mark, i) => (
           <span
-            key={mark.name}
-            className={`text-xl sm:text-2xl text-black/55 hover:text-black/60 transition-colors select-none ${mark.className}`}
+            key={`${mark.name}-${i}`}
+            className={`text-xl sm:text-2xl text-black/55 hover:text-black/60 transition-colors select-none ${classNameFor(mark.style)}`}
           >
             {mark.name}
           </span>
