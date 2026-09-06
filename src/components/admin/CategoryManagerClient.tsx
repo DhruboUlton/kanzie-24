@@ -6,6 +6,8 @@ import {
   Plus,
   Edit2,
   Trash2,
+  Eye,
+  EyeOff,
   FolderTree,
   CornerDownRight,
   Loader2,
@@ -18,6 +20,7 @@ import {
 import {
   createCategoryAction,
   updateCategoryAction,
+  setCategoryHomepageAction,
   deleteCategoryAction,
   reorderCategoriesAction,
 } from "@/lib/actions/category";
@@ -38,6 +41,7 @@ export type CategoryRow = {
   sortOrder?: number | null;
   parentId?: string | null;
   imageUrl?: string | null;
+  showOnHomepage?: boolean;
 };
 
 function reorder<T>(list: T[], from: number, to: number): T[] {
@@ -179,6 +183,29 @@ export default function CategoryManagerClient({
     setError(null);
   };
 
+  // Flips locally first so the row responds to the click, then reverts if
+  // the server refuses — the same pattern the drag reorder above uses.
+  const [homepageBusy, setHomepageBusy] = useState<string | null>(null);
+
+  const toggleHomepage = async (cat: CategoryRow) => {
+    if (!cat.id) return;
+    const next = cat.showOnHomepage === false;
+    setHomepageBusy(cat.id);
+    setItems((prev) =>
+      prev.map((c) => (c.id === cat.id ? { ...c, showOnHomepage: next } : c)),
+    );
+    const res = await setCategoryHomepageAction(cat.id, next);
+    setHomepageBusy(null);
+    if (res.success) {
+      router.refresh();
+    } else {
+      setItems((prev) =>
+        prev.map((c) => (c.id === cat.id ? { ...c, showOnHomepage: !next } : c)),
+      );
+      setError(res.error || "Couldn't change that.");
+    }
+  };
+
   const startEdit = (cat: CategoryRow) => {
     setEditingId(cat.id || cat.slug);
     setName(cat.name);
@@ -278,7 +305,9 @@ export default function CategoryManagerClient({
           <h2 className="text-xl font-bold text-gray-900">Categories Management</h2>
           <p className="text-xs text-gray-500 mt-0.5">
             Drag a row by its handle to set the order shoppers see. Parents
-            reorder among parents, subcategories within their parent.
+            reorder among parents, subcategories within their parent. The eye
+            decides which categories the homepage features — a hidden one
+            keeps its page, its nav link and its place in the shop filter.
           </p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto">
@@ -539,6 +568,31 @@ export default function CategoryManagerClient({
                         className="p-1.5 text-gray-400 hover:text-accent hover:bg-gray-100 rounded-md transition-colors"
                       >
                         <Plus className="w-4 h-4" />
+                      </button>
+                    )}
+                    {cat.id && (
+                      <button
+                        type="button"
+                        onClick={() => toggleHomepage(cat)}
+                        disabled={homepageBusy === cat.id}
+                        title={
+                          cat.showOnHomepage === false
+                            ? "Hidden from the homepage — click to show"
+                            : "Showing on the homepage — click to hide"
+                        }
+                        aria-label={`${cat.showOnHomepage === false ? "Show" : "Hide"} ${cat.name} on the homepage`}
+                        aria-pressed={cat.showOnHomepage !== false}
+                        className={`p-1.5 rounded-md transition-colors disabled:opacity-40 ${
+                          cat.showOnHomepage === false
+                            ? "text-gray-300 hover:text-gray-600 hover:bg-gray-100"
+                            : "text-accent hover:bg-red-50"
+                        }`}
+                      >
+                        {cat.showOnHomepage === false ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
                     )}
                     <button

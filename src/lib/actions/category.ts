@@ -212,6 +212,52 @@ export async function deleteCategoryAction(id: string) {
  * drifted (everything created at sortOrder 0, which is the default) comes
  * out consecutive on the first drag.
  */
+/**
+ * Shows or hides a category on the homepage.
+ *
+ * Its own action rather than another argument on updateCategoryAction,
+ * because this is flipped from the list while looking at every category at
+ * once — deciding what the front page leads with is a comparison between
+ * categories, not an edit to one of them.
+ *
+ * Hiding affects the homepage only. The category keeps its page, its place
+ * in the shop filter and the nav, and every link to it still works.
+ */
+export async function setCategoryHomepageAction(
+  id: string,
+  showOnHomepage: boolean,
+): Promise<{ success: boolean; error?: string }> {
+  let ctx;
+  try {
+    ctx = await requirePermission("CATEGORIES_MANAGE");
+  } catch (error) {
+    return authErrorResult(error) ?? { success: false, error: "Not allowed." };
+  }
+
+  try {
+    const category = await db.category.update({
+      where: { id },
+      data: { showOnHomepage },
+    });
+
+    revalidatePath("/", "layout");
+    revalidatePath("/admin/categories");
+
+    await logActivity({
+      actor: ctx,
+      action: "CATEGORY_UPDATED",
+      entityType: "CATEGORY",
+      entityId: category.id,
+      description: `${showOnHomepage ? "Showed" : "Hid"} ${category.name} on the homepage`,
+      metadata: { slug: category.slug, showOnHomepage },
+    });
+
+    return { success: true };
+  } catch {
+    return { success: false, error: "Couldn't change that." };
+  }
+}
+
 export async function reorderCategoriesAction(
   orderedIds: string[],
 ): Promise<{ success: boolean; error?: string }> {

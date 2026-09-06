@@ -27,6 +27,11 @@ export default async function Home() {
       getBodyBannerContent(),
     ]);
 
+  // Which categories the front page leads with, chosen in /admin/categories.
+  // Undefined counts as visible so a row written before the flag existed, or
+  // a fallback category that has no database row at all, still appears.
+  const homepageCategories = categories.filter((c) => c.showOnHomepage !== false);
+
   return (
     <>
       <Hero content={heroContent} />
@@ -58,9 +63,9 @@ export default async function Home() {
         </div>
       </section>
 
-      <CategoryTiles categories={categories} products={allProducts} />
+      <CategoryTiles categories={homepageCategories} products={allProducts} />
 
-      {categories.map((category) => {
+      {homepageCategories.map((category) => {
         const categoryProducts = allProducts
           .filter((p) => p.category === category.slug)
           .slice(0, 4);
