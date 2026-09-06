@@ -64,7 +64,7 @@ export default function MediaPageClient() {
       )}
 
       {/* Media Grid & Sidebar */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden h-[750px] flex flex-col">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden h-[calc(100vh-210px)] min-h-[580px] max-h-[920px] flex flex-col">
         <MediaLibraryGrid
           key={refreshKey}
           allowedTypes={["IMAGE", "VIDEO"]}
