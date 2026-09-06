@@ -17,7 +17,23 @@ import { breadcrumbSchema, jsonLdGraph, productSchema } from "@/lib/structured-d
 import { SITE_NAME, absoluteUrl } from "@/lib/site-config";
 import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
+// Rendered once and reused, rather than rebuilt from the database on every
+// visit. Everything this page shows — price, stock, the ADD TO CART flag —
+// is already revalidated at its source: adjustStockAction, the product
+// create/update actions and the CSV import all call
+// revalidatePath(`/products/${slug}`), so an edit reaches the page as fast
+// as it did when this was force-dynamic. The window is a backstop for a
+// write path that ever forgets to, not the mechanism.
+export const revalidate = 300;
+
+// Listing the slugs is what actually turns this route into a cached one —
+// without it the segment stays dynamic and `revalidate` above has nothing to
+// revalidate. A product added after the build is still served: an unlisted
+// slug is generated on first request and cached from then on.
+export async function generateStaticParams() {
+  const products = await getProducts();
+  return products.map((product) => ({ slug: product.slug }));
+}
 
 // Every page shared one title until this existed, which left search engines
 // and answer engines with nothing to tell one product from another.
