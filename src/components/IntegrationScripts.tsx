@@ -37,9 +37,14 @@ const DONE_ATTR = "data-kanzie-integrations";
 const BOOTSTRAP = `(function(){
   try {
     if (document.querySelector('[${DONE_ATTR}]')) return;
-    if (document.cookie.split(';').some(function(c){
-      return c.trim().indexOf('${STAFF_MARKER_COOKIE}=') === 0;
-    })) return;
+    // GTM preview and Tag Assistant arrive with ?gtm_debug=, and they arrive
+    // in the same browser the shop is administered from — so the staff
+    // exclusion below would report the container as missing to the one person
+    // trying to verify it. Asking to debug the tags is asking for them.
+    if (location.search.indexOf('gtm_debug=') === -1 &&
+        document.cookie.split(';').some(function(c){
+          return c.trim().indexOf('${STAFF_MARKER_COOKIE}=') === 0;
+        })) return;
 
     var el = document.getElementById('${DATA_ID}');
     if (!el) return;
