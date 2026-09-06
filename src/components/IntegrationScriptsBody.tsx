@@ -19,11 +19,7 @@ import { Integration, STAFF_MARKER_COOKIE } from "@/lib/integrations-shared";
 
 const DONE_ATTR = "data-kanzie-integrations";
 
-function shouldSkipForStaff(): boolean {
-  // GTM preview and Tag Assistant arrive with ?gtm_debug=, in the same browser
-  // the shop is administered from. Suppressing tags there reports the container
-  // as missing to the one person trying to verify it — see IntegrationScripts.
-  if (window.location.search.includes("gtm_debug=")) return false;
+function hasStaffCookie(): boolean {
   return document.cookie
     .split(";")
     .some((c) => c.trim().startsWith(`${STAFF_MARKER_COOKIE}=`));
@@ -75,7 +71,7 @@ export default function IntegrationScriptsBody({
 }) {
   useEffect(() => {
     if (integrations.length === 0) return;
-    if (shouldSkipForStaff()) return;
+    if (hasStaffCookie()) return;
     // A client-side navigation remounts nothing here, but a Fast Refresh in
     // development would otherwise double-inject.
     if (document.querySelector(`[${DONE_ATTR}][data-kanzie-body]`)) return;
