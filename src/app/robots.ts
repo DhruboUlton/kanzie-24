@@ -5,7 +5,7 @@ import { SITE_URL } from "@/lib/site-config";
 // API surface, and the pages that only make sense mid-purchase. Keeping them
 // out of the index also keeps them out of an answer engine's summary of the
 // store.
-const DISALLOWED = ["/admin", "/api", "/cart", "/checkout", "/track"];
+const DISALLOWED = ["/adpnl", "/api", "/cart", "/checkout", "/track"];
 
 export default function robots(): MetadataRoute.Robots {
   return {

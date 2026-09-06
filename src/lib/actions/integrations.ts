@@ -111,8 +111,8 @@ export async function saveIntegrationsAction(input: {
     // The storefront is largely static, so the layout has to be rebuilt for
     // a new tag to appear.
     revalidatePath("/", "layout");
-    revalidatePath("/admin/integrations");
-    revalidatePath("/admin/activity-log");
+    revalidatePath("/adpnl/integrations");
+    revalidatePath("/adpnl/activity-log");
     return { success: true };
   } catch (error) {
     const denied = authErrorResult(error);

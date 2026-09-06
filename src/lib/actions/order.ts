@@ -42,9 +42,9 @@ export async function updateOrderStatusAction(
       description: `Order ${existing?.tranId ?? orderId} → ${status}`,
       metadata: { from: existing?.status ?? null, to: status },
     });
-    revalidatePath("/admin/orders");
-    revalidatePath(`/admin/orders/${orderId}`);
-    revalidatePath("/admin");
+    revalidatePath("/adpnl/orders");
+    revalidatePath(`/adpnl/orders/${orderId}`);
+    revalidatePath("/adpnl");
     return { success: true, order: updated };
   } catch (error: any) {
     const denied = authErrorResult(error);
@@ -101,9 +101,9 @@ export async function markOrderCalledAction(orderId: string, note?: string) {
       metadata: { from: existing.status, to: "CALLED" },
     });
 
-    revalidatePath("/admin/orders");
-    revalidatePath(`/admin/orders/${orderId}`);
-    revalidatePath("/admin");
+    revalidatePath("/adpnl/orders");
+    revalidatePath(`/adpnl/orders/${orderId}`);
+    revalidatePath("/adpnl");
     return { success: true, order: updated };
   } catch (error) {
     const denied = authErrorResult(error);
@@ -143,7 +143,7 @@ export async function addOrderNoteAction(orderId: string, note: string) {
       description: "Added a note to the order",
     });
 
-    revalidatePath(`/admin/orders/${orderId}`);
+    revalidatePath(`/adpnl/orders/${orderId}`);
     return { success: true, event };
   } catch (error: any) {
     const denied = authErrorResult(error);

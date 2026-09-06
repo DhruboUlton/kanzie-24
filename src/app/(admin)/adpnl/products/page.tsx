@@ -117,21 +117,21 @@ export default async function AdminProductsPage(props: {
 
         <div className="grid grid-cols-2 sm:flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <Link
-            href="/admin/products/arrange"
+            href="/adpnl/products/arrange"
             className="justify-center inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 text-xs sm:text-sm font-semibold border border-gray-300 rounded-lg shadow-sm transition-colors"
           >
             <ArrowUpDown className="w-4 h-4" />
             <span>Arrange</span>
           </Link>
           <Link
-            href="/admin/products/import"
+            href="/adpnl/products/import"
             className="justify-center inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 text-xs sm:text-sm font-semibold border border-gray-300 rounded-lg shadow-sm transition-colors"
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span>Import CSV</span>
           </Link>
           <Link
-            href="/admin/products/new"
+            href="/adpnl/products/new"
             className="justify-center inline-flex items-center gap-2 px-4 py-2 bg-[#c0282b] hover:bg-[#8f1e20] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -159,7 +159,7 @@ export default async function AdminProductsPage(props: {
             <span className="shrink-0">Category:</span>
             <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg shrink-0">
               <Link
-                href={`/admin/products?status=${statusFilter}`}
+                href={`/adpnl/products?status=${statusFilter}`}
                 className={`px-2.5 py-1 rounded-md font-medium text-xs transition-colors whitespace-nowrap ${
                   categoryFilter === "all"
                     ? "bg-white text-gray-900 font-semibold shadow-xs"
@@ -171,7 +171,7 @@ export default async function AdminProductsPage(props: {
               {categories.map((cat) => (
                 <Link
                   key={cat.slug}
-                  href={`/admin/products?category=${cat.slug}&status=${statusFilter}`}
+                  href={`/adpnl/products?category=${cat.slug}&status=${statusFilter}`}
                   className={`px-2.5 py-1 rounded-md font-medium text-xs transition-colors whitespace-nowrap ${
                     categoryFilter === cat.slug
                       ? "bg-white text-gray-900 font-semibold shadow-xs"
@@ -187,7 +187,7 @@ export default async function AdminProductsPage(props: {
           {/* Archived Toggle */}
           <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg text-xs self-start sm:self-auto shrink-0">
             <Link
-              href={`/admin/products?category=${categoryFilter}&status=active`}
+              href={`/adpnl/products?category=${categoryFilter}&status=active`}
               className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
                 statusFilter === "active"
                   ? "bg-white text-gray-900 font-semibold shadow-xs"
@@ -197,7 +197,7 @@ export default async function AdminProductsPage(props: {
               Active
             </Link>
             <Link
-              href={`/admin/products?category=${categoryFilter}&status=archived`}
+              href={`/adpnl/products?category=${categoryFilter}&status=archived`}
               className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
                 statusFilter === "archived"
                   ? "bg-white text-gray-900 font-semibold shadow-xs"
@@ -237,7 +237,7 @@ export default async function AdminProductsPage(props: {
                       </div>
                       <div className="min-w-0 flex-1">
                         <Link
-                          href={`/admin/products/${product.id || product.slug}/edit`}
+                          href={`/adpnl/products/${product.id || product.slug}/edit`}
                           className="font-bold text-gray-900 hover:text-accent transition-colors block text-sm line-clamp-1"
                         >
                           {product.name}
@@ -299,7 +299,7 @@ export default async function AdminProductsPage(props: {
                           <ExternalLink className="w-4 h-4" />
                         </Link>
                         <Link
-                          href={`/admin/products/${product.id || product.slug}/edit`}
+                          href={`/adpnl/products/${product.id || product.slug}/edit`}
                           className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-md transition-colors"
                         >
                           <Edit className="w-3.5 h-3.5" />
@@ -387,7 +387,7 @@ export default async function AdminProductsPage(props: {
                             </div>
                             <div className="min-w-0">
                               <Link
-                                href={`/admin/products/${product.id || product.slug}/edit`}
+                                href={`/adpnl/products/${product.id || product.slug}/edit`}
                                 className="font-bold text-gray-900 hover:text-accent transition-colors block truncate max-w-xs"
                               >
                                 {product.name}
@@ -466,7 +466,7 @@ export default async function AdminProductsPage(props: {
                             </Link>
 
                             <Link
-                              href={`/admin/products/${product.id || product.slug}/edit`}
+                              href={`/adpnl/products/${product.id || product.slug}/edit`}
                               title="Edit Vehicle"
                               className="p-1.5 text-gray-600 hover:text-accent hover:bg-gray-100 rounded-md transition-colors"
                             >

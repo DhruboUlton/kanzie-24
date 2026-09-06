@@ -58,7 +58,7 @@ export default function CouponUsageHistoryClient({
 
     const query = params.toString();
     startTransition(() =>
-      router.push(query ? `/admin/coupons/usage?${query}` : "/admin/coupons/usage"),
+      router.push(query ? `/adpnl/coupons/usage?${query}` : "/adpnl/coupons/usage"),
     );
   }
 
@@ -82,7 +82,7 @@ export default function CouponUsageHistoryClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <Link
-            href="/admin/coupons"
+            href="/adpnl/coupons"
             className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -167,7 +167,7 @@ export default function CouponUsageHistoryClient({
               type="button"
               onClick={() => {
                 setSearch("");
-                startTransition(() => router.push("/admin/coupons/usage"));
+                startTransition(() => router.push("/adpnl/coupons/usage"));
               }}
               className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50"
             >
@@ -220,7 +220,7 @@ export default function CouponUsageHistoryClient({
                     {/* Order */}
                     <td className="px-5 py-3.5 font-mono">
                       <Link
-                        href={`/admin/orders/${u.orderId}`}
+                        href={`/adpnl/orders/${u.orderId}`}
                         className="font-bold text-xs text-[#c0282b] hover:underline inline-flex items-center gap-1"
                       >
                         <span>{u.tranId || u.orderId}</span>
@@ -231,7 +231,7 @@ export default function CouponUsageHistoryClient({
                     {/* Coupon */}
                     <td className="px-5 py-3.5">
                       <Link
-                        href={`/admin/coupons/${u.couponId}`}
+                        href={`/adpnl/coupons/${u.couponId}`}
                         className="font-mono font-bold text-xs text-gray-900 hover:text-[#c0282b] bg-gray-100 px-2 py-0.5 rounded transition-colors"
                       >
                         {u.couponCode}

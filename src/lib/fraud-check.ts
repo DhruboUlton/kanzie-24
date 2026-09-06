@@ -12,7 +12,7 @@ import { resolveCourierCredentials, CourierCredentials } from "@/lib/courier-cre
 // therefore best-effort and can break if a courier changes its site.
 //
 // Credentials are the store's own merchant account with each courier, not
-// per-customer secrets — set via /admin/fraud-check (encrypted at rest,
+// per-customer secrets — set via /adpnl/fraud-check (encrypted at rest,
 // see src/lib/courier-credentials.ts) or matching env vars as a fallback.
 // Any missing pair is reported as "not configured" for that courier only
 // — the others still run.

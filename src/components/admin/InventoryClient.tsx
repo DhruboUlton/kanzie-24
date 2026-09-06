@@ -634,7 +634,7 @@ export default function InventoryClient({
                         </span>
                         {m.orderId && (
                           <Link
-                            href={`/admin/orders/${m.orderId}`}
+                            href={`/adpnl/orders/${m.orderId}`}
                             className="block text-[11px] text-accent hover:underline"
                           >
                             View order

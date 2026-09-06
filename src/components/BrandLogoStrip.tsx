@@ -1,7 +1,7 @@
 import { BrandStripContent, classNameFor } from "@/lib/brand-strip";
 
 // A row of wordmarks under New Arrivals. The names are whatever the admin
-// set in /admin/banner — retailers, brands stocked, press, or nothing.
+// set in /adpnl/banner — retailers, brands stocked, press, or nothing.
 export default function BrandLogoStrip({ content }: { content: BrandStripContent }) {
   if (!content.enabled || content.marks.length === 0) return null;
 

@@ -39,24 +39,24 @@ type NavItem = {
 };
 
 const STORE_NAV: NavItem[] = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/products", label: "Products", icon: Package, permission: "PRODUCTS_VIEW" },
-  { href: "/admin/media", label: "Media Library", icon: Images, permission: "MEDIA_VIEW" },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingCart, permission: "ORDERS_VIEW" },
-  { href: "/admin/coupons", label: "Coupons", icon: TicketPercent, permission: "COUPONS_VIEW" },
-  { href: "/admin/analytics", label: "Analytics", icon: ChartColumn, permission: "ANALYTICS_VIEW" },
-  { href: "/admin/inventory", label: "Inventory", icon: Boxes, permission: "INVENTORY_VIEW" },
-  { href: "/admin/categories", label: "Categories", icon: FolderTree, permission: "CATEGORIES_VIEW" },
-  { href: "/admin/banner", label: "Banner", icon: Images, permission: "BANNER_VIEW" },
-  { href: "/admin/fraud-check", label: "Fraud Check", icon: ShieldAlert, permission: "FRAUD_CHECK_VIEW" },
-  { href: "/admin/integrations", label: "Integrations", icon: Plug, permission: "INTEGRATIONS_VIEW" },
-  { href: "/admin/settings", label: "Settings", icon: Settings, permission: "SETTINGS_VIEW" },
+  { href: "/adpnl", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/adpnl/products", label: "Products", icon: Package, permission: "PRODUCTS_VIEW" },
+  { href: "/adpnl/media", label: "Media Library", icon: Images, permission: "MEDIA_VIEW" },
+  { href: "/adpnl/orders", label: "Orders", icon: ShoppingCart, permission: "ORDERS_VIEW" },
+  { href: "/adpnl/coupons", label: "Coupons", icon: TicketPercent, permission: "COUPONS_VIEW" },
+  { href: "/adpnl/analytics", label: "Analytics", icon: ChartColumn, permission: "ANALYTICS_VIEW" },
+  { href: "/adpnl/inventory", label: "Inventory", icon: Boxes, permission: "INVENTORY_VIEW" },
+  { href: "/adpnl/categories", label: "Categories", icon: FolderTree, permission: "CATEGORIES_VIEW" },
+  { href: "/adpnl/banner", label: "Banner", icon: Images, permission: "BANNER_VIEW" },
+  { href: "/adpnl/fraud-check", label: "Fraud Check", icon: ShieldAlert, permission: "FRAUD_CHECK_VIEW" },
+  { href: "/adpnl/integrations", label: "Integrations", icon: Plug, permission: "INTEGRATIONS_VIEW" },
+  { href: "/adpnl/settings", label: "Settings", icon: Settings, permission: "SETTINGS_VIEW" },
 ];
 
 const STAFF_NAV: NavItem[] = [
-  { href: "/admin/staff", label: "Staff", icon: Users, permission: "STAFF_VIEW" },
-  { href: "/admin/roles", label: "Roles & Permissions", icon: ShieldCheck, permission: "ROLES_VIEW" },
-  { href: "/admin/activity-log", label: "Activity Log", icon: ScrollText, permission: "ACTIVITY_LOG_VIEW" },
+  { href: "/adpnl/staff", label: "Staff", icon: Users, permission: "STAFF_VIEW" },
+  { href: "/adpnl/roles", label: "Roles & Permissions", icon: ShieldCheck, permission: "ROLES_VIEW" },
+  { href: "/adpnl/activity-log", label: "Activity Log", icon: ScrollText, permission: "ACTIVITY_LOG_VIEW" },
 ];
 
 export default function AdminSidebar({
@@ -94,7 +94,7 @@ export default function AdminSidebar({
       {/* Brand Header */}
       <div>
         <div className="h-16 px-5 sm:px-6 flex items-center justify-between border-b border-white/10">
-          <Link href="/admin" onClick={onNavigate} className="flex items-center gap-2.5">
+          <Link href="/adpnl" onClick={onNavigate} className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-md bg-[#c0282b] flex items-center justify-center font-bold text-white tracking-wider text-sm shadow-md shadow-[#c0282b]/30">
               KZ
             </div>
@@ -220,7 +220,7 @@ export default function AdminSidebar({
           <form
             action={async () => {
               await logoutAdminAction();
-              window.location.href = "/admin/login";
+              window.location.href = "/adpnl/login";
             }}
           >
             <button

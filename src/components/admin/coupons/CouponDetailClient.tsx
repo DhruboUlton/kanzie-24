@@ -88,7 +88,7 @@ export default function CouponDetailClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <Link
-            href="/admin/coupons"
+            href="/adpnl/coupons"
             className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -279,7 +279,7 @@ export default function CouponDetailClient({
 
           {usages.length < usageTotal && (
             <Link
-              href={`/admin/coupons/usage?coupon=${coupon.id}`}
+              href={`/adpnl/coupons/usage?coupon=${coupon.id}`}
               className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
             >
               View all
@@ -315,7 +315,7 @@ export default function CouponDetailClient({
                     {/* Order ID Link */}
                     <td className="px-5 py-3.5 font-mono">
                       <Link
-                        href={`/admin/orders/${u.orderId}`}
+                        href={`/adpnl/orders/${u.orderId}`}
                         className="font-bold text-xs text-[#c0282b] hover:underline inline-flex items-center gap-1"
                       >
                         <span>{u.tranId || u.orderId}</span>

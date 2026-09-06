@@ -73,7 +73,7 @@ export async function updateBrandStripAction(
     });
 
     revalidatePath("/");
-    revalidatePath("/admin/banner");
+    revalidatePath("/adpnl/banner");
     return { success: true };
   } catch {
     return { success: false, error: "Couldn't save the brand strip." };

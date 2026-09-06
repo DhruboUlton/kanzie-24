@@ -107,7 +107,7 @@ export default function OrderDetailClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 sm:pb-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <Link
-            href="/admin/orders"
+            href="/adpnl/orders"
             className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />

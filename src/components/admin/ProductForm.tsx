@@ -314,7 +314,7 @@ export default function ProductForm({
       }
 
       if (res.success) {
-        router.push("/admin/products");
+        router.push("/adpnl/products");
         router.refresh();
       } else {
         setError(res.error || "Failed to save product.");
@@ -351,7 +351,7 @@ export default function ProductForm({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => router.push("/admin/products")}
+            onClick={() => router.push("/adpnl/products")}
             className="px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
             Cancel

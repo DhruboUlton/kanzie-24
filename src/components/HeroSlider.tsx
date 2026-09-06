@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { HeroContent } from "@/lib/hero";
 
-// Slides, headline and CTA come from /admin/banner (see src/lib/hero.ts);
+// Slides, headline and CTA come from /adpnl/banner (see src/lib/hero.ts);
 // DEFAULT_HERO is what ships if nothing has been saved yet.
 //
 // Each transparent PNG carries a different amount of empty space around the
@@ -102,7 +102,7 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
     }
     busyRef.current = true;
 
-    // Editing slides in /admin/banner changes the list under a live slider;
+    // Editing slides in /adpnl/banner changes the list under a live slider;
     // re-seed rather than carrying an array of the wrong length.
     const current =
       offsetsRef.current.length === n ? offsetsRef.current : seed();
@@ -236,7 +236,7 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
             // padding this slide has beyond the tightest-cropped image.
             const sideGap = offset < 0 ? slide.rightGap : offset > 0 ? slide.leftGap : 0;
             // Each slide's nudge stands alone — no cross-slide reference, so
-            // editing one slide in /admin/banner never moves the others.
+            // editing one slide in /adpnl/banner never moves the others.
             const sideCorrection = Math.sign(offset) * sideGap;
             // Beyond the immediate neighbours a slide is parked out of sight.
             const offStage = abs > 1;

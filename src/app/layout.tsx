@@ -19,7 +19,7 @@ const lato = Lato({
 });
 
 // Read per render rather than fixed at build: the tab title, tagline and
-// favicon are editable in /admin/settings. Storefront pages are static, so
+// favicon are editable in /adpnl/settings. Storefront pages are static, so
 // this resolves once at build for them — updateSettingsAction revalidates
 // the root layout so a change actually reaches them.
 export async function generateMetadata(): Promise<Metadata> {

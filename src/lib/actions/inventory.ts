@@ -17,9 +17,9 @@ type Result = { success: boolean; error?: string };
 // Every write revalidates the storefront too — stock drives the ADD TO CART
 // button, so a correction that stops at the admin panel is half-applied.
 function revalidateStock(slug?: string) {
-  revalidatePath("/admin/inventory");
-  revalidatePath("/admin/products");
-  revalidatePath("/admin");
+  revalidatePath("/adpnl/inventory");
+  revalidatePath("/adpnl/products");
+  revalidatePath("/adpnl");
   revalidatePath("/");
   revalidatePath("/products");
   if (slug) revalidatePath(`/products/${slug}`);

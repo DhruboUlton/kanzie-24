@@ -151,7 +151,7 @@ export async function createCustomCouponAction(
       },
     });
 
-    revalidatePath("/admin/coupons");
+    revalidatePath("/adpnl/coupons");
     return { success: true, data: { id: created.id, code: created.code } };
   } catch (error) {
     const authError = authErrorResult(error);
@@ -218,7 +218,7 @@ export async function generateRandomCouponsAction(
       },
     });
 
-    revalidatePath("/admin/coupons");
+    revalidatePath("/adpnl/coupons");
     return {
       success: true,
       data: {
@@ -266,8 +266,8 @@ export async function toggleCouponActiveAction(
       metadata: { code: updated.code, isActive: updated.isActive },
     });
 
-    revalidatePath("/admin/coupons");
-    revalidatePath(`/admin/coupons/${couponId}`);
+    revalidatePath("/adpnl/coupons");
+    revalidatePath(`/adpnl/coupons/${couponId}`);
     return { success: true, data: { isActive: updated.isActive } };
   } catch (error) {
     const authError = authErrorResult(error);
@@ -335,8 +335,8 @@ export async function updateCouponAction(
       metadata: { code: updated.code, changes: data },
     });
 
-    revalidatePath("/admin/coupons");
-    revalidatePath(`/admin/coupons/${couponId}`);
+    revalidatePath("/adpnl/coupons");
+    revalidatePath(`/adpnl/coupons/${couponId}`);
     return { success: true };
   } catch (error) {
     const authError = authErrorResult(error);

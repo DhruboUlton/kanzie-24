@@ -36,7 +36,7 @@ export default async function Home() {
   ]);
 
   // Which categories get a product rail on the front page, chosen in
-  // /admin/categories. Only the rails: the "Shop by machine" strip above
+  // /adpnl/categories. Only the rails: the "Shop by machine" strip above
   // them always lists everything. Undefined counts as shown, so a row
   // written before the flag existed, or a fallback category with no database
   // row at all, still gets its rail.

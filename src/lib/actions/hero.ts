@@ -121,7 +121,7 @@ export async function updateHeroAction(
     });
 
     revalidatePath("/");
-    revalidatePath("/admin/banner");
+    revalidatePath("/adpnl/banner");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error?.message || "Failed to save banner" };

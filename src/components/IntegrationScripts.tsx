@@ -7,7 +7,7 @@ import {
   STAFF_MARKER_COOKIE,
 } from "@/lib/integrations-shared";
 
-// Injects the tracking snippets an admin pasted into /admin/integrations.
+// Injects the tracking snippets an admin pasted into /adpnl/integrations.
 //
 // Two things this deliberately does not do:
 //

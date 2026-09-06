@@ -33,9 +33,9 @@ function ungrantable(ctx: AdminContext, permissions: Permission[]): string | nul
 }
 
 function revalidateRoles() {
-  revalidatePath("/admin/roles");
-  revalidatePath("/admin/staff");
-  revalidatePath("/admin/activity-log");
+  revalidatePath("/adpnl/roles");
+  revalidatePath("/adpnl/staff");
+  revalidatePath("/adpnl/activity-log");
 }
 
 const roleSchema = z.object({

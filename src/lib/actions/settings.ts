@@ -83,7 +83,7 @@ export async function updateSettingsAction(settings: Record<string, string>) {
     // "layout" scope so the root layout's generateMetadata re-runs — the tab
     // title and favicon live there, and a plain page revalidate misses them.
     revalidatePath("/", "layout");
-    revalidatePath("/admin/settings");
+    revalidatePath("/adpnl/settings");
     return { success: true };
   } catch (error: any) {
     const denied = authErrorResult(error);

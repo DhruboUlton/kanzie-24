@@ -116,7 +116,7 @@ export default function ProductArrangeClient({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <Link
-            href="/admin/products"
+            href="/adpnl/products"
             className="p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -163,7 +163,7 @@ export default function ProductArrangeClient({
         </label>
         <select
           value={activeScope}
-          onChange={(e) => router.push(`/admin/products/arrange?scope=${e.target.value}`)}
+          onChange={(e) => router.push(`/adpnl/products/arrange?scope=${e.target.value}`)}
           className="w-full sm:w-80 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-[#c0282b]"
         >
           {scopes.map((s) => (

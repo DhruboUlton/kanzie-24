@@ -99,7 +99,7 @@ export default async function AdminOrdersPage(props: {
           {statuses.map((st) => (
             <Link
               key={st.value}
-              href={`/admin/orders?status=${st.value}${query ? `&q=${query}` : ""}`}
+              href={`/adpnl/orders?status=${st.value}${query ? `&q=${query}` : ""}`}
               className={`px-3 py-1.5 rounded-md font-medium transition-colors whitespace-nowrap shrink-0 ${
                 statusFilter === st.value
                   ? "bg-white text-gray-900 font-bold shadow-xs"
@@ -141,7 +141,7 @@ export default async function AdminOrdersPage(props: {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <Link
-                          href={`/admin/orders/${order.id}`}
+                          href={`/adpnl/orders/${order.id}`}
                           className="font-mono text-xs font-bold text-gray-900 hover:text-accent"
                         >
                           #{order.tranId}
@@ -209,7 +209,7 @@ export default async function AdminOrdersPage(props: {
                         )}
                       </div>
                       <Link
-                        href={`/admin/orders/${order.id}`}
+                        href={`/adpnl/orders/${order.id}`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-lg transition-colors ml-auto shrink-0"
                       >
                         <Eye className="w-3.5 h-3.5" />
@@ -254,7 +254,7 @@ export default async function AdminOrdersPage(props: {
                         {/* TranID & Gateway */}
                         <td className="px-6 py-4">
                           <Link
-                            href={`/admin/orders/${order.id}`}
+                            href={`/adpnl/orders/${order.id}`}
                             className="font-mono text-xs font-bold text-gray-900 hover:text-accent transition-colors"
                           >
                             {order.tranId}
@@ -327,7 +327,7 @@ export default async function AdminOrdersPage(props: {
                         {/* Actions */}
                         <td className="px-6 py-4 text-right">
                           <Link
-                            href={`/admin/orders/${order.id}`}
+                            href={`/adpnl/orders/${order.id}`}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-lg transition-colors"
                           >
                             <Eye className="w-3.5 h-3.5" />

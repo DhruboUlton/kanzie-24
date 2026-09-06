@@ -149,7 +149,7 @@ export default async function AdminDashboardPage() {
         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           {canSeeProducts && can("PRODUCTS_CREATE") && (
           <Link
-            href="/admin/products/new"
+            href="/adpnl/products/new"
             className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-[#c0282b] hover:bg-[#8f1e20] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm transition-colors"
           >
             <PlusCircle className="w-4 h-4" />
@@ -158,7 +158,7 @@ export default async function AdminDashboardPage() {
           )}
           {canSeeOrders && (
           <Link
-            href="/admin/orders"
+            href="/adpnl/orders"
             className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs sm:text-sm font-semibold rounded-lg transition-colors"
           >
             <ShoppingCart className="w-4 h-4" />
@@ -207,7 +207,7 @@ export default async function AdminDashboardPage() {
               </p>
             </div>
             <Link
-              href="/admin/orders"
+              href="/adpnl/orders"
               className="text-xs font-semibold text-[#c0282b] hover:text-[#8f1e20] flex items-center gap-1"
             >
               <span>View All</span>
@@ -273,7 +273,7 @@ export default async function AdminDashboardPage() {
                         </td>
                         <td className="px-4 sm:px-6 py-3.5 text-right">
                           <Link
-                            href={`/admin/orders/${order.id}`}
+                            href={`/adpnl/orders/${order.id}`}
                             className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
                           >
                             Details
@@ -329,7 +329,7 @@ export default async function AdminDashboardPage() {
             </h4>
             {canSeeProducts && (
             <Link
-              href="/admin/products"
+              href="/adpnl/products"
               className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-all text-xs font-semibold text-gray-700"
             >
               <span className="flex items-center gap-2.5">
@@ -342,7 +342,7 @@ export default async function AdminDashboardPage() {
 
             {canSeeCategories && (
             <Link
-              href="/admin/categories"
+              href="/adpnl/categories"
               className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-all text-xs font-semibold text-gray-700"
             >
               <span className="flex items-center gap-2.5">
@@ -355,7 +355,7 @@ export default async function AdminDashboardPage() {
 
             {can("SETTINGS_VIEW") && (
             <Link
-              href="/admin/settings"
+              href="/adpnl/settings"
               className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-all text-xs font-semibold text-gray-700"
             >
               <span className="flex items-center gap-2.5">

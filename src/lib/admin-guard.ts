@@ -9,7 +9,7 @@ import { AdminContext, Permission } from "@/lib/permissions";
 
 export async function requirePageAdmin(): Promise<AdminContext> {
   const ctx = await getAdminContext();
-  if (!ctx) redirect("/admin/login");
+  if (!ctx) redirect("/adpnl/login");
   return ctx;
 }
 

@@ -150,7 +150,7 @@ export default function ProductImport({
       <div className="flex items-center justify-between gap-4">
         <div>
           <Link
-            href="/admin/products"
+            href="/adpnl/products"
             className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 mb-1.5"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -252,7 +252,7 @@ export default function ProductImport({
             </div>
           )}
           <Link
-            href="/admin/products"
+            href="/adpnl/products"
             className="inline-flex items-center gap-2 px-4 py-2 bg-[#c0282b] hover:bg-[#8f1e20] text-white text-sm font-semibold rounded-lg transition-colors"
           >
             Back to catalog

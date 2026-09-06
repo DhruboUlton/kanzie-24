@@ -25,8 +25,8 @@ function isOwner(ctx: { roleKey: string | null }): boolean {
 }
 
 function revalidateStaff() {
-  revalidatePath("/admin/staff");
-  revalidatePath("/admin/activity-log");
+  revalidatePath("/adpnl/staff");
+  revalidatePath("/adpnl/activity-log");
 }
 
 // Shared shape errors. Kept generic on purpose — nothing here should tell a

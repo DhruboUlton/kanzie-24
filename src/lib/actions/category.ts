@@ -77,7 +77,7 @@ export async function createCategoryAction(
     });
 
     revalidatePath("/products");
-    revalidatePath("/admin/categories");
+    revalidatePath("/adpnl/categories");
     revalidatePath("/", "layout");
     await logActivity({
       actor: ctx,
@@ -141,7 +141,7 @@ export async function updateCategoryAction(
     });
 
     revalidatePath("/products");
-    revalidatePath("/admin/categories");
+    revalidatePath("/adpnl/categories");
     revalidatePath("/", "layout");
     await logActivity({
       actor: ctx,
@@ -185,7 +185,7 @@ export async function deleteCategoryAction(id: string) {
 
     await db.category.delete({ where: { id } });
     revalidatePath("/products");
-    revalidatePath("/admin/categories");
+    revalidatePath("/adpnl/categories");
     revalidatePath("/", "layout");
     await logActivity({
       actor: ctx,
@@ -264,7 +264,7 @@ export async function reorderCategoriesAction(
     });
 
     revalidatePath("/products");
-    revalidatePath("/admin/categories");
+    revalidatePath("/adpnl/categories");
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
@@ -305,7 +305,7 @@ export async function setCategoryHomepageAction(
     });
 
     revalidatePath("/", "layout");
-    revalidatePath("/admin/categories");
+    revalidatePath("/adpnl/categories");
 
     await logActivity({
       actor: ctx,

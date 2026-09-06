@@ -69,7 +69,7 @@ export async function updateBodyBannerAction(
     });
 
     revalidatePath("/");
-    revalidatePath("/admin/banner");
+    revalidatePath("/adpnl/banner");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error?.message || "Failed to save body banner" };

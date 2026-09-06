@@ -38,7 +38,7 @@ export default function AnalyticsControls({
       if (v === null) params.delete(k);
       else params.set(k, v);
     }
-    startTransition(() => router.push(`/admin/analytics?${params.toString()}`));
+    startTransition(() => router.push(`/adpnl/analytics?${params.toString()}`));
   };
 
   return (

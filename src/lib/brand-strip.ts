@@ -27,7 +27,7 @@ export type BrandMark = {
 export const DEFAULT_BRAND_STRIP_ENABLED = true;
 export const BRAND_STRIP_ENABLED_KEY = "brand_strip_enabled";
 
-/** Placeholder names, not real companies. Replace them in /admin/banner. */
+/** Placeholder names, not real companies. Replace them in /adpnl/banner. */
 export const DEFAULT_BRAND_MARKS: BrandMark[] = [
   { name: "Backyard Builder", style: "display" },
   { name: "Kidville Times", style: "serifItalic" },

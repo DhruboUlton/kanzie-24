@@ -18,7 +18,7 @@ export default function CategoryTiles({
         {categories.map((cat) => {
           // The category's own cover if one has been set. Otherwise the
           // first product filed under it, which is a guess and often the
-          // wrong one — set a cover in /admin/categories to replace it.
+          // wrong one — set a cover in /adpnl/categories to replace it.
           const cover =
             cat.imageUrl?.trim() ||
             products.find((p) => p.category === cat.slug)?.images[0] ||

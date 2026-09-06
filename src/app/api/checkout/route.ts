@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
   const tran_id = `KZ-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
 
   // No online payment — the order is recorded as PENDING and an admin
-  // calls the customer to confirm it (see /admin/orders). tran_id doubles
+  // calls the customer to confirm it (see /adpnl/orders). tran_id doubles
   // as the order's unique ID, shown to the customer on success and to the
   // admin in the dashboard. Prices are re-looked-up from the catalog
   // inside createPendingOrder itself, never trusted from the client.

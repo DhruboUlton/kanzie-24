@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { encrypt, decrypt } from "@/lib/crypto";
 
 // Where each courier's merchant login lives: SiteSetting row if the admin
-// has entered one through /admin/fraud-check, otherwise the matching env
+// has entered one through /adpnl/fraud-check, otherwise the matching env
 // var (so an env-only deployment keeps working exactly as before this UI
 // existed). Passwords are encrypted before they hit the database — see
 // src/lib/crypto.ts.

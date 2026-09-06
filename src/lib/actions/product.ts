@@ -112,7 +112,7 @@ export async function createProductAction(data: any) {
     revalidatePath("/");
     revalidatePath("/products");
     revalidatePath(`/products/${slug}`);
-    revalidatePath("/admin/products");
+    revalidatePath("/adpnl/products");
 
     await logActivity({
       actor: ctx,
@@ -236,7 +236,7 @@ export async function updateProductAction(id: string, data: any) {
     revalidatePath("/");
     revalidatePath("/products");
     revalidatePath(`/products/${slug}`);
-    revalidatePath("/admin/products");
+    revalidatePath("/adpnl/products");
 
     await logActivity({
       actor: ctx,
@@ -306,7 +306,7 @@ export async function archiveProductAction(id: string) {
     revalidatePath("/");
     revalidatePath("/products");
     revalidatePath(`/products/${product.slug}`);
-    revalidatePath("/admin/products");
+    revalidatePath("/adpnl/products");
 
     await logActivity({
       actor: ctx,
@@ -339,7 +339,7 @@ export async function restoreProductAction(id: string) {
     revalidatePath("/");
     revalidatePath("/products");
     revalidatePath(`/products/${product.slug}`);
-    revalidatePath("/admin/products");
+    revalidatePath("/adpnl/products");
 
     await logActivity({
       actor: ctx,
@@ -442,9 +442,9 @@ export async function deleteProductAction(id: string) {
     revalidatePath("/");
     revalidatePath("/products");
     revalidatePath(`/products/${product.slug}`);
-    revalidatePath("/admin/products");
-    revalidatePath("/admin/orders");
-    revalidatePath("/admin/inventory");
+    revalidatePath("/adpnl/products");
+    revalidatePath("/adpnl/orders");
+    revalidatePath("/adpnl/inventory");
 
     await logActivity({
       actor: ctx,
@@ -526,7 +526,7 @@ export async function reorderCategoryProductsAction(
       metadata: { count: ids.length, categoryId: found[0]?.categoryId },
     });
 
-    revalidatePath("/admin/products");
+    revalidatePath("/adpnl/products");
     revalidatePath("/products");
     revalidatePath("/");
     const slug = found[0]?.category?.slug;
@@ -589,7 +589,7 @@ export async function reorderFeaturedProductsAction(
       metadata: { count: ids.length },
     });
 
-    revalidatePath("/admin/products");
+    revalidatePath("/adpnl/products");
     revalidatePath("/");
     return { success: true };
   } catch (error) {

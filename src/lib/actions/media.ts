@@ -160,7 +160,7 @@ export async function updateMediaMetadataAction(
       metadata: { title: updated.title, altText: updated.altText },
     });
 
-    revalidatePath("/admin/media");
+    revalidatePath("/adpnl/media");
     return { success: true, media: updated };
   } catch (error: any) {
     console.error("updateMediaMetadataAction error:", error);
@@ -256,8 +256,8 @@ export async function deleteMediaPermanentlyAction(id: string, force = false) {
       },
     });
 
-    revalidatePath("/admin/media");
-    revalidatePath("/admin/products");
+    revalidatePath("/adpnl/media");
+    revalidatePath("/adpnl/products");
     return { success: true };
   } catch (error: any) {
     console.error("deleteMediaPermanentlyAction error:", error);

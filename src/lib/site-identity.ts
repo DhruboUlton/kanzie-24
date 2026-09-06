@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { SITE_NAME } from "@/lib/site-config";
 
 // What the browser tab says and shows: the title, the tagline after it, and
-// the favicon. Editable from /admin/settings rather than being a code change.
+// the favicon. Editable from /adpnl/settings rather than being a code change.
 //
 // The favicon deliberately does NOT use Next's app/icon.png file convention.
 // That convention injects its own <link rel="icon"> from a file on disk, which

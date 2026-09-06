@@ -43,7 +43,7 @@ export async function updateCourierCredentialsAction(
       },
     });
 
-    revalidatePath("/admin/fraud-check");
+    revalidatePath("/adpnl/fraud-check");
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error?.message || "Failed to save credentials" };

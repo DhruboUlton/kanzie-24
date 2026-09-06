@@ -28,7 +28,7 @@ export default function SetupOwnerForm() {
     try {
       const res = await bootstrapOwnerAction({ name, email, password });
       if (res.success) {
-        router.push("/admin");
+        router.push("/adpnl");
         router.refresh();
       } else {
         setError(res.error || "Couldn't complete setup.");

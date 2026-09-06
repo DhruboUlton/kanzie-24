@@ -11,7 +11,7 @@ export default async function AdminLayout({
   // No usable context: not signed in, or signed in with a cookie whose
   // account has since been deleted, disabled, or stripped of its role.
   // Render the child bare — that's the login page. Protected pages send
-  // their own visitors to /admin/login via requirePageAdmin(), which can't
+  // their own visitors to /adpnl/login via requirePageAdmin(), which can't
   // be done here because this layout also wraps the login page itself.
   if (!ctx) {
     return <div className="min-h-screen bg-gray-50">{children}</div>;

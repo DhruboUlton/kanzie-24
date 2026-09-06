@@ -80,7 +80,7 @@ export default function CouponDashboardClient({
     if (page > 1) params.set("page", String(page));
 
     const query = params.toString();
-    startTransition(() => router.push(query ? `/admin/coupons?${query}` : "/admin/coupons"));
+    startTransition(() => router.push(query ? `/adpnl/coupons?${query}` : "/adpnl/coupons"));
   }
 
   // Debounced so typing a code does not fire a query per keystroke.
@@ -136,7 +136,7 @@ export default function CouponDashboardClient({
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Link
-            href="/admin/coupons/usage"
+            href="/adpnl/coupons/usage"
             className="flex-1 sm:flex-initial justify-center inline-flex items-center gap-2 px-3 py-2 border border-gray-300 hover:border-gray-400 bg-white text-gray-700 text-xs font-semibold rounded-lg transition-colors shadow-2xs"
           >
             <History className="w-4 h-4 text-gray-500" />
@@ -329,7 +329,7 @@ export default function CouponDashboardClient({
                       <div>
                         <div className="flex items-center gap-1.5">
                           <Link
-                            href={`/admin/coupons/${coupon.id}`}
+                            href={`/adpnl/coupons/${coupon.id}`}
                             className="font-mono font-bold text-sm text-gray-900 hover:text-[#c0282b]"
                           >
                             {coupon.code}
@@ -437,7 +437,7 @@ export default function CouponDashboardClient({
                           </button>
                         )}
                         <Link
-                          href={`/admin/coupons/${coupon.id}`}
+                          href={`/adpnl/coupons/${coupon.id}`}
                           className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-md transition-colors"
                         >
                           <Eye className="w-3 h-3" />
@@ -476,7 +476,7 @@ export default function CouponDashboardClient({
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-2">
                             <Link
-                              href={`/admin/coupons/${coupon.id}`}
+                              href={`/adpnl/coupons/${coupon.id}`}
                               className="font-mono font-bold text-xs text-gray-900 hover:text-[#c0282b] transition-colors"
                             >
                               {coupon.code}
@@ -591,7 +591,7 @@ export default function CouponDashboardClient({
                         <td className="px-5 py-3.5 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <Link
-                              href={`/admin/coupons/${coupon.id}`}
+                              href={`/adpnl/coupons/${coupon.id}`}
                               className="p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
                               title="View details & redemptions"
                             >

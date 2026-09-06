@@ -497,7 +497,7 @@ export async function commitProductCsvAction(
 
   revalidatePath("/");
   revalidatePath("/products");
-  revalidatePath("/admin/products");
+  revalidatePath("/adpnl/products");
   for (const slug of new Set(touchedSlugs)) {
     revalidatePath(`/products/${slug}`);
   }

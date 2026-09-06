@@ -13,25 +13,25 @@ export default function AdminHeader({
   const pathname = usePathname();
 
   const getTitle = () => {
-    if (pathname === "/admin") return "Dashboard";
-    if (pathname.startsWith("/admin/products/new")) return "Add New Product";
+    if (pathname === "/adpnl") return "Dashboard";
+    if (pathname.startsWith("/adpnl/products/new")) return "Add New Product";
     if (pathname.includes("/edit")) return "Edit Product";
-    if (pathname.startsWith("/admin/products")) return "Products Catalog";
-    if (pathname.startsWith("/admin/orders/")) return "Order Details";
-    if (pathname.startsWith("/admin/orders")) return "Orders Management";
-    if (pathname.startsWith("/admin/coupons/usage")) return "Coupon Usage History";
-    if (pathname.startsWith("/admin/coupons/")) return "Coupon Details";
-    if (pathname.startsWith("/admin/coupons")) return "Coupons & Discounts";
-    if (pathname.startsWith("/admin/analytics")) return "Analytics";
-    if (pathname.startsWith("/admin/inventory")) return "Inventory";
-    if (pathname.startsWith("/admin/staff")) return "Staff";
-    if (pathname.startsWith("/admin/roles")) return "Roles & Permissions";
-    if (pathname.startsWith("/admin/activity-log")) return "Activity Log";
-    if (pathname.startsWith("/admin/categories")) return "Categories";
-    if (pathname.startsWith("/admin/banner")) return "Homepage Banner";
-    if (pathname.startsWith("/admin/fraud-check")) return "Fraud Checking";
-    if (pathname.startsWith("/admin/integrations")) return "Integrations";
-    if (pathname.startsWith("/admin/settings")) return "Store Settings";
+    if (pathname.startsWith("/adpnl/products")) return "Products Catalog";
+    if (pathname.startsWith("/adpnl/orders/")) return "Order Details";
+    if (pathname.startsWith("/adpnl/orders")) return "Orders Management";
+    if (pathname.startsWith("/adpnl/coupons/usage")) return "Coupon Usage History";
+    if (pathname.startsWith("/adpnl/coupons/")) return "Coupon Details";
+    if (pathname.startsWith("/adpnl/coupons")) return "Coupons & Discounts";
+    if (pathname.startsWith("/adpnl/analytics")) return "Analytics";
+    if (pathname.startsWith("/adpnl/inventory")) return "Inventory";
+    if (pathname.startsWith("/adpnl/staff")) return "Staff";
+    if (pathname.startsWith("/adpnl/roles")) return "Roles & Permissions";
+    if (pathname.startsWith("/adpnl/activity-log")) return "Activity Log";
+    if (pathname.startsWith("/adpnl/categories")) return "Categories";
+    if (pathname.startsWith("/adpnl/banner")) return "Homepage Banner";
+    if (pathname.startsWith("/adpnl/fraud-check")) return "Fraud Checking";
+    if (pathname.startsWith("/adpnl/integrations")) return "Integrations";
+    if (pathname.startsWith("/adpnl/settings")) return "Store Settings";
     return "Admin";
   };
 
