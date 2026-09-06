@@ -976,7 +976,7 @@ export default function ProductForm({
                       src={img}
                       alt={`Photo ${i + 1}`}
                       fill
-                      unoptimized={img.startsWith("/api/uploads/")}
+                      sizes="(max-width: 640px) 33vw, 200px"
                       className="object-contain p-1 pointer-events-none"
                     />
 

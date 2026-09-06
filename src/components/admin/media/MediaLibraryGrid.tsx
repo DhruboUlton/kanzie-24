@@ -553,7 +553,6 @@ export default function MediaLibraryGrid({
                           src={item.url}
                           alt={item.altText || item.filename}
                           fill
-                          unoptimized={item.url.startsWith("/api/uploads/")}
                           className="object-contain p-1 group-hover:scale-[1.03] transition-transform duration-200"
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                         />

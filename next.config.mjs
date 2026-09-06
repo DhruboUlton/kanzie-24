@@ -1,5 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    // An upload's filename is minted once (timestamp + uuid) and its bytes
+    // never change, so a variant that has been optimised stays valid. The
+    // default TTL makes the server re-encode the same admin thumbnails every
+    // few hours for nothing; a year matches how long the file actually lives.
+    minimumCacheTTL: 31536000,
+  },
   // Baseline response hardening for every route. Deliberately conservative:
   // no Content-Security-Policy here, because the Integrations feature injects
   // admin-authored third-party scripts (GTM, Meta/TikTok pixels) at runtime

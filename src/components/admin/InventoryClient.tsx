@@ -458,7 +458,6 @@ export default function InventoryClient({
                                 alt=""
                                 fill
                                 sizes="40px"
-                                unoptimized={r.image.startsWith("/api/uploads/")}
                                 className="object-cover"
                               />
                             )}

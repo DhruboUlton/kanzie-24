@@ -295,7 +295,6 @@ export default function HeroCoverflowFields({
                   alt={slide.alt || `Slide ${i + 1}`}
                   fill
                   sizes="112px"
-                  unoptimized={isUpload(slide.src)}
                   className="object-contain"
                 />
                 <span className="absolute top-1 left-1 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
