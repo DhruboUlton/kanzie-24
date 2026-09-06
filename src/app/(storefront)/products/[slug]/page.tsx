@@ -12,8 +12,47 @@ import ProductGallery from "@/components/ProductGallery";
 import ProductDescription from "@/components/ProductDescription";
 import ProductVideoPopup from "@/components/ProductVideoPopup";
 import { resolveAvailability, resolvePricing } from "@/lib/product-pricing";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbSchema, jsonLdGraph, productSchema } from "@/lib/structured-data";
+import { SITE_NAME, absoluteUrl } from "@/lib/site-config";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+// Every page shared one title until this existed, which left search engines
+// and answer engines with nothing to tell one product from another.
+export async function generateMetadata(
+  props: PageProps<"/products/[slug]">,
+): Promise<Metadata> {
+  const { slug } = await props.params;
+  const product = await getProductBySlug(slug);
+  if (!product) return { title: "Product not found" };
+
+  const path = `/products/${product.slug}`;
+  const title = `${product.name} — ${product.brand} | ${SITE_NAME}`;
+  const description = product.shortDescription;
+  const image = product.images[0];
+
+  return {
+    title,
+    description,
+    alternates: { canonical: path },
+    openGraph: {
+      type: "website",
+      title,
+      description,
+      url: absoluteUrl(path),
+      siteName: SITE_NAME,
+      ...(image ? { images: [{ url: absoluteUrl(image), alt: product.name }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(image ? { images: [absoluteUrl(image)] } : {}),
+    },
+  };
+}
 
 export default async function ProductPage(
   props: PageProps<"/products/[slug]">,
@@ -34,6 +73,18 @@ export default async function ProductPage(
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+      <JsonLd
+        data={jsonLdGraph(
+          productSchema(product),
+          // Organization is emitted site-wide by the root layout; repeating
+          // it here would just duplicate the node.
+          breadcrumbSchema([
+            { name: "Shop", path: "/products" },
+            { name: product.name, path: `/products/${product.slug}` },
+          ]),
+        )}
+      />
+
       <nav className="text-sm text-black/60 mb-8">
         <Link href="/products" className="hover:text-accent">
           Shop

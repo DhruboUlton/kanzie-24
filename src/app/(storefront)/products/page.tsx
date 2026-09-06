@@ -1,6 +1,38 @@
 import ProductCard from "@/components/ProductCard";
 import CategoryFilter from "@/components/CategoryFilter";
-import { getCategoryTree, getProductsByCategory } from "@/lib/products";
+import { getCategories, getCategoryTree, getProductsByCategory } from "@/lib/products";
+import JsonLd from "@/components/JsonLd";
+import { breadcrumbSchema, jsonLdGraph } from "@/lib/structured-data";
+import { SITE_NAME, SITE_TAGLINE, absoluteUrl } from "@/lib/site-config";
+import type { Metadata } from "next";
+
+export async function generateMetadata(
+  props: PageProps<"/products">,
+): Promise<Metadata> {
+  const searchParams = await props.searchParams;
+  const slug = typeof searchParams.category === "string" ? searchParams.category : "all";
+
+  if (slug === "all") {
+    return {
+      title: `Shop all RC machines | ${SITE_NAME}`,
+      description: SITE_TAGLINE,
+      alternates: { canonical: "/products" },
+    };
+  }
+
+  const category = (await getCategories()).find((c) => c.slug === slug);
+  if (!category) {
+    return { title: `Shop all RC machines | ${SITE_NAME}`, alternates: { canonical: "/products" } };
+  }
+
+  return {
+    title: `${category.name} — remote control ${category.name.toLowerCase()} | ${SITE_NAME}`,
+    description: `Browse ${category.name.toLowerCase()} at ${SITE_NAME}. ${SITE_TAGLINE}`,
+    // The filtered view is its own landing page, so it points at itself
+    // rather than collapsing every category into /products.
+    alternates: { canonical: `/products?category=${category.slug}` },
+  };
+}
 
 export default async function ProductsPage(props: PageProps<"/products">) {
   const searchParams = await props.searchParams;
@@ -15,6 +47,22 @@ export default async function ProductsPage(props: PageProps<"/products">) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+      <JsonLd
+        data={jsonLdGraph(
+          breadcrumbSchema([{ name: "Shop", path: "/products" }]),
+          {
+            "@type": "ItemList",
+            numberOfItems: products.length,
+            itemListElement: products.map((product, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              url: absoluteUrl(`/products/${product.slug}`),
+              name: product.name,
+            })),
+          },
+        )}
+      />
+
       <h1 className="font-display text-4xl sm:text-5xl tracking-wide text-center mb-8">
         SHOP ALL MACHINES
       </h1>
