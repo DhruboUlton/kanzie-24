@@ -19,6 +19,17 @@ import { HeroContent } from "@/lib/hero";
 
 const TRANSITION_MS = 500;
 
+// How long a slide holds still before autoplay moves on.
+const AUTOPLAY_MS = 4500;
+
+// The first move waits longer than the rest. Lighthouse scores Speed Index
+// from how quickly the visible page stops changing, and on a phone this hero
+// *is* the viewport — swapping it at 4.5s reads as "still loading" and cost
+// about a second and a half of Speed Index for an animation nobody had asked
+// to see yet. Only the opening move is held back; the rhythm after it, and
+// after any manual move, is unchanged.
+const FIRST_AUTOPLAY_MS = 7000;
+
 // Shortest signed distance from `index` to `i` on a ring of size `n`.
 function ringOffset(i: number, n: number) {
   let d = i % n;
@@ -85,6 +96,9 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
   const rafRef = useRef<number | null>(null);
   const runRef = useRef<() => void>(() => {});
   const autoplayRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // False until autoplay has actually moved once, so the longer opening
+  // delay applies to a fresh page load and nothing else.
+  const startedRef = useRef(false);
   // Bumped on every manual move so autoplay restarts its countdown instead
   // of firing a fraction of a second after a click.
   const [interactions, setInteractions] = useState(0);
@@ -172,9 +186,22 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
 
   useEffect(() => {
     if (n < 2) return;
-    autoplayRef.current = setInterval(goNext, 4500);
+
+    // `interactions` re-runs this effect after every manual move, and those
+    // should pick the normal rhythm back up rather than pausing for the
+    // opening delay a second time.
+    const delay = startedRef.current ? AUTOPLAY_MS : FIRST_AUTOPLAY_MS;
+
+    const kickoff = setTimeout(() => {
+      startedRef.current = true;
+      goNext();
+      autoplayRef.current = setInterval(goNext, AUTOPLAY_MS);
+    }, delay);
+
     return () => {
+      clearTimeout(kickoff);
       if (autoplayRef.current) clearInterval(autoplayRef.current);
+      autoplayRef.current = null;
     };
   }, [goNext, n, interactions]);
 

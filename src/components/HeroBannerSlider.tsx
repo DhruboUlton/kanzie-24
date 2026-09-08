@@ -17,6 +17,11 @@ import { BannerSlide, HeroContent } from "@/lib/hero";
 
 const AUTOPLAY_MS = 5000;
 
+// Same reasoning as the coverflow hero: the first crossfade is held back
+// past the window Speed Index is measured over, so a full-viewport image
+// swap mid-measurement is not read as the page still loading.
+const FIRST_AUTOPLAY_MS = 7000;
+
 const ALIGN_CLASS: Record<BannerSlide["align"], string> = {
   left: "items-start text-left",
   center: "items-center text-center",
@@ -52,8 +57,16 @@ export default function HeroBannerSlider({
 
   useEffect(() => {
     if (n < 2) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % n), AUTOPLAY_MS);
-    return () => clearInterval(id);
+    const advance = () => setIndex((i) => (i + 1) % n);
+    let id: ReturnType<typeof setInterval> | null = null;
+    const kickoff = setTimeout(() => {
+      advance();
+      id = setInterval(advance, AUTOPLAY_MS);
+    }, FIRST_AUTOPLAY_MS);
+    return () => {
+      clearTimeout(kickoff);
+      if (id) clearInterval(id);
+    };
   }, [n]);
 
   if (n === 0) return null;

@@ -12,10 +12,18 @@ const poppins = Poppins({
   subsets: ["latin"],
 });
 
+// Not preloaded, unlike the display face. next/font defaults to
+// `font-display: swap`, so body copy paints in the fallback and swaps either
+// way — preloading only buys a slightly earlier swap. What it costs is
+// measurable: the six preloaded faces open at ~38ms and hold the highest
+// priority slot until ~87ms, while the hero image the page is judged on (LCP)
+// does not start until ~74ms. Dropping these three lets that image have the
+// pipe sooner, and the fallback text on screen in the meantime is unchanged.
 const lato = Lato({
   variable: "--font-lato",
   weight: ["400", "700", "900"],
   subsets: ["latin"],
+  preload: false,
 });
 
 // Read per render rather than fixed at build: the tab title, tagline and
