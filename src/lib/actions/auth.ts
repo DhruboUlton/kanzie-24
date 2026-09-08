@@ -12,6 +12,12 @@ import { getSessionIdleMinutes } from "@/lib/session-policy";
 import { REMEMBER_ME_MINUTES } from "@/lib/session-policy-shared";
 
 import { STAFF_MARKER_COOKIE } from "@/lib/integrations-shared";
+import {
+  checkLoginThrottle,
+  clearLoginFailures,
+  clientIp,
+  recordLoginFailure,
+} from "@/lib/login-rate-limit";
 
 const COOKIE_NAME = "kanzie_admin_session";
 
@@ -77,6 +83,21 @@ export async function loginAdminAction(
     return { success: false, error: SIGN_IN_FAILED };
   }
 
+  // Checked before the account lookup and before bcrypt, so guessing costs
+  // a map lookup rather than a database round trip and a hash. Says how long
+  // to wait rather than repeating SIGN_IN_FAILED: someone who has forgotten
+  // their password needs to know that trying again immediately is pointless,
+  // and it tells an attacker nothing they cannot measure anyway.
+  const ip = await clientIp();
+  const throttle = checkLoginThrottle(normalizedEmail, ip);
+  if (throttle.blocked) {
+    const mins = throttle.retryAfterMinutes;
+    return {
+      success: false,
+      error: `Too many sign-in attempts. Try again in ${mins} minute${mins === 1 ? "" : "s"}.`,
+    };
+  }
+
   try {
     const admin = await db.adminUser.findUnique({
       where: { email: normalizedEmail },
@@ -93,18 +114,23 @@ export async function loginAdminAction(
     const passwordMatches = await bcrypt.compare(password, hash);
 
     if (!admin || !passwordMatches) {
+      recordLoginFailure(normalizedEmail, ip);
       return { success: false, error: SIGN_IN_FAILED };
     }
     if (!admin.isActive) {
+      recordLoginFailure(normalizedEmail, ip);
       return { success: false, error: SIGN_IN_FAILED };
     }
     if (!admin.roleId) {
+      // Not counted. The password was right, so this is a real staff member
+      // meeting a configuration problem, not somebody guessing.
       return {
         success: false,
         error: "This account has no role assigned. Ask an owner to set one.",
       };
     }
 
+    clearLoginFailures(normalizedEmail);
     await setSessionCookie(admin, remember === true);
     await db.adminUser.update({
       where: { id: admin.id },
@@ -113,6 +139,9 @@ export async function loginAdminAction(
 
     return { success: true };
   } catch (error) {
+    // Deliberately not counted as a failed attempt. A database outage is not
+    // evidence of anyone guessing, and counting it would lock every admin
+    // out of the panel for as long as the outage plus fifteen minutes.
     console.error("Admin login error:", error);
     return { success: false, error: "Couldn't sign in right now. Please try again." };
   }
