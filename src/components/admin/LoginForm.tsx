@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Mail, Loader2, ArrowRight, ShieldCheck } from "lucide-react";
 import { loginAdminAction } from "@/lib/actions/auth";
 import { safeAdminDestination } from "@/lib/admin-redirect";
+import { REMEMBER_ME_DAYS } from "@/lib/session-policy-shared";
 
 // Why the sign-in screen is being shown, when it wasn't asked for. Saying
 // "you were idle" rather than the generic ending stops it reading as a fault.
@@ -23,6 +24,7 @@ function LoginFormInner() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(
     signInNotice(searchParams.get("reason")),
@@ -34,7 +36,7 @@ function LoginFormInner() {
     setError(null);
 
     try {
-      const res = await loginAdminAction(email, password);
+      const res = await loginAdminAction(email, password, remember);
       if (res.success) {
         // Validated, not trusted: `from` is attacker-reachable, and
         // router.push happily hard-navigates to another origin.
@@ -111,6 +113,24 @@ function LoginFormInner() {
               />
             </div>
           </div>
+
+          <label className="flex items-start gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-white/20 bg-white/5 accent-[#c0282b] cursor-pointer"
+            />
+            <span>
+              <span className="block text-sm text-white/80">
+                Keep me signed in on this device
+              </span>
+              <span className="block text-[11px] text-white/40 mt-0.5">
+                Skips the inactivity timeout here for {REMEMBER_ME_DAYS} days.
+                Leave it off on shared or public computers.
+              </span>
+            </span>
+          </label>
 
           <button
             type="submit"

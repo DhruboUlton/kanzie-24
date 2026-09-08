@@ -16,6 +16,18 @@ export const MIN_IDLE_MINUTES = 5;
 export const MAX_IDLE_MINUTES = 1440;
 
 /**
+ * The window for a device the admin ticked "keep me signed in" on.
+ *
+ * Still a window, not forever. It slides on every visit, so a machine used
+ * even occasionally never asks again — but a laptop that walks off stops
+ * being an admin panel a month later, without anyone having to remember to
+ * revoke it. Changing your password ends it immediately either way, through
+ * the sessionValidFrom boundary.
+ */
+export const REMEMBER_ME_DAYS = 30;
+export const REMEMBER_ME_MINUTES = REMEMBER_ME_DAYS * 24 * 60;
+
+/**
  * The one place this value is validated.
  *
  * Everything that reads or writes the setting goes through here — the server

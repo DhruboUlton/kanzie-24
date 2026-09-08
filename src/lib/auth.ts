@@ -34,13 +34,23 @@ export type AdminSession = {
   id: string;
   email: string;
   name: string;
-  // Token issue time (epoch seconds) from the JWT, used to reject sessions
-  // predating a password change. Absent only on a token with no iat.
+  // Token issue time (epoch seconds) from the JWT. The middleware rewrites
+  // this every time it slides the session, so it measures time since the last
+  // request, not since sign-in.
   iat?: number;
+  // When this session actually began. Unlike `iat` it survives sliding, which
+  // is what makes it usable as the password-change boundary: a token that
+  // kept being refreshed would otherwise always look newer than the change
+  // that was supposed to revoke it.
+  sid?: number;
   // The idle window this token was minted under, in minutes. Carried in the
   // token because the middleware slides the session forward on activity and
   // runs on the edge, where the settings row is not readable.
   idle?: number;
+  // Set when the admin ticked "keep me signed in" on this device, which opts
+  // the session out of the store's idle limit in favour of the much longer
+  // remembered one.
+  remembered?: boolean;
 };
 
 export class ForbiddenError extends Error {
@@ -67,8 +77,14 @@ export class UnauthenticatedError extends Error {
 export async function signSessionToken(
   session: AdminSession,
   idleMinutes: number,
+  remembered = false,
 ): Promise<string> {
-  return new SignJWT({ ...session, idle: idleMinutes })
+  return new SignJWT({
+    ...session,
+    idle: idleMinutes,
+    remembered,
+    sid: Math.floor(Date.now() / 1000),
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${idleMinutes}m`)
@@ -84,6 +100,8 @@ export async function verifySessionToken(token: string): Promise<AdminSession | 
       name: payload.name as string,
       iat: typeof payload.iat === "number" ? payload.iat : undefined,
       idle: typeof payload.idle === "number" ? payload.idle : undefined,
+      remembered: payload.remembered === true,
+      sid: typeof payload.sid === "number" ? payload.sid : undefined,
     };
   } catch {
     return null;
@@ -122,31 +140,45 @@ export async function getAdminContext(): Promise<AdminContext | null> {
     ]);
     if (!user || !user.isActive) return null;
 
-    // Reject a session issued before the account's last password change. iat
-    // is in seconds; allow a 5s skew so a token minted in the same request
-    // that set the boundary is not thrown out by rounding.
-    if (user.sessionValidFrom && typeof session.iat === "number") {
-      if (session.iat * 1000 < user.sessionValidFrom.getTime() - 5000) {
+    // Reject a session that began before the account's last password change.
+    //
+    // Compared against `sid`, not `iat`: the middleware rewrites `iat` on
+    // every request it slides, so a session in active use — precisely the one
+    // a password change is meant to throw out — would keep looking newer than
+    // the change itself. `iat` is the fallback only for tokens minted before
+    // `sid` existed, which are never slid and so still carry a true issue time.
+    //
+    // Seconds, with a 5s skew so the token minted in the same request that set
+    // the boundary is not thrown out by rounding.
+    const startedAt = session.sid ?? session.iat;
+    if (user.sessionValidFrom && typeof startedAt === "number") {
+      if (startedAt * 1000 < user.sessionValidFrom.getTime() - 5000) {
         return null;
       }
     }
 
-    // The token's own expiry enforces the window it was minted under. These
-    // two checks enforce the window configured *now*, so shortening the limit
-    // reaches sessions that are already open.
-    //
-    // The claim is checked as well as the age, and it is the one that does the
-    // work: the middleware slides `iat` forward on every request, so a session
-    // being actively used always looks freshly issued by the time this runs.
-    // What it cannot disguise is which policy it was minted under.
-    if (typeof session.idle === "number" && session.idle > idleMinutes) {
-      return null;
-    }
-    // Catches the tokens the claim cannot: ones minted before this setting
-    // existed, which the middleware also declines to slide.
-    if (typeof session.iat === "number") {
-      const idleFor = Date.now() - session.iat * 1000;
-      if (idleFor > idleMinutes * 60_000) return null;
+    // A remembered device opted out of the store's idle limit deliberately,
+    // so neither check below applies to it. It is not unbounded: its token
+    // still carries the remembered window as its expiry, and the checks above
+    // — disabled account, password change — still end it at once.
+    if (!session.remembered) {
+      // The token's own expiry enforces the window it was minted under. These
+      // two checks enforce the window configured *now*, so shortening the
+      // limit reaches sessions that are already open.
+      //
+      // The claim is checked as well as the age, and it is the one that does
+      // the work: the middleware slides `iat` forward on every request, so a
+      // session being actively used always looks freshly issued by the time
+      // this runs. What it cannot disguise is which policy it was minted under.
+      if (typeof session.idle === "number" && session.idle > idleMinutes) {
+        return null;
+      }
+      // Catches the tokens the claim cannot: ones minted before this setting
+      // existed, which the middleware also declines to slide.
+      if (typeof session.iat === "number") {
+        const idleFor = Date.now() - session.iat * 1000;
+        if (idleFor > idleMinutes * 60_000) return null;
+      }
     }
 
     // OWNER always holds everything, including permissions added by a later

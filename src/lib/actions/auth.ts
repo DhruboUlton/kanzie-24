@@ -4,11 +4,12 @@ import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { signSessionToken, requireAdmin, authErrorResult } from "@/lib/auth";
+import { signSessionToken, requireAdmin, getSession, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
 import { ensureSystemRoles, isBootstrapNeeded } from "@/lib/staff";
 import { OWNER_ROLE_KEY } from "@/lib/permissions";
 import { getSessionIdleMinutes } from "@/lib/session-policy";
+import { REMEMBER_ME_MINUTES } from "@/lib/session-policy-shared";
 
 import { STAFF_MARKER_COOKIE } from "@/lib/integrations-shared";
 
@@ -19,11 +20,18 @@ const COOKIE_NAME = "kanzie_admin_session";
 // login to someone who shouldn't have it.
 const SIGN_IN_FAILED = "Invalid email or password.";
 
-async function setSessionCookie(user: { id: string; email: string; name: string }) {
+async function setSessionCookie(
+  user: { id: string; email: string; name: string },
+  remembered = false,
+) {
   // The session lasts an idle window, not a fixed span: the middleware slides
   // it forward while the admin is working, so this is how long the cookie
-  // survives *silence*, not how long a working day may last.
-  const idleMinutes = await getSessionIdleMinutes();
+  // survives *silence*, not how long a working day may last. A remembered
+  // device gets a window long enough that occasional use keeps it alive
+  // indefinitely.
+  const idleMinutes = remembered
+    ? REMEMBER_ME_MINUTES
+    : await getSessionIdleMinutes();
   const maxAge = idleMinutes * 60;
 
   const token = await signSessionToken(
@@ -33,6 +41,7 @@ async function setSessionCookie(user: { id: string; email: string; name: string 
       name: user.name,
     },
     idleMinutes,
+    remembered,
   );
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
@@ -47,10 +56,8 @@ async function setSessionCookie(user: { id: string; email: string; name: string 
   // storefront's tracking injector checks it in the browser so staff
   // browsing the shop aren't counted as customers. It carries no secret and
   // grants nothing — a visitor who sets it by hand only opts themselves out
-  // of analytics.
-  // Same lifetime as the session above: if this outlived it, a browser that
-  // is no longer signed in would still be excluded from the storefront's
-  // analytics.
+  // of analytics. Same lifetime as the session, so a browser that is no
+  // longer signed in does not stay invisible to analytics.
   cookieStore.set(STAFF_MARKER_COOKIE, "1", {
     httpOnly: false,
     secure: process.env.NODE_ENV === "production",
@@ -63,6 +70,7 @@ async function setSessionCookie(user: { id: string; email: string; name: string 
 export async function loginAdminAction(
   email: string,
   password: string,
+  remember = false,
 ): Promise<{ success: boolean; error?: string }> {
   const normalizedEmail = String(email || "").trim().toLowerCase();
   if (!normalizedEmail || !password) {
@@ -97,7 +105,7 @@ export async function loginAdminAction(
       };
     }
 
-    await setSessionCookie(admin);
+    await setSessionCookie(admin, remember === true);
     await db.adminUser.update({
       where: { id: admin.id },
       data: { lastLoginAt: new Date() },
@@ -223,7 +231,13 @@ export async function changeOwnPasswordAction(input: {
     });
 
     // Fresh token, issued after the boundary above, so this browser survives.
-    await setSessionCookie({ id: ctx.id, email: ctx.email, name: ctx.name });
+    // It keeps whatever the device was: changing your own password is not a
+    // reason to stop trusting the machine you chose to be remembered on.
+    const current = await getSession();
+    await setSessionCookie(
+      { id: ctx.id, email: ctx.email, name: ctx.name },
+      current?.remembered === true,
+    );
 
     await logActivity({
       actor: ctx,

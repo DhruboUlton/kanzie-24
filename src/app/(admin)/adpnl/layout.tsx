@@ -1,4 +1,4 @@
-import { getAdminContext } from "@/lib/auth";
+import { getAdminContext, getSession } from "@/lib/auth";
 import { getSessionIdleMinutes } from "@/lib/session-policy";
 import AdminShell from "@/components/admin/AdminShell";
 import SessionTimeoutWarning from "@/components/admin/SessionTimeoutWarning";
@@ -19,8 +19,13 @@ export default async function AdminLayout({
     return <div className="min-h-screen bg-gray-50">{children}</div>;
   }
 
-  // Only inside this branch, so the countdown never runs on the login page.
-  const idleMinutes = await getSessionIdleMinutes();
+  // Only inside this branch, so the countdown never runs on the login page —
+  // and not at all on a device the admin asked to be remembered, where there
+  // is no idle limit to count down to.
+  const [session, idleMinutes] = await Promise.all([
+    getSession(),
+    getSessionIdleMinutes(),
+  ]);
 
   return (
     <AdminShell
@@ -29,7 +34,9 @@ export default async function AdminLayout({
       roleName={ctx.roleName}
       permissions={ctx.permissions}
     >
-      <SessionTimeoutWarning idleMinutes={idleMinutes} />
+      {!session?.remembered && (
+        <SessionTimeoutWarning idleMinutes={idleMinutes} />
+      )}
       {children}
     </AdminShell>
   );
