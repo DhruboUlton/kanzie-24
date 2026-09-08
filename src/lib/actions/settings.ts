@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
+import { SESSION_IDLE_KEY, clampIdleMinutes } from "@/lib/session-policy-shared";
 
 export async function getSettingsMap(): Promise<Record<string, string>> {
   // Exported from a "use server" module, so Next registers it as an
@@ -46,6 +47,10 @@ const ALLOWED_SETTING_KEYS = new Set([
   "site_tab_title",
   "site_tab_tagline",
   "site_favicon",
+  // Security rather than storefront copy, so it is clamped below instead of
+  // being written through as typed: the idle window can be tuned, but not
+  // widened past a day or switched off.
+  SESSION_IDLE_KEY,
 ]);
 
 export async function updateSettingsAction(settings: Record<string, string>) {
@@ -56,9 +61,13 @@ export async function updateSettingsAction(settings: Record<string, string>) {
     return authErrorResult(error) ?? { success: false, error: "Not allowed." };
   }
 
-  const entries = Object.entries(settings).filter(([key]) =>
-    ALLOWED_SETTING_KEYS.has(key),
-  );
+  const entries = Object.entries(settings)
+    .filter(([key]) => ALLOWED_SETTING_KEYS.has(key))
+    .map(([key, value]): [string, string] =>
+      key === SESSION_IDLE_KEY
+        ? [key, String(clampIdleMinutes(value))]
+        : [key, value],
+    );
   if (entries.length === 0) {
     return { success: false, error: "No editable settings in that request." };
   }

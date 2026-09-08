@@ -8,11 +8,11 @@ import { signSessionToken, requireAdmin, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
 import { ensureSystemRoles, isBootstrapNeeded } from "@/lib/staff";
 import { OWNER_ROLE_KEY } from "@/lib/permissions";
+import { getSessionIdleMinutes } from "@/lib/session-policy";
 
 import { STAFF_MARKER_COOKIE } from "@/lib/integrations-shared";
 
 const COOKIE_NAME = "kanzie_admin_session";
-const SESSION_DAYS = 7;
 
 // One message for every failure mode. Saying "no such account" would let
 // anyone enumerate staff emails, and "account disabled" confirms a valid
@@ -20,18 +20,27 @@ const SESSION_DAYS = 7;
 const SIGN_IN_FAILED = "Invalid email or password.";
 
 async function setSessionCookie(user: { id: string; email: string; name: string }) {
-  const token = await signSessionToken({
-    id: user.id,
-    email: user.email,
-    name: user.name,
-  });
+  // The session lasts an idle window, not a fixed span: the middleware slides
+  // it forward while the admin is working, so this is how long the cookie
+  // survives *silence*, not how long a working day may last.
+  const idleMinutes = await getSessionIdleMinutes();
+  const maxAge = idleMinutes * 60;
+
+  const token = await signSessionToken(
+    {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    },
+    idleMinutes,
+  );
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * SESSION_DAYS,
+    maxAge,
   });
 
   // Deliberately readable by scripts, unlike the session above: the
@@ -39,12 +48,15 @@ async function setSessionCookie(user: { id: string; email: string; name: string 
   // browsing the shop aren't counted as customers. It carries no secret and
   // grants nothing — a visitor who sets it by hand only opts themselves out
   // of analytics.
+  // Same lifetime as the session above: if this outlived it, a browser that
+  // is no longer signed in would still be excluded from the storefront's
+  // analytics.
   cookieStore.set(STAFF_MARKER_COOKIE, "1", {
     httpOnly: false,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * SESSION_DAYS,
+    maxAge,
   });
 }
 

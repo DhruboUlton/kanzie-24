@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { db } from "@/lib/db";
+import { getSessionIdleMinutes } from "@/lib/session-policy";
 import {
   AdminContext,
   ALL_PERMISSIONS,
@@ -36,6 +37,10 @@ export type AdminSession = {
   // Token issue time (epoch seconds) from the JWT, used to reject sessions
   // predating a password change. Absent only on a token with no iat.
   iat?: number;
+  // The idle window this token was minted under, in minutes. Carried in the
+  // token because the middleware slides the session forward on activity and
+  // runs on the edge, where the settings row is not readable.
+  idle?: number;
 };
 
 export class ForbiddenError extends Error {
@@ -52,11 +57,21 @@ export class UnauthenticatedError extends Error {
   }
 }
 
-export async function signSessionToken(session: AdminSession): Promise<string> {
-  return new SignJWT({ ...session })
+/**
+ * Mints a session token that expires after `idleMinutes` of silence.
+ *
+ * The window is passed in rather than read here: this module is imported by
+ * the edge middleware, which cannot reach the database, and every caller that
+ * mints a token is already on a code path that can.
+ */
+export async function signSessionToken(
+  session: AdminSession,
+  idleMinutes: number,
+): Promise<string> {
+  return new SignJWT({ ...session, idle: idleMinutes })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime(`${idleMinutes}m`)
     .sign(secretKey());
 }
 
@@ -68,6 +83,7 @@ export async function verifySessionToken(token: string): Promise<AdminSession | 
       email: payload.email as string,
       name: payload.name as string,
       iat: typeof payload.iat === "number" ? payload.iat : undefined,
+      idle: typeof payload.idle === "number" ? payload.idle : undefined,
     };
   } catch {
     return null;
@@ -94,10 +110,16 @@ export async function getAdminContext(): Promise<AdminContext | null> {
   if (!session?.id) return null;
 
   try {
-    const user = await db.adminUser.findUnique({
-      where: { id: session.id },
-      include: { role: true },
-    });
+    // Both reads go out together: the idle window is needed on every admin
+    // request, and waiting for it after the user lookup would make this two
+    // round trips instead of one.
+    const [user, idleMinutes] = await Promise.all([
+      db.adminUser.findUnique({
+        where: { id: session.id },
+        include: { role: true },
+      }),
+      getSessionIdleMinutes(),
+    ]);
     if (!user || !user.isActive) return null;
 
     // Reject a session issued before the account's last password change. iat
@@ -107,6 +129,24 @@ export async function getAdminContext(): Promise<AdminContext | null> {
       if (session.iat * 1000 < user.sessionValidFrom.getTime() - 5000) {
         return null;
       }
+    }
+
+    // The token's own expiry enforces the window it was minted under. These
+    // two checks enforce the window configured *now*, so shortening the limit
+    // reaches sessions that are already open.
+    //
+    // The claim is checked as well as the age, and it is the one that does the
+    // work: the middleware slides `iat` forward on every request, so a session
+    // being actively used always looks freshly issued by the time this runs.
+    // What it cannot disguise is which policy it was minted under.
+    if (typeof session.idle === "number" && session.idle > idleMinutes) {
+      return null;
+    }
+    // Catches the tokens the claim cannot: ones minted before this setting
+    // existed, which the middleware also declines to slide.
+    if (typeof session.iat === "number") {
+      const idleFor = Date.now() - session.iat * 1000;
+      if (idleFor > idleMinutes * 60_000) return null;
     }
 
     // OWNER always holds everything, including permissions added by a later

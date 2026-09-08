@@ -6,6 +6,18 @@ import { Lock, Mail, Loader2, ArrowRight, ShieldCheck } from "lucide-react";
 import { loginAdminAction } from "@/lib/actions/auth";
 import { safeAdminDestination } from "@/lib/admin-redirect";
 
+// Why the sign-in screen is being shown, when it wasn't asked for. Saying
+// "you were idle" rather than the generic ending stops it reading as a fault.
+function signInNotice(reason: string | null): string | null {
+  if (reason === "idle") {
+    return "Signed out after a spell of inactivity. Please sign in again.";
+  }
+  if (reason === "session-ended") {
+    return "Your session has ended. Please sign in again.";
+  }
+  return null;
+}
+
 function LoginFormInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -13,9 +25,7 @@ function LoginFormInner() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(
-    searchParams.get("reason") === "session-ended"
-      ? "Your session has ended. Please sign in again."
-      : null,
+    signInNotice(searchParams.get("reason")),
   );
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -1,5 +1,7 @@
 import { getAdminContext } from "@/lib/auth";
+import { getSessionIdleMinutes } from "@/lib/session-policy";
 import AdminShell from "@/components/admin/AdminShell";
+import SessionTimeoutWarning from "@/components/admin/SessionTimeoutWarning";
 
 export default async function AdminLayout({
   children,
@@ -17,6 +19,9 @@ export default async function AdminLayout({
     return <div className="min-h-screen bg-gray-50">{children}</div>;
   }
 
+  // Only inside this branch, so the countdown never runs on the login page.
+  const idleMinutes = await getSessionIdleMinutes();
+
   return (
     <AdminShell
       adminName={ctx.name}
@@ -24,6 +29,7 @@ export default async function AdminLayout({
       roleName={ctx.roleName}
       permissions={ctx.permissions}
     >
+      <SessionTimeoutWarning idleMinutes={idleMinutes} />
       {children}
     </AdminShell>
   );
