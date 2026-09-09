@@ -63,6 +63,9 @@ export const PERMISSIONS = {
 
   REVIEWS_VIEW: "See customer reviews and testimonials",
   REVIEWS_MANAGE: "Create, edit and delete customer reviews",
+
+  POPUP_VIEW: "See popup settings and content",
+  POPUP_MANAGE: "Change popup content and display rules",
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -107,6 +110,7 @@ export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
   { label: "Activity log", keys: ["ACTIVITY_LOG_VIEW"] },
   { label: "Coupons", keys: ["COUPONS_VIEW", "COUPONS_MANAGE"] },
   { label: "Media", keys: ["MEDIA_VIEW", "MEDIA_UPLOAD", "MEDIA_DELETE"] },
+  { label: "Pop up", keys: ["POPUP_VIEW", "POPUP_MANAGE"] },
 ];
 
 // The role every system starts with. OWNER is special in code as well as
@@ -175,6 +179,8 @@ export const SYSTEM_ROLES: {
       "CATEGORIES_MANAGE",
       "MEDIA_VIEW",
       "MEDIA_UPLOAD",
+      "POPUP_VIEW",
+      "POPUP_MANAGE",
     ],
   },
 ];
