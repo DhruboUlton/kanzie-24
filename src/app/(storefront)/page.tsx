@@ -9,6 +9,7 @@ import CategoryTiles from "@/components/CategoryTiles";
 import BrandLogoStrip from "@/components/BrandLogoStrip";
 import ArticleTeasers from "@/components/ArticleTeasers";
 import Testimonials from "@/components/Testimonials";
+import { getTestimonials } from "@/lib/testimonials";
 import {
   getFeaturedProducts,
   getNewArrivals,
@@ -25,6 +26,7 @@ export default async function Home() {
     heroContent,
     bodyBanner,
     brandStrip,
+    testimonials,
   ] = await Promise.all([
     getFeaturedProducts(),
     getNewArrivals(),
@@ -33,6 +35,7 @@ export default async function Home() {
     getHeroContent(),
     getBodyBannerContent(),
     getBrandStrip(),
+    getTestimonials(true),
   ]);
 
   // Which categories get a product rail on the front page, chosen in
@@ -111,8 +114,8 @@ export default async function Home() {
         );
       })}
 
+      <Testimonials items={testimonials} />
       <ArticleTeasers />
-      <Testimonials />
     </>
   );
 }

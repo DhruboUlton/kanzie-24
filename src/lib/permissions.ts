@@ -60,6 +60,9 @@ export const PERMISSIONS = {
   MEDIA_VIEW: "See media library",
   MEDIA_UPLOAD: "Upload files to media library",
   MEDIA_DELETE: "Permanently delete media assets",
+
+  REVIEWS_VIEW: "See customer reviews and testimonials",
+  REVIEWS_MANAGE: "Create, edit and delete customer reviews",
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -93,6 +96,7 @@ export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
   { label: "Inventory", keys: ["INVENTORY_VIEW", "INVENTORY_ADJUST"] },
   { label: "Categories", keys: ["CATEGORIES_VIEW", "CATEGORIES_MANAGE"] },
   { label: "Banner", keys: ["BANNER_VIEW", "BANNER_MANAGE"] },
+  { label: "Reviews", keys: ["REVIEWS_VIEW", "REVIEWS_MANAGE"] },
   { label: "Fraud check", keys: ["FRAUD_CHECK_VIEW"] },
   { label: "Money", keys: ["FINANCE_VIEW"] },
   { label: "Analytics", keys: ["ANALYTICS_VIEW"] },
@@ -163,6 +167,8 @@ export const SYSTEM_ROLES: {
     permissions: [
       "BANNER_VIEW",
       "BANNER_MANAGE",
+      "REVIEWS_VIEW",
+      "REVIEWS_MANAGE",
       "PRODUCTS_VIEW",
       "PRODUCTS_EDIT",
       "CATEGORIES_VIEW",

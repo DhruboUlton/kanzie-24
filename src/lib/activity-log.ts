@@ -40,7 +40,10 @@ export type ActivityAction =
   | "OWNER_BOOTSTRAPPED"
   | "MEDIA_UPLOADED"
   | "MEDIA_UPDATED"
-  | "MEDIA_DELETED";
+  | "MEDIA_DELETED"
+  | "REVIEW_CREATED"
+  | "REVIEW_UPDATED"
+  | "REVIEW_DELETED";
 
 export type ActivityEntity =
   | "STAFF"
@@ -53,7 +56,8 @@ export type ActivityEntity =
   | "BANNER"
   | "INTEGRATIONS"
   | "COUPON"
-  | "MEDIA";
+  | "MEDIA"
+  | "REVIEW";
 
 export type ActivityLogRow = {
   id: string;
