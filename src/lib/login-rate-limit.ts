@@ -39,10 +39,26 @@ export type LoginThrottle =
   | { blocked: false }
   | { blocked: true; retryAfterMinutes: number };
 
-/** The client's address, or null when it cannot be established. */
+/**
+ * The client's address, or null when it cannot be established.
+ *
+ * CF-Connecting-IP first, because it is the only one of these a visitor
+ * cannot forge: Cloudflare overwrites it on every request. X-Forwarded-For
+ * it *appends* to, so a request that arrives carrying its own
+ * `X-Forwarded-For: 1.2.3.4` reaches the origin as `1.2.3.4, <real ip>` and
+ * the first entry is whatever the sender chose. Keying a limit on that lets
+ * one machine present a fresh address on every attempt.
+ *
+ * The fallbacks still matter for a request that did not come through
+ * Cloudflare — today that means someone reaching the origin IP directly.
+ * They are forgeable; restricting the origin to Cloudflare addresses is what
+ * closes that hole, not this function.
+ */
 export async function clientIp(): Promise<string | null> {
   try {
     const h = await headers();
+    const cf = h.get("cf-connecting-ip")?.trim();
+    if (cf) return cf;
     const forwarded = h.get("x-forwarded-for")?.split(",")[0].trim();
     return forwarded || h.get("x-real-ip") || null;
   } catch {

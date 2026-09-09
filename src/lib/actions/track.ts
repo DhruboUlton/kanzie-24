@@ -53,7 +53,14 @@ async function throttled(): Promise<boolean> {
   let ip = "unknown";
   try {
     const h = await headers();
+    // CF-Connecting-IP first: it is the only one of these the sender cannot
+    // choose. Cloudflare overwrites it, but *appends* to X-Forwarded-For, so
+    // a request carrying its own `X-Forwarded-For: 1.2.3.4` arrives as
+    // `1.2.3.4, <real ip>`. Keying this throttle on that first entry let one
+    // machine look like a new address on every lookup — which is exactly the
+    // walk this throttle exists to slow down.
     ip =
+      h.get("cf-connecting-ip")?.trim() ||
       h.get("x-forwarded-for")?.split(",")[0].trim() ||
       h.get("x-real-ip") ||
       "unknown";
