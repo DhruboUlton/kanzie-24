@@ -30,11 +30,19 @@ export default function PopupManagerClient({
 }) {
   const router = useRouter();
   const [content, setContent] = useState<PopupConfig>(initial);
+  // What is actually stored, as opposed to what is being edited. The status
+  // pill used to read the draft, so flipping the switch made the header say
+  // "Disabled" while the storefront was still showing the popup — the toggle
+  // looked like it had done the job and nothing had been written.
+  const [saved, setSaved] = useState<PopupConfig>(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [previewCopied, setPreviewCopied] = useState(false);
   const [resetStorageNotice, setResetStorageNotice] = useState(false);
+
+  // Cheap and exact: the config is a flat object of primitives.
+  const isDirty = JSON.stringify(content) !== JSON.stringify(saved);
 
   const setField = <K extends keyof PopupConfig>(
     key: K,
@@ -51,6 +59,7 @@ export default function PopupManagerClient({
     try {
       const res = await updatePopupConfigAction(content);
       if (res.success) {
+        setSaved(content);
         setSuccess(true);
         router.refresh();
         setTimeout(() => setSuccess(false), 4000);
@@ -87,13 +96,19 @@ export default function PopupManagerClient({
             <h1 className="text-2xl font-bold text-gray-900">Pop up</h1>
             <span
               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                content.enabled
+                saved.enabled
                   ? "bg-emerald-100 text-emerald-800"
                   : "bg-gray-200 text-gray-700"
               }`}
             >
-              {content.enabled ? "Active on Site" : "Disabled"}
+              {saved.enabled ? "Active on Site" : "Disabled"}
             </span>
+            {isDirty && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-900">
+                <AlertCircle className="w-3.5 h-3.5" />
+                Unsaved changes
+              </span>
+            )}
           </div>
           <p className="text-xs text-gray-500 mt-1">
             Configure promotional or announcement pop up shown to storefront visitors (no newsletter required)
