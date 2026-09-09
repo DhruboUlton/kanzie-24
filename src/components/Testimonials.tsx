@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
+import ReviewerAvatar from "@/components/ReviewerAvatar";
 import { Testimonial, DEFAULT_TESTIMONIALS } from "@/lib/testimonials";
 
 export default function Testimonials({
@@ -210,14 +210,15 @@ export default function Testimonials({
                       )}
                     </div>
 
-                    {/* Circular Headshot: exactly 56px x 56px (w-14 h-14) */}
+                    {/* Circular headshot: exactly 56px x 56px (w-14 h-14).
+                        Falls back to the reviewer's initial when no photo
+                        was chosen. */}
                     <div className="shrink-0">
-                      <Image
-                        src={t.avatar}
-                        alt={`${t.name} headshot`}
-                        width={56}
-                        height={56}
-                        className="w-14 h-14 rounded-full object-cover border-2 border-gray-100 shadow-xs ring-1 ring-black/5 group-hover:scale-105 transition-transform duration-300"
+                      <ReviewerAvatar
+                        name={t.name}
+                        avatar={t.avatar}
+                        size={56}
+                        className="w-14 h-14 border-2 border-gray-100 shadow-xs ring-1 ring-black/5 group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>
                   </figcaption>

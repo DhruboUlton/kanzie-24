@@ -9,7 +9,6 @@ import {
   Testimonial,
   getTestimonials,
   normalizeAvatar,
-  DEFAULT_AVATAR,
   MAX_NAME,
   MAX_ROLE,
   MAX_QUOTE,
@@ -77,14 +76,18 @@ export async function saveTestimonialAction(
   if (!name) return { success: false, error: "Reviewer name is required." };
   if (!quote) return { success: false, error: "Review quote content is required." };
 
-  // Rejected rather than quietly corrected, so an admin who pastes an
-  // external image URL is told why it will not work instead of finding a
-  // broken circle on the storefront later.
-  const avatar = item.avatar ? normalizeAvatar(item.avatar) : DEFAULT_AVATAR;
-  if (!avatar) {
+  // Left blank on purpose is fine — the carousel falls back to the
+  // reviewer's initial. A value that was typed but points off-site is
+  // refused rather than quietly corrected, so an admin who pastes an
+  // external URL is told why it will not work instead of finding a broken
+  // circle on the storefront later.
+  const typedAvatar = typeof item.avatar === "string" ? item.avatar.trim() : "";
+  const avatar = typedAvatar ? normalizeAvatar(typedAvatar) : "";
+  if (avatar === null) {
     return {
       success: false,
-      error: "Pick an image from the media library, or use a path on this site (starting with /).",
+      error:
+        "Pick an image from the media library, or use a path on this site (starting with /). Leave it empty to show the reviewer's initial.",
     };
   }
 

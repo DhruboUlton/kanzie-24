@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Image from "next/image";
 import {
   Plus,
   Star,
@@ -25,6 +24,7 @@ import {
   toggleTestimonialActiveAction,
   reorderTestimonialsAction,
 } from "@/lib/actions/testimonials";
+import ReviewerAvatar from "@/components/ReviewerAvatar";
 import MediaPickerModal from "@/components/admin/media/MediaPickerModal";
 import { MediaItem } from "@/components/admin/media/types";
 
@@ -58,7 +58,9 @@ export default function ReviewsManagerClient({
   const [formName, setFormName] = useState("");
   const [formRole, setFormRole] = useState("");
   const [formQuote, setFormQuote] = useState("");
-  const [formAvatar, setFormAvatar] = useState("/testimonials/marcus.jpg");
+  // Empty by default: a new review shows the reviewer's initial unless
+  // someone deliberately picks a picture.
+  const [formAvatar, setFormAvatar] = useState("");
   const [formRating, setFormRating] = useState(5);
   const [formIsActive, setFormIsActive] = useState(true);
 
@@ -82,7 +84,7 @@ export default function ReviewsManagerClient({
     setFormName("");
     setFormRole("Verified Buyer");
     setFormQuote("");
-    setFormAvatar("/testimonials/marcus.jpg");
+    setFormAvatar("");
     setFormRating(5);
     setFormIsActive(true);
     setIsModalOpen(true);
@@ -115,7 +117,7 @@ export default function ReviewsManagerClient({
         name: formName.trim(),
         role: formRole.trim(),
         quote: formQuote.trim(),
-        avatar: formAvatar.trim() || "/testimonials/marcus.jpg",
+        avatar: formAvatar.trim(),
         rating: formRating,
         isActive: formIsActive,
       };
@@ -375,12 +377,11 @@ export default function ReviewsManagerClient({
               <div className="flex items-start gap-4 flex-1 min-w-0">
                 {/* 56px Headshot Preview */}
                 <div className="shrink-0 relative">
-                  <Image
-                    src={item.avatar}
-                    alt={item.name}
-                    width={56}
-                    height={56}
-                    className="w-14 h-14 rounded-full object-cover border-2 border-gray-200 shadow-xs"
+                  <ReviewerAvatar
+                    name={item.name}
+                    avatar={item.avatar}
+                    size={56}
+                    className="w-14 h-14 border-2 border-gray-200 shadow-xs"
                   />
                   {!item.isActive && (
                     <span className="absolute -bottom-1 -right-1 bg-gray-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
@@ -602,12 +603,11 @@ export default function ReviewsManagerClient({
                 <div className="flex items-center gap-4 bg-gray-50 p-3.5 rounded-2xl border border-gray-200">
                   {/* Live Avatar Circle Preview */}
                   <div className="shrink-0">
-                    <Image
-                      src={formAvatar || "/testimonials/marcus.jpg"}
-                      alt="Avatar preview"
-                      width={56}
-                      height={56}
-                      className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm ring-1 ring-black/10"
+                    <ReviewerAvatar
+                      name={formName}
+                      avatar={formAvatar}
+                      size={56}
+                      className="w-14 h-14 border-2 border-white shadow-sm ring-1 ring-black/10"
                     />
                   </div>
 
@@ -617,7 +617,7 @@ export default function ReviewsManagerClient({
                         type="text"
                         value={formAvatar}
                         onChange={(e) => setFormAvatar(e.target.value)}
-                        placeholder="Image URL or path..."
+                        placeholder="Leave empty to show the initial"
                         className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#c0282b]"
                       />
                       <button
@@ -635,6 +635,17 @@ export default function ReviewsManagerClient({
                       <span className="text-[10px] uppercase font-bold text-gray-400 mr-1">
                         Presets:
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => setFormAvatar("")}
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-medium border transition-colors cursor-pointer ${
+                          formAvatar === ""
+                            ? "bg-[#c0282b] text-white border-[#c0282b]"
+                            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-100"
+                        }`}
+                      >
+                        Initial
+                      </button>
                       {AVATAR_PRESETS.map((p) => (
                         <button
                           key={p.name}
@@ -702,12 +713,11 @@ export default function ReviewsManagerClient({
                           {formRole || "Verified Buyer"}
                         </div>
                       </div>
-                      <Image
-                        src={formAvatar || "/testimonials/marcus.jpg"}
-                        alt="Preview"
-                        width={56}
-                        height={56}
-                        className="w-14 h-14 rounded-full object-cover border-2 border-gray-100 shadow-xs"
+                      <ReviewerAvatar
+                        name={formName || "Reviewer Name"}
+                        avatar={formAvatar}
+                        size={56}
+                        className="w-14 h-14 border-2 border-gray-100 shadow-xs"
                       />
                     </div>
                   </div>

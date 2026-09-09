@@ -2,8 +2,6 @@ import { db } from "@/lib/db";
 
 export const TESTIMONIALS_KEY = "storefront_testimonials";
 
-export const DEFAULT_AVATAR = "/testimonials/marcus.jpg";
-
 // The whole list lives in one SiteSetting row, and that column is TEXT —
 // about 64KB. These caps are what keep a long review from overflowing it,
 // which would either throw on save or (without strict mode) truncate the
@@ -131,7 +129,10 @@ export function parseTestimonials(raw: unknown): Testimonial[] | null {
       name: name.trim().slice(0, MAX_NAME),
       role: typeof role === "string" ? role.trim().slice(0, MAX_ROLE) : "",
       quote: quote.trim().slice(0, MAX_QUOTE),
-      avatar: normalizeAvatar(avatar) ?? DEFAULT_AVATAR,
+      // Empty is a valid choice, not a missing value: the carousel draws the
+      // reviewer's initial instead. Substituting a preset portrait here would
+      // put a stranger's face on a real customer's words.
+      avatar: normalizeAvatar(avatar) ?? "",
       rating: typeof rating === "number" && rating >= 1 && rating <= 5 ? Math.round(rating) : 5,
       isActive: isActive !== false,
       createdAt: typeof createdAt === "string" ? createdAt : new Date().toISOString(),
