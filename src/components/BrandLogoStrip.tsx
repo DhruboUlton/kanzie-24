@@ -11,7 +11,7 @@ export default function BrandLogoStrip({ content }: { content: BrandStripContent
         {content.marks.map((mark, i) => (
           <span
             key={`${mark.name}-${i}`}
-            className={`text-xl sm:text-2xl text-black/55 hover:text-black/60 transition-colors select-none ${classNameFor(mark.style)}`}
+            className={`text-xl sm:text-2xl text-black/65 hover:text-black/80 transition-colors select-none ${classNameFor(mark.style)}`}
           >
             {mark.name}
           </span>

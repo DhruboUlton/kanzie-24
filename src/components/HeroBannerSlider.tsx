@@ -116,6 +116,11 @@ export default function HeroBannerSlider({
             <div
               key={`${slide.src}-${i}`}
               aria-hidden={!active}
+              // inert as well as aria-hidden: the inactive slides keep their
+              // CTA link in the DOM, and hiding a focusable element from the
+              // accessibility tree without removing it from the tab order
+              // strands keyboard users on a slide they cannot see.
+              inert={!active}
               className="absolute inset-0"
               style={{
                 opacity: active ? 1 : 0,
@@ -197,16 +202,24 @@ export default function HeroBannerSlider({
             <ChevronRight size={20} />
           </button>
 
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+          {/* Buttons are 24px square — the dot itself stays small, but a
+              5px tap target is unusable on a phone and fails WCAG 2.5.8.
+              Sized in px, not rem: globals.css sets html{font-size:87.5%},
+              so Tailwind's h-6 would land at 21px and still miss the bar. */}
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex gap-1">
             {slides.map((slide, i) => (
               <button
                 key={`${slide.src}-${i}`}
                 aria-label={`Go to slide ${i + 1}`}
                 onClick={() => goTo(i)}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === current ? "w-6 bg-accent" : "w-1.5 bg-white/60"
-                }`}
-              />
+                className="h-[24px] min-w-[24px] flex items-center justify-center"
+              >
+                <span
+                  className={`block h-1.5 rounded-full transition-all ${
+                    i === current ? "w-6 bg-accent" : "w-1.5 bg-white/60"
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </>

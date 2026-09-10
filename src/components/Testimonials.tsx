@@ -175,6 +175,9 @@ export default function Testimonials({
                   {/* Top: Star Rating & Quote */}
                   <div className="flex-1 flex flex-col">
                     <div
+                      // role="img": aria-label is prohibited on a plain div,
+                      // and this row of SVGs is one graphic saying "4 of 5".
+                      role="img"
                       className="flex items-center gap-1 mb-4 text-amber-500"
                       // Read from the review rather than hardcoded: a
                       // three-star review used to announce five.
@@ -204,7 +207,7 @@ export default function Testimonials({
                         {t.name}
                       </div>
                       {t.role && (
-                        <div className="text-xs text-black/55 font-medium mt-0.5 truncate">
+                        <div className="text-xs text-black/65 font-medium mt-0.5 truncate">
                           {t.role}
                         </div>
                       )}
@@ -239,12 +242,18 @@ export default function Testimonials({
               type="button"
               onClick={() => scrollTo(snapIdx)}
               aria-label={`Go to slide group ${snapIdx + 1}`}
-              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                selectedIndex === snapIdx
-                  ? "w-8 bg-accent"
-                  : "w-2 bg-gray-300 hover:bg-gray-400"
-              }`}
-            />
+              /* 24px hit area around a 8px dot. px not rem: globals.css sets
+                 html{font-size:87.5%}, so h-6 would only be 21px. */
+              className="group h-[24px] min-w-[24px] flex items-center justify-center cursor-pointer"
+            >
+              <span
+                className={`block h-2 rounded-full transition-all duration-300 ${
+                  selectedIndex === snapIdx
+                    ? "w-8 bg-accent"
+                    : "w-2 bg-gray-300 group-hover:bg-gray-400"
+                }`}
+              />
+            </button>
           ))}
         </div>
       </div>
