@@ -6,6 +6,11 @@ const nextConfig = {
     // default TTL makes the server re-encode the same admin thumbnails every
     // few hours for nothing; a year matches how long the file actually lives.
     minimumCacheTTL: 31536000,
+    // AVIF ahead of the default WebP: roughly 20% smaller again on the hero
+    // photos, which are the bulk of this page's weight. It encodes slower,
+    // but only once per size — the year-long TTL above serves every hit
+    // after that from cache, and browsers without AVIF fall back to WebP.
+    formats: ["image/avif", "image/webp"],
   },
   // Baseline response hardening for every route. Deliberately conservative:
   // no Content-Security-Policy here, because the Integrations feature injects

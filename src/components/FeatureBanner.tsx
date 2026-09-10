@@ -25,17 +25,30 @@ export default function FeatureBanner({
   return (
     <section
       className="relative overflow-hidden"
-      style={{
-        backgroundColor: content.backgroundColor,
-        ...(useBackgroundImage
-          ? {
-              backgroundImage: `url(${content.backgroundImage})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-            }
-          : {}),
-      }}
+      style={{ backgroundColor: content.backgroundColor }}
     >
+      {/* Drawn with next/image rather than a CSS background, which the
+          optimiser never sees: this was shipping the original upload at full
+          size — 282KB of the homepage — where a resized AVIF is a fraction of
+          that. Same-origin only, matching the cut-out below: an external URL
+          the optimiser cannot resolve falls back to a plain img. */}
+      {useBackgroundImage &&
+        (content.backgroundImage.startsWith("/") ? (
+          <Image
+            src={content.backgroundImage}
+            alt=""
+            fill
+            sizes="100vw"
+            className="object-cover"
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={content.backgroundImage}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ))}
       {useBackgroundImage && content.backgroundOverlay > 0 && (
         <div
           className="absolute inset-0"
@@ -43,8 +56,10 @@ export default function FeatureBanner({
           style={{ backgroundColor: `rgba(0,0,0,${content.backgroundOverlay / 100})` }}
         />
       )}
+      {/* relative, so the copy paints above the photo and its scrim. Both of
+          those are positioned, and a static sibling would sit under them. */}
       <div
-        className={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-14 ${
+        className={`relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-14 ${
           needsFloor ? "flex items-center min-h-[16rem] sm:min-h-[20rem] lg:min-h-[24rem]" : ""
         }`}
       >
