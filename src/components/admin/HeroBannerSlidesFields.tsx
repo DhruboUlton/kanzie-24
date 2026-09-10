@@ -12,12 +12,19 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  AlignVerticalJustifyStart,
+  AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
   Link2,
 } from "lucide-react";
 import ColorField from "@/components/admin/ColorField";
 import {
   BANNER_ALIGNMENTS,
+  BANNER_VALIGNMENTS,
+  BANNER_SCRIMS,
   BannerAlign,
+  BannerVAlign,
+  BannerScrim,
   BannerSlide,
   DEFAULT_BANNER_SLIDE,
   HeroContent,
@@ -30,6 +37,19 @@ const ALIGN_ICON: Record<BannerAlign, typeof AlignLeft> = {
   left: AlignLeft,
   center: AlignCenter,
   right: AlignRight,
+};
+
+const VALIGN_ICON: Record<BannerVAlign, typeof AlignLeft> = {
+  top: AlignVerticalJustifyStart,
+  middle: AlignVerticalJustifyCenter,
+  bottom: AlignVerticalJustifyEnd,
+};
+
+const SCRIM_LABEL: Record<BannerScrim, string> = {
+  bottom: "Fade up from the bottom",
+  left: "Fade from the left",
+  right: "Fade from the right",
+  solid: "Even across the whole image",
 };
 
 export default function HeroBannerSlidesFields({
@@ -253,19 +273,19 @@ export default function HeroBannerSlidesFields({
                     )}
                   </div>
 
-                  <input
-                    type="text"
+                  <textarea
+                    rows={2}
                     value={slide.heading}
                     onChange={(e) => setSlide(i, { heading: e.target.value })}
-                    placeholder="Heading (leave empty for none)"
-                    className={inputClass}
+                    placeholder="Heading — press Enter for a line break (leave empty for none)"
+                    className={`${inputClass} leading-relaxed resize-y`}
                   />
-                  <input
-                    type="text"
+                  <textarea
+                    rows={2}
                     value={slide.subheading}
                     onChange={(e) => setSlide(i, { subheading: e.target.value })}
-                    placeholder="Subheading (leave empty for none)"
-                    className={inputClass}
+                    placeholder="Subheading — press Enter for a line break (leave empty for none)"
+                    className={`${inputClass} leading-relaxed resize-y`}
                   />
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -287,62 +307,115 @@ export default function HeroBannerSlidesFields({
 
                   {/* Placement + readability — no effect on an image-only slide */}
                   <div
-                    className={`grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 transition-opacity ${
+                    className={`space-y-3 pt-1 transition-opacity ${
                       empty ? "opacity-50" : ""
                     }`}
                   >
-                    <div>
-                      <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                        Position
-                      </label>
-                      <div className="inline-flex p-1 bg-gray-100 rounded-lg">
-                        {BANNER_ALIGNMENTS.map((value) => {
-                          const Icon = ALIGN_ICON[value];
-                          return (
-                            <button
-                              key={value}
-                              type="button"
-                              onClick={() => setSlide(i, { align: value })}
-                              aria-label={`Align text ${value}`}
-                              title={`Align text ${value}`}
-                              className={`p-1.5 rounded-md transition-colors ${
-                                slide.align === value
-                                  ? "bg-white text-gray-900 shadow-xs"
-                                  : "text-gray-500 hover:text-gray-900"
-                              }`}
-                            >
-                              <Icon className="w-4 h-4" />
-                            </button>
-                          );
-                        })}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                          Across
+                        </label>
+                        <div className="inline-flex p-1 bg-gray-100 rounded-lg">
+                          {BANNER_ALIGNMENTS.map((value) => {
+                            const Icon = ALIGN_ICON[value];
+                            return (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => setSlide(i, { align: value })}
+                                aria-label={`Align text ${value}`}
+                                title={`Align text ${value}`}
+                                className={`p-1.5 rounded-md transition-colors ${
+                                  slide.align === value
+                                    ? "bg-white text-gray-900 shadow-xs"
+                                    : "text-gray-500 hover:text-gray-900"
+                                }`}
+                              >
+                                <Icon className="w-4 h-4" />
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
+
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                          Down the image
+                        </label>
+                        <div className="inline-flex p-1 bg-gray-100 rounded-lg">
+                          {BANNER_VALIGNMENTS.map((value) => {
+                            const Icon = VALIGN_ICON[value];
+                            return (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => setSlide(i, { vAlign: value })}
+                                aria-label={`Place text at the ${value}`}
+                                title={`Place text at the ${value}`}
+                                className={`p-1.5 rounded-md transition-colors ${
+                                  slide.vAlign === value
+                                    ? "bg-white text-gray-900 shadow-xs"
+                                    : "text-gray-500 hover:text-gray-900"
+                                }`}
+                              >
+                                <Icon className="w-4 h-4" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <ColorField
+                        label="Text colour"
+                        value={slide.textColor}
+                        fallback={DEFAULT_BANNER_SLIDE.textColor}
+                        onChange={(v) => setSlide(i, { textColor: v })}
+                      />
                     </div>
 
-                    <ColorField
-                      label="Text colour"
-                      value={slide.textColor}
-                      fallback={DEFAULT_BANNER_SLIDE.textColor}
-                      onChange={(v) => setSlide(i, { textColor: v })}
-                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                          Dark overlay — {slide.overlay}%
+                        </label>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={5}
+                          value={slide.overlay}
+                          onChange={(e) =>
+                            setSlide(i, { overlay: Number(e.target.value) })
+                          }
+                          className="w-full accent-[#c0282b]"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          Darkens the image so the text stays readable.
+                        </p>
+                      </div>
 
-                    <div>
-                      <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                        Dark overlay — {slide.overlay}%
-                      </label>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        step={5}
-                        value={slide.overlay}
-                        onChange={(e) =>
-                          setSlide(i, { overlay: Number(e.target.value) })
-                        }
-                        className="w-full accent-[#c0282b]"
-                      />
-                      <p className="text-[10px] text-gray-400 mt-0.5">
-                        Darkens the image so the text stays readable.
-                      </p>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                          Overlay shape
+                        </label>
+                        <select
+                          value={slide.scrim}
+                          onChange={(e) =>
+                            setSlide(i, { scrim: e.target.value as BannerScrim })
+                          }
+                          className={inputClass}
+                        >
+                          {BANNER_SCRIMS.map((value) => (
+                            <option key={value} value={value}>
+                              {SCRIM_LABEL[value]}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          Which side the darkening fades from.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -28,6 +28,34 @@ const ALIGN_CLASS: Record<BannerSlide["align"], string> = {
   right: "items-end text-right",
 };
 
+const VALIGN_CLASS: Record<BannerSlide["vAlign"], string> = {
+  top: "items-start pt-8 sm:pt-12",
+  middle: "items-center",
+  // Padding clears the pagination dots at bottom-5, which would otherwise
+  // sit on top of the last line of copy.
+  bottom: "items-end pb-12 sm:pb-14",
+};
+
+// The overlay slider stays the strength of the darkest end, so an existing
+// slide's saved percentage still means the same thing where the text
+// actually sits. rgba(0,0,0,0), not `transparent` — same value, but no grey
+// midpoint in older Safari's gradient interpolation.
+function scrimBackground(scrim: BannerSlide["scrim"], overlay: number): string {
+  const a = overlay / 100;
+  const c = (m: number) => `rgba(0,0,0,${+(a * m).toFixed(3)})`;
+  switch (scrim) {
+    case "left":
+      return `linear-gradient(to right, ${c(1)} 0%, ${c(0.8)} 30%, ${c(0.25)} 65%, ${c(0)} 90%)`;
+    case "right":
+      return `linear-gradient(to left, ${c(1)} 0%, ${c(0.8)} 30%, ${c(0.25)} 65%, ${c(0)} 90%)`;
+    case "solid":
+      return c(1);
+    case "bottom":
+    default:
+      return `linear-gradient(to top, ${c(1)} 0%, ${c(0.75)} 30%, ${c(0.2)} 70%, ${c(0)} 95%)`;
+  }
+}
+
 function hasCopy(slide: BannerSlide) {
   return Boolean(
     slide.heading.trim() ||
@@ -109,28 +137,28 @@ export default function HeroBannerSlider({
               {copy && slide.overlay > 0 && (
                 <div
                   className="absolute inset-0"
-                  style={{ backgroundColor: `rgba(0,0,0,${slide.overlay / 100})` }}
+                  style={{ background: scrimBackground(slide.scrim, slide.overlay) }}
                 />
               )}
 
               {copy && (
-                <div className="absolute inset-0 flex items-center">
+                <div className={`absolute inset-0 flex ${VALIGN_CLASS[slide.vAlign]}`}>
                   <div
-                    className={`mx-auto w-full max-w-7xl px-6 sm:px-10 flex flex-col gap-4 ${
+                    className={`mx-auto w-full max-w-7xl px-6 sm:px-10 flex flex-col gap-3 sm:gap-4 ${
                       ALIGN_CLASS[slide.align]
                     }`}
                   >
                     <div
-                      className="max-w-xl flex flex-col gap-3"
+                      className="max-w-xl lg:max-w-2xl flex flex-col gap-2 sm:gap-3"
                       style={{ color: slide.textColor }}
                     >
                       {slide.heading.trim() && (
-                        <h1 className="font-display text-3xl sm:text-5xl lg:text-6xl tracking-wide leading-[1.05]">
+                        <h1 className="font-display text-2xl sm:text-5xl lg:text-6xl tracking-wide leading-[1.1] sm:leading-[1.05] whitespace-pre-line">
                           {slide.heading}
                         </h1>
                       )}
                       {slide.subheading.trim() && (
-                        <p className="text-sm sm:text-lg opacity-90">
+                        <p className="text-base sm:text-xl lg:text-2xl leading-snug opacity-90 whitespace-pre-line">
                           {slide.subheading}
                         </p>
                       )}
@@ -139,7 +167,7 @@ export default function HeroBannerSlider({
                     {slide.ctaLabel.trim() && (
                       <Link
                         href={slide.ctaHref.trim() || "/products"}
-                        className="inline-block bg-accent hover:bg-accent-dark transition-colors text-white font-display tracking-wide px-8 py-3 rounded w-fit"
+                        className="inline-block bg-accent hover:bg-accent-dark transition-colors text-white font-display tracking-wide text-sm sm:text-base px-6 sm:px-8 py-2.5 sm:py-3 rounded w-fit"
                       >
                         {slide.ctaLabel}
                       </Link>

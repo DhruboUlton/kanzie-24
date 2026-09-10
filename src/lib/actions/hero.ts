@@ -14,6 +14,9 @@ import {
   normalizeCtaHref,
   normalizeMode,
   normalizeAlign,
+  normalizeVAlign,
+  normalizeScrim,
+  normalizeMultiline,
   clampOverlay,
   clampZoom,
 } from "@/lib/hero";
@@ -89,15 +92,17 @@ export async function updateHeroAction(
       bannerSlides.map((s) => ({
         src: s.src.trim(),
         alt: s.alt.trim(),
-        heading: s.heading.trim(),
-        subheading: s.subheading.trim(),
+        heading: normalizeMultiline(s.heading),
+        subheading: normalizeMultiline(s.subheading),
         ctaLabel: s.ctaLabel.trim(),
         // Kept empty rather than defaulted so a slide with no button
         // doesn't quietly acquire a destination it never asked for.
         ctaHref: normalizeCtaHref(s.ctaHref, ""),
         align: normalizeAlign(s.align),
+        vAlign: normalizeVAlign(s.vAlign),
         textColor: normalizeHex(s.textColor, DEFAULT_BANNER_SLIDE.textColor),
         overlay: clampOverlay(s.overlay),
+        scrim: normalizeScrim(s.scrim),
       })),
     ),
   };

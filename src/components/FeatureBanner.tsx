@@ -11,6 +11,16 @@ export default function FeatureBanner({
   const hasImage = content.image.trim().length > 0;
   const useBackgroundImage =
     content.backgroundType === "image" && content.backgroundImage.trim().length > 0;
+  const hasHeading =
+    content.headingLead.trim().length > 0 || content.headingAccent.trim().length > 0;
+  const hasSubheading = content.subheading.trim().length > 0;
+
+  // The cut-out column is the only thing in this grid with a height, so
+  // removing it collapses the strip to the height of the copy — which reads
+  // as a squashed band across a full-bleed photo, not a banner. Hold it near
+  // the height the cut-out would have given it, but only when there's a
+  // photo to show: a flat colour behind two lines of copy is fine compact.
+  const needsFloor = useBackgroundImage && !hasImage;
 
   return (
     <section
@@ -26,8 +36,15 @@ export default function FeatureBanner({
           : {}),
       }}
     >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-14">
-        <div className="grid grid-cols-12 gap-3 sm:gap-6 lg:gap-8 items-center">
+      {useBackgroundImage && (
+        <div className="absolute inset-0 bg-black/35" aria-hidden="true" />
+      )}
+      <div
+        className={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-14 ${
+          needsFloor ? "flex items-center min-h-[16rem] sm:min-h-[20rem] lg:min-h-[24rem]" : ""
+        }`}
+      >
+        <div className="w-full grid grid-cols-12 gap-3 sm:gap-6 lg:gap-8 items-center">
           {/* Copy — takes the full width when there's no cut-out image */}
           <div
             className={`${
@@ -41,23 +58,33 @@ export default function FeatureBanner({
               </div>
             )}
 
-            <h2
-              className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-tight font-extrabold leading-[1.05]"
-              style={{ color: content.headingColor }}
-            >
-              {content.headingLead}{" "}
-              <br className="sm:hidden" />
-              <span style={{ color: content.headingAccentColor }}>
-                {content.headingAccent}
-              </span>
-            </h2>
+            {hasHeading && (
+              <h2
+                className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl tracking-tight font-extrabold leading-[1.05]"
+                style={{ color: content.headingColor }}
+              >
+                {content.headingLead.trim() && (
+                  <>
+                    {content.headingLead}{" "}
+                    {content.headingAccent.trim() && <br className="sm:hidden" />}
+                  </>
+                )}
+                {content.headingAccent.trim() && (
+                  <span style={{ color: content.headingAccentColor }}>
+                    {content.headingAccent}
+                  </span>
+                )}
+              </h2>
+            )}
 
-            <p
-              className="text-[11px] sm:text-xs md:text-sm leading-snug sm:leading-relaxed max-w-md line-clamp-2 sm:line-clamp-none"
-              style={{ color: content.headingColor, opacity: 0.7 }}
-            >
-              {content.subheading}
-            </p>
+            {hasSubheading && (
+              <p
+                className="text-[11px] sm:text-xs md:text-sm leading-snug sm:leading-relaxed max-w-md line-clamp-2 sm:line-clamp-none"
+                style={{ color: content.headingColor, opacity: 0.7 }}
+              >
+                {content.subheading}
+              </p>
+            )}
 
             <div className="pt-0.5 sm:pt-1 flex flex-wrap items-center gap-2 sm:gap-3">
               {content.ctaLabel.trim().length > 0 && (

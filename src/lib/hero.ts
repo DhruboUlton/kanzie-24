@@ -56,16 +56,31 @@ export type BannerSlide = {
   ctaHref: string;
   // Where the copy sits over the image. Ignored when no text is set.
   align: BannerAlign;
+  // Vertical placement of the same copy. A separate axis from `align` so
+  // choosing one never disturbs the other.
+  vAlign: BannerVAlign;
   textColor: string;
   // Black scrim between image and text, 0–100%. 0 = none. Needed because
   // a photo's brightness varies across the frame and plain white text on a
   // pale sky is unreadable.
   overlay: number;
+  // Shape of that scrim. "solid" is a flat wash (the only option before
+  // this field existed); the others fade from one edge so the rest of the
+  // artwork stays clean.
+  scrim: BannerScrim;
 };
 
 export type BannerAlign = "left" | "center" | "right";
 
 export const BANNER_ALIGNMENTS: BannerAlign[] = ["left", "center", "right"];
+
+export type BannerVAlign = "top" | "middle" | "bottom";
+
+export const BANNER_VALIGNMENTS: BannerVAlign[] = ["top", "middle", "bottom"];
+
+export type BannerScrim = "bottom" | "left" | "right" | "solid";
+
+export const BANNER_SCRIMS: BannerScrim[] = ["bottom", "left", "right", "solid"];
 
 export type HeroContent = {
   mode: HeroMode;
@@ -97,8 +112,10 @@ export const DEFAULT_BANNER_SLIDE: Omit<BannerSlide, "src"> = {
   ctaLabel: "",
   ctaHref: "",
   align: "left",
+  vAlign: "bottom",
   textColor: "#ffffff",
   overlay: 35,
+  scrim: "bottom",
 };
 
 export const DEFAULT_HERO: HeroContent = {
@@ -152,6 +169,31 @@ export function hasRenderableBanner(content: HeroContent): boolean {
 
 export function normalizeAlign(value: unknown): BannerAlign {
   return value === "center" || value === "right" ? value : "left";
+}
+
+export function normalizeVAlign(value: unknown): BannerVAlign {
+  return value === "top" || value === "middle" ? value : "bottom";
+}
+
+export function normalizeScrim(value: unknown): BannerScrim {
+  return value === "solid" || value === "left" || value === "right"
+    ? value
+    : "bottom";
+}
+
+// Heading and subheading carry the line breaks typed with Enter in the
+// admin textarea. Normalised so what renders matches what the textarea
+// showed: CRLF from a paste is flattened, a trailing space before a break
+// is dropped (under `whitespace-pre-line` it would render as a ragged
+// indent), and a run of blank lines can't be used to shove the copy off
+// the image.
+export function normalizeMultiline(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 // Only ever let a real hex colour reach an inline style attribute.
@@ -220,13 +262,15 @@ function parseBannerSlides(raw: string | undefined): BannerSlide[] {
       .map((s) => ({
         src: String(s.src),
         alt: typeof s.alt === "string" ? s.alt : "",
-        heading: typeof s.heading === "string" ? s.heading : "",
-        subheading: typeof s.subheading === "string" ? s.subheading : "",
+        heading: normalizeMultiline(s.heading),
+        subheading: normalizeMultiline(s.subheading),
         ctaLabel: typeof s.ctaLabel === "string" ? s.ctaLabel : "",
         ctaHref: typeof s.ctaHref === "string" ? s.ctaHref : "",
         align: normalizeAlign(s.align),
+        vAlign: normalizeVAlign(s.vAlign),
         textColor: normalizeHex(s.textColor, DEFAULT_BANNER_SLIDE.textColor),
         overlay: clampOverlay(s.overlay),
+        scrim: normalizeScrim(s.scrim),
       }));
   } catch {
     return [];
