@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { PackageSearch } from "lucide-react";
-import { CATEGORIES } from "@/lib/products";
+import type { CategoryNode } from "@/lib/products";
 import { SITE_NAME, SUPPORT_EMAIL } from "@/lib/site-config";
 import Newsletter from "@/components/Newsletter";
 
-export default function Footer() {
+// Takes the tree the layout already fetched rather than reading again. It
+// used to map a hardcoded CATEGORIES list, which linked to excavators,
+// dump-trucks and bulldozers --- three categories this shop does not have.
+export default function Footer({ tree }: { tree: CategoryNode[] }) {
   return (
     <footer className="bg-ink text-white/70">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14 grid grid-cols-2 sm:grid-cols-4 gap-8">
@@ -23,7 +26,7 @@ export default function Footer() {
             SHOP
           </h3>
           <ul className="space-y-2 text-sm">
-            {CATEGORIES.map((c) => (
+            {tree.map((c) => (
               <li key={c.slug}>
                 <Link
                   href={`/products?category=${c.slug}`}

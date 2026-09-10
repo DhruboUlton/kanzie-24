@@ -32,7 +32,7 @@ export default async function StorefrontLayout({
       <Header tree={tree} />
       <CartDrawer />
       <main className="flex-1">{children}</main>
-      <Footer />
+      <Footer tree={tree} />
       <SitePopup config={popupConfig} />
     </div>
   );
