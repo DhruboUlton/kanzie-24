@@ -142,8 +142,12 @@ export function parseTestimonials(raw: unknown): Testimonial[] | null {
   return result;
 }
 
+// Throws on an unreachable database rather than returning the presets. The
+// save actions read this list before rewriting it, so a swallowed error
+// here would persist six invented customers over the shop's real reviews —
+// and the storefront would publish them as genuine. A missing row is still
+// treated as "never edited" below; only a failed read throws.
 export async function getTestimonials(onlyActive = false): Promise<Testimonial[]> {
-  try {
     const row = await db.siteSetting.findUnique({
       where: { key: TESTIMONIALS_KEY },
     });
@@ -167,9 +171,4 @@ export async function getTestimonials(onlyActive = false): Promise<Testimonial[]
     const list = parsed ?? DEFAULT_TESTIMONIALS;
 
     return onlyActive ? list.filter((t) => t.isActive) : list;
-  } catch {
-    return onlyActive
-      ? DEFAULT_TESTIMONIALS.filter((t) => t.isActive)
-      : DEFAULT_TESTIMONIALS;
-  }
 }

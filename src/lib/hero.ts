@@ -277,8 +277,10 @@ function parseBannerSlides(raw: string | undefined): BannerSlide[] {
   }
 }
 
+// See the note on getBodyBannerContent(): this throws on an unreachable
+// database rather than serving DEFAULT_HERO, which the admin form would
+// then happily save back over the real slides.
 export async function getHeroContent(): Promise<HeroContent> {
-  try {
     const rows = await db.siteSetting.findMany({
       where: { key: { in: Object.values(HERO_KEYS) } },
     });
@@ -309,8 +311,4 @@ export async function getHeroContent(): Promise<HeroContent> {
       slides: parseSlides(map[HERO_KEYS.slides]) ?? DEFAULT_HERO.slides,
       bannerSlides: parseBannerSlides(map[HERO_KEYS.bannerSlides]),
     };
-  } catch {
-    // DB unreachable — the storefront still renders the shipped banner.
-    return DEFAULT_HERO;
-  }
 }

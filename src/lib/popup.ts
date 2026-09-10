@@ -123,8 +123,11 @@ export function sanitizePopupConfig(raw: unknown): PopupConfig {
   };
 }
 
+// Throws on an unreachable database; updatePopupConfigAction reads this
+// before writing, so swallowing the error would save defaults over the real
+// pop-up. The inner catch stays: unparseable JSON is a corrupt row, not a
+// dead database, and falling back beats failing the page over it.
 export async function getPopupConfig(): Promise<PopupConfig> {
-  try {
     const row = await db.siteSetting.findUnique({
       where: { key: POPUP_KEY },
     });
@@ -139,7 +142,4 @@ export async function getPopupConfig(): Promise<PopupConfig> {
     } catch {
       return { ...DEFAULT_POPUP };
     }
-  } catch {
-    return { ...DEFAULT_POPUP };
-  }
 }

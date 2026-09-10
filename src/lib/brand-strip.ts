@@ -86,8 +86,9 @@ export type BrandStripContent = {
   marks: BrandMark[];
 };
 
+// See getBodyBannerContent(): throws on an unreachable database instead of
+// prerendering the shipped marks as though they were the shop's own.
 export async function getBrandStrip(): Promise<BrandStripContent> {
-  try {
     const rows = await db.siteSetting.findMany({
       where: { key: { in: [BRAND_STRIP_KEY, BRAND_STRIP_ENABLED_KEY] } },
     });
@@ -103,7 +104,4 @@ export async function getBrandStrip(): Promise<BrandStripContent> {
         : DEFAULT_BRAND_STRIP_ENABLED,
       marks: marks ?? DEFAULT_BRAND_MARKS,
     };
-  } catch {
-    return { enabled: DEFAULT_BRAND_STRIP_ENABLED, marks: DEFAULT_BRAND_MARKS };
-  }
 }

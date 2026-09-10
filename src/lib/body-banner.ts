@@ -67,8 +67,13 @@ export const DEFAULT_BODY_BANNER: BodyBannerContent = {
   note: "1-Year Official Warranty",
 };
 
+// Throws when the database is unreachable rather than returning defaults.
+// A swallowed error here is invisible and permanent: the homepage is
+// prerendered, so one build during a database blip baked the shipped demo
+// banner into the live site until something revalidated it. Letting it
+// throw fails the build instead, which leaves the last good deploy up.
+// A row that simply does not exist yet still falls back, per field below.
 export async function getBodyBannerContent(): Promise<BodyBannerContent> {
-  try {
     const rows = await db.siteSetting.findMany({
       where: { key: { in: Object.values(BODY_BANNER_KEYS) } },
     });
@@ -105,7 +110,4 @@ export async function getBodyBannerContent(): Promise<BodyBannerContent> {
       ctaHref: map[BODY_BANNER_KEYS.ctaHref] ?? d.ctaHref,
       note: map[BODY_BANNER_KEYS.note] ?? d.note,
     };
-  } catch {
-    return DEFAULT_BODY_BANNER;
-  }
 }

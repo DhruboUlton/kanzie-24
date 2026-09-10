@@ -371,10 +371,10 @@ export default function CheckoutPage() {
             Order ID: <span className="font-bold text-ink">{orderId}</span>
           </p>
         )}
-        <p className="text-sm text-black/60 mb-8 max-w-md mx-auto">
-          We don&apos;t take payment online — one of our team will call{" "}
+        <p className="text-base text-black/70 mb-8 max-w-md mx-auto">
+          One of our team will call{" "}
           <span className="font-semibold text-ink">{customer.phone}</span> shortly
-          to confirm your order before it ships. Payment is cash on delivery.
+          to confirm your order before it ships.
         </p>
         <OrderRecap
           items={recapItems}
