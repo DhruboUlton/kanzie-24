@@ -48,13 +48,20 @@ export default function ChangePasswordDialog({
     }
   }
 
+  // text-gray-900 is not decoration: this dialog is rendered from inside
+  // AdminSidebar, whose root carries text-white for the dark nav. An input
+  // that sets no colour of its own inherits that, so every character typed
+  // into a password field was white on the panel's white background — and
+  // the caret with it, since caret-color follows color.
   const inputClass =
-    "w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]";
+    "w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-[#c0282b]";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
-      <div className="relative bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl">
+      {/* Resets the inherited text-white from the sidebar this is mounted
+          in, so any field added here later is legible by default. */}
+      <div className="relative bg-white text-gray-900 w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-xl">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
           <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-accent" />
