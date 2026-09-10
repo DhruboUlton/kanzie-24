@@ -36,8 +36,12 @@ export default function FeatureBanner({
           : {}),
       }}
     >
-      {useBackgroundImage && (
-        <div className="absolute inset-0 bg-black/35" aria-hidden="true" />
+      {useBackgroundImage && content.backgroundOverlay > 0 && (
+        <div
+          className="absolute inset-0"
+          aria-hidden="true"
+          style={{ backgroundColor: `rgba(0,0,0,${content.backgroundOverlay / 100})` }}
+        />
       )}
       <div
         className={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-14 ${

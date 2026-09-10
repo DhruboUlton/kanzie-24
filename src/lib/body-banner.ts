@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { normalizeHex } from "@/lib/hero";
+import { normalizeHex, clampOverlay } from "@/lib/hero";
 
 // The wide promo strip below the product rows on the homepage. Stored in
 // SiteSetting like the hero, so no migration.
@@ -13,6 +13,7 @@ export const BODY_BANNER_KEYS = {
   backgroundType: "body_banner_background_type",
   backgroundColor: "body_banner_background_color",
   backgroundImage: "body_banner_background_image",
+  backgroundOverlay: "body_banner_background_overlay",
   image: "body_banner_image",
   ctaLabel: "body_banner_cta_label",
   ctaHref: "body_banner_cta_href",
@@ -33,6 +34,11 @@ export type BodyBannerContent = {
   // Full-bleed background photo. Only used when backgroundType is "image";
   // the colour stays as the fallback behind it while it loads.
   backgroundImage: string;
+  // Black scrim over that photo, 0–100%. Only applies to an image
+  // background — over a solid colour it would just darken a colour the
+  // picker above already sets. Without it, white copy over a bright photo
+  // is unreadable.
+  backgroundOverlay: number;
   // Optional cut-out product shot on the right. Empty means the copy gets
   // the full width instead.
   image: string;
@@ -52,6 +58,9 @@ export const DEFAULT_BODY_BANNER: BodyBannerContent = {
   backgroundType: "color",
   backgroundColor: "#282828",
   backgroundImage: "",
+  // 35 was the fixed value before this became adjustable, so existing
+  // banners look identical until someone moves the slider.
+  backgroundOverlay: 35,
   image: "/hero/jcb-backhoe-loader-2.png",
   ctaLabel: "SHOP MACHINES",
   ctaHref: "/products",
@@ -84,6 +93,13 @@ export async function getBodyBannerContent(): Promise<BodyBannerContent> {
         d.backgroundColor,
       ),
       backgroundImage: map[BODY_BANNER_KEYS.backgroundImage] ?? d.backgroundImage,
+      // Missing or blank means a banner saved before this was adjustable;
+      // those rendered at a fixed 35, so that is what they keep. Tied to
+      // this module's own default rather than leaning on clampOverlay's
+      // fallback, which belongs to the hero slides.
+      backgroundOverlay: map[BODY_BANNER_KEYS.backgroundOverlay]?.trim()
+        ? clampOverlay(map[BODY_BANNER_KEYS.backgroundOverlay])
+        : d.backgroundOverlay,
       image: map[BODY_BANNER_KEYS.image] ?? d.image,
       ctaLabel: map[BODY_BANNER_KEYS.ctaLabel] ?? d.ctaLabel,
       ctaHref: map[BODY_BANNER_KEYS.ctaHref] ?? d.ctaHref,

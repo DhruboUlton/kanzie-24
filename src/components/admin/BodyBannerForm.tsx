@@ -230,14 +230,39 @@ export default function BodyBannerForm({
         />
 
         {content.backgroundType === "image" && (
-          <ImageField
-            label="Background image"
-            value={content.backgroundImage}
-            onChange={(v) => setField("backgroundImage", v)}
-            previewFit="cover"
-            previewClassName="h-40"
-            hint="Full-width band, so use a wide image — around 1920×640 (3:1) works well; anything from 2.5:1 to 4:1 is safe. It's cropped from the centre, so keep the important part in the middle and avoid text baked into the image. Under ~400 KB keeps the page fast."
-          />
+          <>
+            <ImageField
+              label="Background image"
+              value={content.backgroundImage}
+              onChange={(v) => setField("backgroundImage", v)}
+              previewFit="cover"
+              previewClassName="h-40"
+              hint="Full-width band, so use a wide image — around 1920×640 (3:1) works well; anything from 2.5:1 to 4:1 is safe. It's cropped from the centre, so keep the important part in the middle and avoid text baked into the image. Under ~400 KB keeps the page fast."
+            />
+
+            {/* Only offered for an image background — over a solid colour
+                this would just darken the colour set above. */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Dark overlay — {content.backgroundOverlay}%
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={content.backgroundOverlay}
+                onChange={(e) =>
+                  setField("backgroundOverlay", Number(e.target.value))
+                }
+                className="w-full accent-[#c0282b]"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">
+                Darkens the photo so the heading and button stay readable. 0% is
+                the bare image; around 35–50% suits a bright photo.
+              </p>
+            </div>
+          </>
         )}
       </div>
 

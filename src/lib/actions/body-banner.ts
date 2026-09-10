@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
-import { normalizeHex, normalizeCtaHref } from "@/lib/hero";
+import { normalizeHex, normalizeCtaHref, clampOverlay } from "@/lib/hero";
 import {
   BODY_BANNER_KEYS,
   BodyBannerContent,
@@ -45,6 +45,7 @@ export async function updateBodyBannerAction(
       d.backgroundColor,
     ),
     [BODY_BANNER_KEYS.backgroundImage]: content.backgroundImage.trim(),
+    [BODY_BANNER_KEYS.backgroundOverlay]: String(clampOverlay(content.backgroundOverlay)),
     [BODY_BANNER_KEYS.image]: content.image.trim(),
     [BODY_BANNER_KEYS.ctaLabel]: content.ctaLabel.trim(),
     [BODY_BANNER_KEYS.ctaHref]: normalizeCtaHref(content.ctaHref, "/products"),
