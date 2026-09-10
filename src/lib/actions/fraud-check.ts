@@ -1,13 +1,16 @@
 "use server";
 
-import { requirePermission, authErrorResult } from "@/lib/auth";
+import { requireAdmin, authErrorResult } from "@/lib/auth";
 import { checkFraud, FraudCheckResult } from "@/lib/fraud-check";
 
+// Any signed-in admin, matching the page. Still requires a session: this
+// reaches out to three courier APIs on the shop's account, so it is not
+// something an anonymous visitor gets to trigger.
 export async function checkFraudAction(
   phone: string,
 ): Promise<{ success: true; result: FraudCheckResult } | { success: false; error: string }> {
   try {
-    await requirePermission("FRAUD_CHECK_VIEW");
+    await requireAdmin();
 
     const result = await checkFraud(phone);
     return { success: true, result };

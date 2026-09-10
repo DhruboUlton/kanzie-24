@@ -100,7 +100,11 @@ export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
   { label: "Categories", keys: ["CATEGORIES_VIEW", "CATEGORIES_MANAGE"] },
   { label: "Banner", keys: ["BANNER_VIEW", "BANNER_MANAGE"] },
   { label: "Reviews", keys: ["REVIEWS_VIEW", "REVIEWS_MANAGE"] },
-  { label: "Fraud check", keys: ["FRAUD_CHECK_VIEW"] },
+  // No "Fraud check" group: that page is open to every signed-in admin, so
+  // offering a checkbox for it would promise control that does not exist.
+  // FRAUD_CHECK_VIEW itself is kept in the Permission union so the roles
+  // that already carry it stay valid — sanitizePermissions() filters
+  // against the union, not against this list.
   { label: "Money", keys: ["FINANCE_VIEW"] },
   { label: "Analytics", keys: ["ANALYTICS_VIEW"] },
   { label: "Integrations", keys: ["INTEGRATIONS_VIEW", "INTEGRATIONS_MANAGE"] },

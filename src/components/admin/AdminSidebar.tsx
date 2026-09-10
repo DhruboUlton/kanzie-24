@@ -52,7 +52,8 @@ const STORE_NAV: NavItem[] = [
   { href: "/adpnl/banner", label: "Banner", icon: Images, permission: "BANNER_VIEW" },
   { href: "/adpnl/popup", label: "Pop up", icon: AppWindow, permission: "POPUP_VIEW" },
   { href: "/adpnl/reviews", label: "Reviews", icon: MessageSquareQuote, permission: "REVIEWS_VIEW" },
-  { href: "/adpnl/fraud-check", label: "Fraud Check", icon: ShieldAlert, permission: "FRAUD_CHECK_VIEW" },
+  // No permission: the fraud lookup is open to every signed-in admin.
+  { href: "/adpnl/fraud-check", label: "Fraud Check", icon: ShieldAlert },
   { href: "/adpnl/integrations", label: "Integrations", icon: Plug, permission: "INTEGRATIONS_VIEW" },
   { href: "/adpnl/settings", label: "Settings", icon: Settings, permission: "SETTINGS_VIEW" },
 ];

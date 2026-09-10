@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requirePermission, authErrorResult } from "@/lib/auth";
+import { requireOwner, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
 import {
   getCourierCredentialsStatus,
@@ -10,8 +10,17 @@ import {
   CourierCredentialsStatus,
 } from "@/lib/courier-credentials";
 
+// Owner-only, not SETTINGS_MANAGE. These are the shop's merchant logins to
+// three courier companies; anyone holding them can sign in as the business.
+// Gating on a capability meant an owner could hand them out by ticking a
+// box on a custom role without ever intending to — requireOwner() makes
+// that unrepresentable.
+//
+// Callers must handle the throw: running a fraud check does not require
+// these, so a non-owner reaching this is a bug in the caller, not a denial
+// to render.
 export async function getCourierCredentialsStatusAction(): Promise<CourierCredentialsStatus> {
-  await requirePermission("SETTINGS_MANAGE");
+  await requireOwner();
   return getCourierCredentialsStatus();
 }
 
@@ -20,7 +29,7 @@ export async function updateCourierCredentialsAction(
 ): Promise<{ success: boolean; error?: string }> {
   let ctx;
   try {
-    ctx = await requirePermission("SETTINGS_MANAGE");
+    ctx = await requireOwner();
   } catch (error) {
     return authErrorResult(error) ?? { success: false, error: "Not allowed." };
   }

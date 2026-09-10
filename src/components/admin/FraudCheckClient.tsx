@@ -286,8 +286,12 @@ function CourierCredentialsPanel({ initialStatus }: { initialStatus: CourierCred
 
 export default function FraudCheckClient({
   initialCredentialsStatus,
+  canManageCredentials,
 }: {
-  initialCredentialsStatus: CourierCredentialsStatus;
+  // null for everyone but the owner — the panel is not rendered for them,
+  // and the status is never fetched in the first place.
+  initialCredentialsStatus: CourierCredentialsStatus | null;
+  canManageCredentials: boolean;
 }) {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
@@ -327,7 +331,9 @@ export default function FraudCheckClient({
         </p>
       </div>
 
-      <CourierCredentialsPanel initialStatus={initialCredentialsStatus} />
+      {canManageCredentials && initialCredentialsStatus && (
+        <CourierCredentialsPanel initialStatus={initialCredentialsStatus} />
+      )}
 
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs">
         <label className="block text-xs font-semibold text-gray-700 mb-1.5">
