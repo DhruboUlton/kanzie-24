@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getAdminContext, requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
 import { resolveUploadPath } from "@/lib/uploads";
+import { findMediaUsage, MediaUsage } from "@/lib/media-usage";
 
 export type MediaSort = "newest" | "oldest" | "name_asc" | "size_desc";
 
@@ -121,13 +122,22 @@ export async function getMediaUsageAction(id: string) {
     });
 
     if (!media) {
-      return { success: false, error: "Media not found", products: [] };
+      return { success: false, error: "Media not found", products: [], usage: [] };
     }
 
     const products = media.productMedia.map((pm) => pm.product);
-    return { success: true, products };
+    // Products are kept for the existing caller; `usage` is the whole
+    // picture — galleries, videos, descriptions, category art and every
+    // setting that names this file.
+    const usage = await findMediaUsage(media.url);
+    return { success: true, products, usage };
   } catch (error: any) {
-    return { success: false, error: error.message || "Failed to query usage", products: [] };
+    return {
+      success: false,
+      error: error.message || "Failed to query usage",
+      products: [],
+      usage: [] as MediaUsage[],
+    };
   }
 }
 
@@ -177,7 +187,15 @@ export async function updateMediaMetadataAction(
  * Now the caller has to pass `force: true` (after the admin explicitly
  * acknowledges the warning) to go through with it while still in use.
  */
-export async function deleteMediaPermanentlyAction(id: string, force = false) {
+/**
+ * Delete a media file for good.
+ *
+ * Refuses while anything on the storefront still points at it. There is no
+ * override parameter any more: the old `force` flag existed to push past
+ * the product-gallery warning, and every use of it produced a broken image
+ * somewhere.
+ */
+export async function deleteMediaPermanentlyAction(id: string) {
   const ctx = await getAdminContext();
   if (!ctx) {
     return { success: false, error: "Unauthorized" };
@@ -212,11 +230,22 @@ export async function deleteMediaPermanentlyAction(id: string, force = false) {
       return { success: false, error: "Media item not found" };
     }
 
-    if (media.productMedia.length > 0 && !force) {
+    // A file that is on the storefront cannot be deleted — not with a
+    // confirmation, not with `force`. Deleting it does not remove it from
+    // the hero or the product that shows it; it just turns that into a
+    // broken image nobody notices until a customer does. Detach it first,
+    // then the file becomes deletable.
+    //
+    // This replaces a check that looked only at product galleries and let
+    // `force` override even that.
+    const usage = await findMediaUsage(media.url);
+    if (usage.length > 0) {
+      const areas = Array.from(new Set(usage.map((u) => u.area)));
       return {
         success: false,
-        error: `Still attached to ${media.productMedia.length} product(s). Confirm again to delete it anyway.`,
+        error: `In use in ${usage.length} place${usage.length === 1 ? "" : "s"} (${areas.join(", ")}). Remove it there first, then delete it here.`,
         inUse: true,
+        usage,
         products: media.productMedia.map((pm) => pm.product),
       };
     }

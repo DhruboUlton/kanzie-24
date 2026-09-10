@@ -89,9 +89,12 @@ export default function MediaLibraryGrid({
 
   // Delete modal state
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [deleteUsageWarning, setDeleteUsageWarning] = useState<any[]>([]);
+  // Every place the file is referenced. Non-empty means deletion is refused
+  // — by this dialog and, independently, by the server action.
+  const [deleteUsage, setDeleteUsage] = useState<
+    { area: string; label: string; href?: string }[]
+  >([]);
   const [deleteUsageChecked, setDeleteUsageChecked] = useState(false);
-  const [ackInUse, setAckInUse] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -212,29 +215,35 @@ export default function MediaLibraryGrid({
   async function openDeleteConfirm(item: MediaItem) {
     setConfirmDeleteId(item.id);
     setDeleteError(null);
-    setDeleteUsageWarning([]);
+    setDeleteUsage([]);
     setDeleteUsageChecked(false);
-    setAckInUse(false);
     try {
       const res = await getMediaUsageAction(item.id);
-      if (res.success && res.products) {
-        setDeleteUsageWarning(res.products);
+      if (res.success && res.usage) {
+        setDeleteUsage(res.usage);
+      } else if (!res.success) {
+        // Never fall through to an enabled Delete button on a failed check —
+        // "we don't know" must not read as "not in use".
+        setDeleteError(res.error || "Couldn't check where this file is used.");
+        setDeleteUsage([{ area: "Unknown", label: "usage check failed" }]);
       }
     } catch (err) {
       console.warn("Could not check media usage:", err);
+      setDeleteError("Couldn't check where this file is used.");
+      setDeleteUsage([{ area: "Unknown", label: "usage check failed" }]);
     } finally {
       setDeleteUsageChecked(true);
     }
   }
 
-  async function executeDelete(id: string, force = false) {
+  async function executeDelete(id: string) {
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      const res = await deleteMediaPermanentlyAction(id, force);
+      const res = await deleteMediaPermanentlyAction(id);
       if (!res.success) {
-        if ((res as any).inUse && (res as any).products) {
-          setDeleteUsageWarning((res as any).products);
+        if ((res as any).inUse && (res as any).usage) {
+          setDeleteUsage((res as any).usage);
         }
         setDeleteError(res.error || "Failed to delete media item");
         setIsDeleting(false);
@@ -690,33 +699,48 @@ export default function MediaLibraryGrid({
               </div>
             </div>
 
-            {deleteUsageWarning.length > 0 && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-2">
-                <div className="font-semibold">
-                  Warning: This item is currently used in {deleteUsageWarning.length} product(s):
-                </div>
-                <ul className="list-disc pl-4 space-y-0.5 text-[11px] text-amber-700 max-h-24 overflow-y-auto">
-                  {deleteUsageWarning.map((p) => (
-                    <li key={p.id}>{p.name} ({p.sku})</li>
-                  ))}
-                </ul>
-                <label className="flex items-start gap-2 pt-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={ackInUse}
-                    onChange={(e) => setAckInUse(e.target.checked)}
-                    className="mt-0.5"
-                  />
-                  <span className="font-medium">
-                    Delete it anyway. Those products will show a broken photo/video until someone replaces it.
-                  </span>
-                </label>
+            {!deleteUsageChecked && (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Checking where this file is used…</span>
               </div>
             )}
 
-            <p className="text-xs text-gray-600 leading-relaxed">
-              Deleting this file permanently removes it from the Media Library and disk storage.
-            </p>
+            {deleteUsageChecked && deleteUsage.length > 0 && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-2">
+                <div className="font-semibold">
+                  Can&apos;t delete — still used in {deleteUsage.length}{" "}
+                  place{deleteUsage.length === 1 ? "" : "s"}:
+                </div>
+                <ul className="space-y-1 text-[11px] max-h-40 overflow-y-auto">
+                  {deleteUsage.map((u, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="font-semibold shrink-0">{u.area}:</span>
+                      <span className="text-amber-800">{u.label}</span>
+                      {u.href && (
+                        <a
+                          href={u.href}
+                          className="ml-auto shrink-0 underline hover:no-underline font-medium"
+                        >
+                          open
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[11px] text-amber-700 pt-0.5">
+                  Remove it from those first. Deleting it here would leave a broken
+                  image on the storefront.
+                </p>
+              </div>
+            )}
+
+            {deleteUsageChecked && deleteUsage.length === 0 && (
+              <p className="text-xs text-gray-600 leading-relaxed">
+                Not used anywhere. Deleting permanently removes it from the Media
+                Library and disk storage.
+              </p>
+            )}
 
             {deleteError && (
               <div className="text-xs text-red-600 font-medium">{deleteError}</div>
@@ -733,12 +757,13 @@ export default function MediaLibraryGrid({
               </button>
               <button
                 type="button"
-                disabled={
-                  isDeleting ||
-                  !deleteUsageChecked ||
-                  (deleteUsageWarning.length > 0 && !ackInUse)
+                disabled={isDeleting || !deleteUsageChecked || deleteUsage.length > 0}
+                title={
+                  deleteUsage.length > 0
+                    ? "This file is in use on the storefront. Remove it there first."
+                    : undefined
                 }
-                onClick={() => executeDelete(confirmDeleteId, deleteUsageWarning.length > 0)}
+                onClick={() => executeDelete(confirmDeleteId)}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:hover:bg-red-600 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 {isDeleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

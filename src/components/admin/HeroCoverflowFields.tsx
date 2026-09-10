@@ -14,8 +14,11 @@ import {
   RotateCcw,
   Palette,
   AlertCircle,
+  Library,
 } from "lucide-react";
 import ColorField from "@/components/admin/ColorField";
+import MediaPickerModal from "@/components/admin/media/MediaPickerModal";
+import { MediaItem } from "@/components/admin/media/types";
 import { DEFAULT_HERO, HeroContent, HeroSlide } from "@/lib/hero";
 
 // Editor for the "coverflow" hero mode: cut-out PNGs rotating over a solid
@@ -34,6 +37,30 @@ export default function HeroCoverflowFields({
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  /**
+   * Append images as new slides, in the order given.
+   *
+   * Shared by the uploader and the library picker so a slide added either
+   * way starts with exactly the same nudge/zoom defaults.
+   */
+  const appendSlides = (items: { src: string; alt?: string }[]) =>
+    setContent((c) => ({
+      ...c,
+      slides: [
+        ...c.slides,
+        ...items.map(({ src, alt }) => ({
+          src,
+          alt: alt ?? "",
+          groundOffset: 0,
+          leftGap: 0,
+          rightGap: 0,
+          zoom: 100,
+          word: "",
+        })),
+      ],
+    }));
 
   const setField = <K extends keyof HeroContent>(key: K, value: HeroContent[K]) =>
     setContent((c) => ({ ...c, [key]: value }));
@@ -69,21 +96,7 @@ export default function HeroCoverflowFields({
         const res = await fetch("/api/admin/upload", { method: "POST", body });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Upload failed");
-        setContent((c) => ({
-          ...c,
-          slides: [
-            ...c.slides,
-            {
-              src: data.url,
-              alt: "",
-              groundOffset: 0,
-              leftGap: 0,
-              rightGap: 0,
-              zoom: 100,
-              word: "",
-            },
-          ],
-        }));
+        appendSlides([{ src: data.url }]);
       }
     } catch (err: any) {
       setError(err?.message || "Upload failed");
@@ -255,21 +268,32 @@ export default function HeroCoverflowFields({
             <span>Slider Images ({content.slides.length})</span>
           </h3>
 
-          <label className="inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-gray-900 hover:bg-black text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors shrink-0">
-            {uploading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Upload className="w-4 h-4" />
-            )}
-            <span>{uploading ? "Uploading…" : "Upload PNG"}</span>
-            <input
-              type="file"
-              accept="image/png,image/webp,image/jpeg"
-              multiple
-              onChange={handleUpload}
-              className="hidden"
-            />
-          </label>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-semibold rounded-lg transition-colors"
+            >
+              <Library className="w-4 h-4" />
+              <span>Add PNGs from library</span>
+            </button>
+
+            <label className="inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-gray-900 hover:bg-black text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors">
+              {uploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4" />
+              )}
+              <span>{uploading ? "Uploading…" : "Upload PNG"}</span>
+              <input
+                type="file"
+                accept="image/png,image/webp,image/jpeg"
+                multiple
+                onChange={handleUpload}
+                className="hidden"
+              />
+            </label>
+          </div>
         </div>
 
         <p className="text-[11px] text-gray-400 -mt-2">
@@ -413,6 +437,28 @@ export default function HeroCoverflowFields({
           ))}
         </div>
       </div>
+
+      {/* Pick existing artwork instead of re-uploading it. Images only —
+          the coverflow renders a still, so a video here would be a dead
+          slide. Multiple selection because building a slider is normally
+          "these four", not one at a time. */}
+      <MediaPickerModal
+        isOpen={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(selected: MediaItem[]) => {
+          appendSlides(
+            selected
+              .filter((m) => m.url?.trim())
+              .map((m) => ({ src: m.url, alt: m.altText ?? "" })),
+          );
+          setPickerOpen(false);
+        }}
+        allowedTypes={["IMAGE"]}
+        multiple
+        title="Add slider images from the Media Library"
+        confirmText="Add to slider"
+        initialSelectedUrls={content.slides.map((s) => s.src)}
+      />
     </div>
   );
 }
