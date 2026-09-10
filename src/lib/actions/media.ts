@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { getAdminContext, requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
 import { resolveUploadPath } from "@/lib/uploads";
-import { findMediaUsage, MediaUsage } from "@/lib/media-usage";
+import { findMediaUsage } from "@/lib/media-usage";
 
 export type MediaSort = "newest" | "oldest" | "name_asc" | "size_desc";
 
@@ -104,39 +104,25 @@ export async function getMediaUsageAction(id: string) {
   try {
     await requirePermission("MEDIA_VIEW");
   } catch (error) {
-    return { ...(authErrorResult(error) ?? { success: false, error: "Not allowed." }), products: [] };
+    return { ...(authErrorResult(error) ?? { success: false, error: "Not allowed." }), usage: [] };
   }
 
   try {
     const media = await db.media.findUnique({
       where: { id },
-      include: {
-        productMedia: {
-          include: {
-            product: {
-              select: { id: true, name: true, slug: true, sku: true },
-            },
-          },
-        },
-      },
+      select: { url: true },
     });
 
     if (!media) {
-      return { success: false, error: "Media not found", products: [], usage: [] };
+      return { success: false, error: "Media not found", usage: [] };
     }
 
-    const products = media.productMedia.map((pm) => pm.product);
-    // Products are kept for the existing caller; `usage` is the whole
-    // picture — galleries, videos, descriptions, category art and every
-    // setting that names this file.
-    const usage = await findMediaUsage(media.url);
-    return { success: true, products, usage };
+    return { success: true, usage: await findMediaUsage(media.url) };
   } catch (error: any) {
     return {
       success: false,
       error: error.message || "Failed to query usage",
-      products: [],
-      usage: [] as MediaUsage[],
+      usage: [],
     };
   }
 }
@@ -179,15 +165,6 @@ export async function updateMediaMetadataAction(
 }
 
 /**
- * Permanently deletes a media asset.
- *
- * Refuses when the asset is still attached to any product unless `force` is
- * set — the picker's usage warning used to be purely informational, so
- * confirming past it deleted the file out from under live products anyway.
- * Now the caller has to pass `force: true` (after the admin explicitly
- * acknowledges the warning) to go through with it while still in use.
- */
-/**
  * Delete a media file for good.
  *
  * Refuses while anything on the storefront still points at it. There is no
@@ -216,28 +193,16 @@ export async function deleteMediaPermanentlyAction(id: string) {
   try {
     const media = await db.media.findUnique({
       where: { id },
-      include: {
-        productMedia: {
-          select: {
-            productId: true,
-            product: { select: { id: true, name: true, sku: true } },
-          },
-        },
-      },
+      select: { url: true, filename: true, type: true, size: true },
     });
 
     if (!media) {
       return { success: false, error: "Media item not found" };
     }
 
-    // A file that is on the storefront cannot be deleted — not with a
-    // confirmation, not with `force`. Deleting it does not remove it from
-    // the hero or the product that shows it; it just turns that into a
-    // broken image nobody notices until a customer does. Detach it first,
-    // then the file becomes deletable.
-    //
-    // This replaces a check that looked only at product galleries and let
-    // `force` override even that.
+    // Deleting a file that is on the storefront does not remove it from the
+    // hero or the product showing it — it just turns that into a broken
+    // image nobody notices until a customer does. Detach it there first.
     const usage = await findMediaUsage(media.url);
     if (usage.length > 0) {
       const areas = Array.from(new Set(usage.map((u) => u.area)));
@@ -246,7 +211,6 @@ export async function deleteMediaPermanentlyAction(id: string) {
         error: `In use in ${usage.length} place${usage.length === 1 ? "" : "s"} (${areas.join(", ")}). Remove it there first, then delete it here.`,
         inUse: true,
         usage,
-        products: media.productMedia.map((pm) => pm.product),
       };
     }
 
@@ -277,12 +241,9 @@ export async function deleteMediaPermanentlyAction(id: string) {
       entityType: "MEDIA",
       entityId: id,
       description: `Permanently deleted media: ${media.filename}`,
-      metadata: {
-        url: media.url,
-        type: media.type,
-        size: media.size,
-        unlinkedProductsCount: media.productMedia.length,
-      },
+      // No unlinkedProductsCount: deletion is refused while anything still
+      // references the file, so it could only ever log 0.
+      metadata: { url: media.url, type: media.type, size: media.size },
     });
 
     revalidatePath("/adpnl/media");
