@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+import { CATALOG_TAG } from "@/lib/cache-tags";
 import { db } from "@/lib/db";
 
 export type Category = {
@@ -835,3 +837,40 @@ export async function getCategoryTree(): Promise<CategoryNode[]> {
         .sort(byOrder),
     }));
 }
+
+/**
+ * Cached catalogue reads, for the storefront only.
+ *
+ * The database allows 500 connections an hour, and the shop listing was
+ * spending two or three of them per visitor — a few hundred people browsing
+ * could exhaust the budget and take checkout down with it. These copies make
+ * that cost per-window instead of per-visitor.
+ *
+ * Safe to serve slightly stale because the catalogue is identical for every
+ * visitor and checkout re-reads real stock before writing an order, so a
+ * shop window a few minutes behind can never oversell.
+ *
+ * The admin panel deliberately keeps calling the uncached functions above:
+ * an editor has to see what they just saved. For everyone else, each write
+ * path calls updateTag(CATALOG_TAG), so an edit replaces these at once
+ * rather than waiting out the window.
+ */
+const CATALOG_CACHE = { revalidate: 1800, tags: [CATALOG_TAG] };
+
+export const getCachedCategories = unstable_cache(
+  getCategories,
+  ["catalog:categories"],
+  CATALOG_CACHE,
+);
+
+export const getCachedCategoryTree = unstable_cache(
+  getCategoryTree,
+  ["catalog:category-tree"],
+  CATALOG_CACHE,
+);
+
+export const getCachedProductsByCategory = unstable_cache(
+  getProductsByCategory,
+  ["catalog:products-by-category"],
+  CATALOG_CACHE,
+);

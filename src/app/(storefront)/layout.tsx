@@ -4,9 +4,9 @@ import Footer from "@/components/Footer";
 import CartDrawer from "@/components/CartDrawer";
 import IntegrationScripts from "@/components/IntegrationScripts";
 import SitePopup from "@/components/SitePopup";
-import { getCategoryTree } from "@/lib/products";
-import { getEnabledIntegrations } from "@/lib/integrations";
-import { getPopupConfig } from "@/lib/popup";
+import { getCachedCategoryTree } from "@/lib/products";
+import { getCachedEnabledIntegrations } from "@/lib/integrations";
+import { getCachedPopupConfig } from "@/lib/popup";
 
 export default async function StorefrontLayout({
   children,
@@ -20,9 +20,9 @@ export default async function StorefrontLayout({
   // the admin panel out of GTM, Pixel and friends — /admin sits in its own
   // route group and never renders this layout.
   const [tree, integrations, popupConfig] = await Promise.all([
-    getCategoryTree(),
-    getEnabledIntegrations(),
-    getPopupConfig(),
+    getCachedCategoryTree(),
+    getCachedEnabledIntegrations(),
+    getCachedPopupConfig(),
   ]);
 
   return (

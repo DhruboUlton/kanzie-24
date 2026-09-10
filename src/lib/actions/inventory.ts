@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { CATALOG_TAG } from "@/lib/cache-tags";
 import { db } from "@/lib/db";
 import { requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
@@ -22,6 +23,7 @@ function revalidateStock(slug?: string) {
   revalidatePath("/adpnl");
   revalidatePath("/");
   revalidatePath("/products");
+  updateTag(CATALOG_TAG);
   if (slug) revalidatePath(`/products/${slug}`);
 }
 

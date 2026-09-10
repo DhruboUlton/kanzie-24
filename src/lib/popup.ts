@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+import { SITE_CHROME_TAG } from "@/lib/cache-tags";
 import { db } from "@/lib/db";
 
 export const POPUP_KEY = "storefront_popup";
@@ -143,3 +145,17 @@ export async function getPopupConfig(): Promise<PopupConfig> {
       return { ...DEFAULT_POPUP };
     }
 }
+
+/**
+ * Cached for the storefront shell, which renders on every page.
+ *
+ * Site-wide configuration: identical for every visitor, changed only from
+ * the admin panel, and updatePopupConfigAction purges this the moment it is
+ * saved. The admin panel keeps reading getPopupConfig directly so an
+ * editor always sees what they just wrote.
+ */
+export const getCachedPopupConfig = unstable_cache(
+  getPopupConfig,
+  ["site-chrome:popup"],
+  { revalidate: 1800, tags: [SITE_CHROME_TAG] },
+);

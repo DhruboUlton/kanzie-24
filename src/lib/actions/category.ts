@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { CATALOG_TAG } from "@/lib/cache-tags";
 import { db } from "@/lib/db";
 import { requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
@@ -77,6 +78,7 @@ export async function createCategoryAction(
     });
 
     revalidatePath("/products");
+    updateTag(CATALOG_TAG);
     revalidatePath("/adpnl/categories");
     revalidatePath("/", "layout");
     await logActivity({
@@ -141,6 +143,7 @@ export async function updateCategoryAction(
     });
 
     revalidatePath("/products");
+    updateTag(CATALOG_TAG);
     revalidatePath("/adpnl/categories");
     revalidatePath("/", "layout");
     await logActivity({
@@ -185,6 +188,7 @@ export async function deleteCategoryAction(id: string) {
 
     await db.category.delete({ where: { id } });
     revalidatePath("/products");
+    updateTag(CATALOG_TAG);
     revalidatePath("/adpnl/categories");
     revalidatePath("/", "layout");
     await logActivity({
@@ -264,6 +268,7 @@ export async function reorderCategoriesAction(
     });
 
     revalidatePath("/products");
+    updateTag(CATALOG_TAG);
     revalidatePath("/adpnl/categories");
     revalidatePath("/", "layout");
     return { success: true };

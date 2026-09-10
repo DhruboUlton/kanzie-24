@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+import { SITE_CHROME_TAG } from "@/lib/cache-tags";
 import "server-only";
 import { db } from "@/lib/db";
 import { SITE_NAME } from "@/lib/site-config";
@@ -71,3 +73,16 @@ export async function getSiteIdentity(): Promise<SiteIdentity> {
     };
   }
 }
+
+/**
+ * Cached for the root layout, which renders on literally every page.
+ *
+ * A tab title and favicon are the same for every visitor and change only
+ * from Settings, which purges this on save. Uncached, this was one database
+ * connection per request across the whole site.
+ */
+export const getCachedSiteIdentity = unstable_cache(
+  getSiteIdentity,
+  ["site-chrome:identity"],
+  { revalidate: 1800, tags: [SITE_CHROME_TAG] },
+);

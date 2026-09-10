@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { SITE_CHROME_TAG } from "@/lib/cache-tags";
 import { db } from "@/lib/db";
 import { requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
@@ -111,6 +112,7 @@ export async function updatePopupConfigAction(
     // route-group form needs a route after the group, and this is what the
     // rest of the codebase already uses to purge everything.
     revalidatePath("/", "layout");
+    updateTag(SITE_CHROME_TAG);
     revalidatePath("/adpnl/popup");
 
     return { success: true };

@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { SITE_CHROME_TAG } from "@/lib/cache-tags";
 import { db } from "@/lib/db";
 import { authErrorResult, requirePermission } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
@@ -111,6 +112,7 @@ export async function saveIntegrationsAction(input: {
     // The storefront is largely static, so the layout has to be rebuilt for
     // a new tag to appear.
     revalidatePath("/", "layout");
+    updateTag(SITE_CHROME_TAG);
     revalidatePath("/adpnl/integrations");
     revalidatePath("/adpnl/activity-log");
     return { success: true };

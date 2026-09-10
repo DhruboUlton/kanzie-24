@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Poppins, Lato } from "next/font/google";
 import "./globals.css";
 import { SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site-config";
-import { composeTabTitle, getSiteIdentity } from "@/lib/site-identity";
+import { composeTabTitle, getCachedSiteIdentity } from "@/lib/site-identity";
 import JsonLd from "@/components/JsonLd";
 import { jsonLdGraph, organizationSchema, webSiteSchema } from "@/lib/structured-data";
 
@@ -31,7 +31,7 @@ const lato = Lato({
 // this resolves once at build for them — updateSettingsAction revalidates
 // the root layout so a change actually reaches them.
 export async function generateMetadata(): Promise<Metadata> {
-  const identity = await getSiteIdentity();
+  const identity = await getCachedSiteIdentity();
   const title = composeTabTitle(identity);
   return {
     // Lets every page below express canonicals and OG images as paths.

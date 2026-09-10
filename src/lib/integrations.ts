@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+import { SITE_CHROME_TAG } from "@/lib/cache-tags";
 import "server-only";
 import { db } from "@/lib/db";
 import {
@@ -21,3 +23,17 @@ export async function getIntegrations(): Promise<Integration[]> {
 export async function getEnabledIntegrations(): Promise<Integration[]> {
   return (await getIntegrations()).filter((i) => i.enabled && i.code.trim());
 }
+
+/**
+ * Cached for the storefront shell, which renders on every page.
+ *
+ * Site-wide configuration: identical for every visitor, changed only from
+ * the admin panel, and saveIntegrationsAction purges this the moment it is
+ * saved. The admin panel keeps reading getEnabledIntegrations directly so an
+ * editor always sees what they just wrote.
+ */
+export const getCachedEnabledIntegrations = unstable_cache(
+  getEnabledIntegrations,
+  ["site-chrome:integrations"],
+  { revalidate: 1800, tags: [SITE_CHROME_TAG] },
+);

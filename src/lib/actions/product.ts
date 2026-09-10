@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { CATALOG_TAG } from "@/lib/cache-tags";
 import { db } from "@/lib/db";
 import { requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
@@ -111,6 +112,7 @@ export async function createProductAction(data: any) {
 
     revalidatePath("/");
     revalidatePath("/products");
+    updateTag(CATALOG_TAG);
     revalidatePath(`/products/${slug}`);
     revalidatePath("/adpnl/products");
 
@@ -235,6 +237,7 @@ export async function updateProductAction(id: string, data: any) {
 
     revalidatePath("/");
     revalidatePath("/products");
+    updateTag(CATALOG_TAG);
     revalidatePath(`/products/${slug}`);
     revalidatePath("/adpnl/products");
 
@@ -305,6 +308,7 @@ export async function archiveProductAction(id: string) {
 
     revalidatePath("/");
     revalidatePath("/products");
+    updateTag(CATALOG_TAG);
     revalidatePath(`/products/${product.slug}`);
     revalidatePath("/adpnl/products");
 
@@ -338,6 +342,7 @@ export async function restoreProductAction(id: string) {
 
     revalidatePath("/");
     revalidatePath("/products");
+    updateTag(CATALOG_TAG);
     revalidatePath(`/products/${product.slug}`);
     revalidatePath("/adpnl/products");
 
@@ -441,6 +446,7 @@ export async function deleteProductAction(id: string) {
 
     revalidatePath("/");
     revalidatePath("/products");
+    updateTag(CATALOG_TAG);
     revalidatePath(`/products/${product.slug}`);
     revalidatePath("/adpnl/products");
     revalidatePath("/adpnl/orders");
@@ -528,6 +534,7 @@ export async function reorderCategoryProductsAction(
 
     revalidatePath("/adpnl/products");
     revalidatePath("/products");
+    updateTag(CATALOG_TAG);
     revalidatePath("/");
     const slug = found[0]?.category?.slug;
     if (slug) revalidatePath(`/products?category=${slug}`);

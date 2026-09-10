@@ -24,7 +24,7 @@ import type { Metadata } from "next";
 // revalidatePath(`/products/${slug}`), so an edit reaches the page as fast
 // as it did when this was force-dynamic. The window is a backstop for a
 // write path that ever forgets to, not the mechanism.
-export const revalidate = 300;
+export const revalidate = 1800;
 
 // Listing the slugs is what actually turns this route into a cached one —
 // without it the segment stays dynamic and `revalidate` above has nothing to
