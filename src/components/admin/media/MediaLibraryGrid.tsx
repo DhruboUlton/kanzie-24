@@ -20,6 +20,7 @@ import {
   X,
   PanelRight,
 } from "lucide-react";
+import MediaGridSkeleton from "@/components/skeletons/MediaGridSkeleton";
 import { MediaItem } from "./types";
 import { updateMediaMetadataAction, deleteMediaPermanentlyAction, getMediaUsageAction } from "@/lib/actions/media";
 
@@ -509,10 +510,7 @@ export default function MediaLibraryGrid({
         {/* Left Side: Media Grid */}
         <div className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-4 bg-gray-50/50">
           {loading && items.length === 0 ? (
-            <div className="h-64 flex flex-col items-center justify-center text-gray-400 gap-2">
-              <Loader2 className="w-6 h-6 animate-spin text-[#c0282b]" />
-              <span className="text-xs">Loading media library...</span>
-            </div>
+            <MediaGridSkeleton />
           ) : items.length === 0 ? (
             <div className="h-64 flex flex-col items-center justify-center text-center p-6 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl">
               <FileQuestion className="w-10 h-10 stroke-[1.5] mb-2 text-gray-300" />
