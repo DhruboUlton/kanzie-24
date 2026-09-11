@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useTransition } from "react";
-import SkeletonImage from "@/components/SkeletonImage";
-import SkeletonVideo from "@/components/SkeletonVideo";
+import { useState, useEffect, useTransition, useCallback } from "react";
+import Image from "next/image";
 import {
   Search,
   Filter,
@@ -274,22 +273,19 @@ export default function MediaLibraryGrid({
           {/* Preview Box */}
           <div className="relative w-full aspect-video rounded-xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
             {item.type === "VIDEO" ? (
-              <SkeletonVideo
+              <video
                 src={item.url}
                 controls
                 playsInline
                 preload="metadata"
                 className="w-full h-full object-contain bg-black"
-                containerClassName="w-full h-full flex items-center justify-center"
               />
             ) : (
-              <SkeletonImage
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={item.url}
                 alt={item.altText || ""}
-                fill
-                unoptimized={!item.url.startsWith("/")}
-                sizes="(max-width: 1024px) 100vw, 420px"
-                className="object-contain p-1"
+                className="w-full h-full object-contain p-1"
               />
             )}
           </div>
@@ -562,12 +558,11 @@ export default function MediaLibraryGrid({
                       </div>
                     ) : (
                       <div className="w-full h-full relative bg-[repeating-conic-gradient(#f8f9fa_0%_25%,#ffffff_0%_50%)] bg-[length:16px_16px]">
-                        <SkeletonImage
+                        <Image
                           src={item.url}
                           alt={item.altText || item.filename}
                           fill
-                          unoptimized={!item.url.startsWith("/")}
-                          className="object-contain p-1 group-hover:scale-[1.03] transition-all duration-200"
+                          className="object-contain p-1 group-hover:scale-[1.03] transition-transform duration-200"
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                         />
                       </div>

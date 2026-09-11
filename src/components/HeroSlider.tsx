@@ -1,6 +1,6 @@
 "use client";
 
-import SkeletonImage from "@/components/SkeletonImage";
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -309,10 +309,14 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
                       : "transform 500ms ease-out, opacity 500ms ease-out",
                   }}
                 >
-                  <SkeletonImage
+                  <Image
                     src={slide.src}
                     alt={slide.alt}
                     fill
+                    // The box is 320/480px but every slide is transform-
+                    // scaled off that: the centre up to 1.25, the flanks
+                    // down to 0.5. One shared `sizes` therefore fetched a
+                    // soft centre and oversized flanks at the same time.
                     sizes={
                       isCenter
                         ? "(max-width: 640px) 400px, 600px"
@@ -320,7 +324,6 @@ export default function HeroSlider({ content }: { content: HeroContent }) {
                     }
                     priority={isCenter}
                     className="object-contain"
-                    skeletonClassName="rounded-xl"
                   />
                 </div>
               </button>

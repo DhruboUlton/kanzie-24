@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import SkeletonImage from "@/components/SkeletonImage";
 import { Trash2, ImageIcon, Images } from "lucide-react";
 import MediaPickerModal from "./media/MediaPickerModal";
 import { MediaItem } from "./media/types";
@@ -80,13 +79,11 @@ export default function ImageField({
         className={`relative w-full ${previewClassName} rounded-lg border border-gray-200 bg-[repeating-conic-gradient(#f3f4f6_0%_25%,#ffffff_0%_50%)] bg-[length:16px_16px] overflow-hidden`}
       >
         {value.trim().length > 0 ? (
-          <SkeletonImage
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
             src={value}
             alt=""
-            fill
-            unoptimized={!value.startsWith("/")}
-            sizes="(max-width: 1024px) 100vw, 480px"
-            className={`w-full h-full ${
+            className={`absolute inset-0 w-full h-full ${
               previewFit === "cover" ? "object-cover" : "object-contain"
             }`}
           />

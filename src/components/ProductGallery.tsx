@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import SkeletonImage from "@/components/SkeletonImage";
-import SkeletonVideo from "@/components/SkeletonVideo";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight, Play, Video } from "lucide-react";
 import { parseVideoUrl, VideoInfo } from "@/lib/video";
 
@@ -163,7 +162,7 @@ export default function ProductGallery({
               className="relative h-full w-full shrink-0 flex items-center justify-center overflow-hidden"
             >
               {item.type === "image" ? (
-                <SkeletonImage
+                <Image
                   src={item.src}
                   alt={i === 0 ? name : `${name} — view ${i + 1}`}
                   fill
@@ -184,14 +183,13 @@ export default function ProductGallery({
               ) : (
                 <div className="w-full h-full bg-black flex items-center justify-center">
                   {item.info.type === "direct" ? (
-                    <SkeletonVideo
+                    <video
                       ref={videoRef}
                       src={item.info.src}
                       controls
                       playsInline
                       preload="metadata"
                       className="w-full h-full object-contain"
-                      containerClassName="w-full h-full flex items-center justify-center"
                     />
                   ) : (
                     <iframe
@@ -267,7 +265,7 @@ export default function ProductGallery({
               }`}
             >
               {item.type === "image" ? (
-                <SkeletonImage
+                <Image
                   src={item.src}
                   alt={`${name} — thumb ${i + 1}`}
                   fill
@@ -278,12 +276,11 @@ export default function ProductGallery({
                 <div className="relative w-full h-full flex flex-col items-center justify-center bg-black text-white">
                   {images[0] ? (
                     <>
-                      <SkeletonImage
+                      <Image
                         src={images[0]}
                         alt="Product video preview"
                         fill
                         sizes="120px"
-                        dark
                         className="object-cover opacity-50"
                       />
                       <div className="absolute inset-0 flex flex-col items-center justify-center">

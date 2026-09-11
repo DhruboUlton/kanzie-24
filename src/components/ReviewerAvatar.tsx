@@ -1,4 +1,4 @@
-import SkeletonImage from "@/components/SkeletonImage";
+import Image from "next/image";
 
 /**
  * First character of the reviewer's name, for reviews with no photo.
@@ -32,13 +32,11 @@ export default function ReviewerAvatar({
 }) {
   if (avatar) {
     return (
-      <SkeletonImage
+      <Image
         src={avatar}
         alt={`${name} headshot`}
         width={size}
         height={size}
-        skeletonClassName="rounded-full"
-        containerClassName="rounded-full"
         className={`rounded-full object-cover ${className}`}
       />
     );

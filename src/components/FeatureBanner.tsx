@@ -1,5 +1,5 @@
 import Link from "next/link";
-import SkeletonImage from "@/components/SkeletonImage";
+import Image from "next/image";
 import { ArrowRight, ShieldCheck, Zap } from "lucide-react";
 import { BodyBannerContent } from "@/lib/body-banner";
 
@@ -27,18 +27,28 @@ export default function FeatureBanner({
       className="relative overflow-hidden"
       style={{ backgroundColor: content.backgroundColor }}
     >
-      {/* Drawn with SkeletonImage for smooth shimmer loading state */}
-      {useBackgroundImage && (
-        <SkeletonImage
-          src={content.backgroundImage}
-          alt=""
-          fill
-          unoptimized={!content.backgroundImage.startsWith("/")}
-          sizes="100vw"
-          dark
-          className="object-cover"
-        />
-      )}
+      {/* Drawn with next/image rather than a CSS background, which the
+          optimiser never sees: this was shipping the original upload at full
+          size — 282KB of the homepage — where a resized AVIF is a fraction of
+          that. Same-origin only, matching the cut-out below: an external URL
+          the optimiser cannot resolve falls back to a plain img. */}
+      {useBackgroundImage &&
+        (content.backgroundImage.startsWith("/") ? (
+          <Image
+            src={content.backgroundImage}
+            alt=""
+            fill
+            sizes="100vw"
+            className="object-cover"
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={content.backgroundImage}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ))}
       {useBackgroundImage && content.backgroundOverlay > 0 && (
         <div
           className="absolute inset-0"
@@ -127,15 +137,22 @@ export default function FeatureBanner({
                     /api/uploads serves them over HTTP, which the optimizer
                     fetches like any other path. Only an arbitrary external
                     URL, which it cannot resolve, falls back to a plain img. */}
-                <SkeletonImage
-                  src={content.image}
-                  alt=""
-                  fill
-                  unoptimized={!content.image.startsWith("/")}
-                  sizes="(max-width: 640px) 60vw, (max-width: 1024px) 45vw, 480px"
-                  className="object-contain drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)]"
-                  skeletonClassName="rounded-2xl"
-                />
+                {content.image.startsWith("/") ? (
+                  <Image
+                    src={content.image}
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 60vw, (max-width: 1024px) 45vw, 480px"
+                    className="object-contain drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)]"
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={content.image}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-contain drop-shadow-[0_15px_35px_rgba(0,0,0,0.6)]"
+                  />
+                )}
               </div>
             </div>
           )}

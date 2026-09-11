@@ -1,4 +1,4 @@
-import SkeletonImage from "@/components/SkeletonImage";
+import Image from "next/image";
 import Link from "next/link";
 
 // Demo promo tiles reusing the hero cutout renders. Swap `href`, `image`,
@@ -42,12 +42,11 @@ export default function PromoGrid() {
           >
             <div className="absolute inset-0 flex items-center justify-center p-8 transition-transform duration-500 group-hover:scale-105">
               <div className="relative w-full h-full">
-                <SkeletonImage
+                <Image
                   src={tile.image}
                   alt=""
                   fill
                   sizes="(min-width: 640px) 33vw, 100vw"
-                  dark={tile.bg === "bg-black" || tile.bg === "bg-accent"}
                   className="object-contain"
                 />
               </div>

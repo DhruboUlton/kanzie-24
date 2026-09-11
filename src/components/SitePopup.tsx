@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import SkeletonImage from "@/components/SkeletonImage";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { X, Copy, Check } from "lucide-react";
 import { PopupConfig } from "@/lib/popup";
@@ -201,12 +201,10 @@ export default function SitePopup({ config }: { config: PopupConfig }) {
         {/* Brand Logo or Top Graphic */}
         {config.imageUrl ? (
           <div className="mb-4 flex justify-center">
-            <SkeletonImage
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={config.imageUrl}
               alt={config.imageAlt || "Offer"}
-              width={200}
-              height={56}
-              unoptimized={!config.imageUrl.startsWith("/")}
               className="max-h-14 max-w-[200px] object-contain"
             />
           </div>
@@ -215,7 +213,7 @@ export default function SitePopup({ config }: { config: PopupConfig }) {
           // wordmark files are white-on-transparent and would vanish against
           // this white card; kanzie-icon.png is the red mark on its own.
           <div className="mb-4 flex justify-center">
-            <SkeletonImage
+            <Image
               src="/kanzie-icon.png"
               alt="KANZIE"
               width={256}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import SkeletonImage from "@/components/SkeletonImage";
+import Image from "next/image";
 import {
   Images,
   Upload,
@@ -314,7 +314,7 @@ export default function HeroCoverflowFields({
               className="flex flex-col sm:flex-row gap-4 p-3 rounded-lg border border-gray-200 bg-gray-50/60"
             >
               <div className="relative w-full sm:w-28 h-28 rounded-md bg-paper overflow-hidden shrink-0">
-                <SkeletonImage
+                <Image
                   src={slide.src}
                   alt={slide.alt || `Slide ${i + 1}`}
                   fill

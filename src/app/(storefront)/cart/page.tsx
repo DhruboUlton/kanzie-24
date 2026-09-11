@@ -1,6 +1,6 @@
 "use client";
 
-import SkeletonImage from "@/components/SkeletonImage";
+import Image from "next/image";
 import Link from "next/link";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useCartStore, cartTotalCents } from "@/lib/cart-store";
@@ -42,7 +42,7 @@ export default function CartPage() {
               className="flex gap-4 pb-6 border-b border-black/10"
             >
               <div className="w-24 h-24 shrink-0 bg-paper rounded overflow-hidden relative">
-                <SkeletonImage
+                <Image
                   src={item.image}
                   alt={item.name}
                   fill

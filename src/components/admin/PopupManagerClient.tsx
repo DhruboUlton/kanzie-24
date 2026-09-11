@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import SkeletonImage from "@/components/SkeletonImage";
+import Image from "next/image";
 import {
   Save,
   Loader2,
@@ -484,12 +484,10 @@ export default function PopupManagerClient({
               {/* Logo / Image */}
               {content.imageUrl ? (
                 <div className="mb-4 flex justify-center">
-                  <SkeletonImage
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={content.imageUrl}
                     alt={content.imageAlt || "Offer"}
-                    width={180}
-                    height={48}
-                    unoptimized={!content.imageUrl.startsWith("/")}
                     className="max-h-12 max-w-[180px] object-contain"
                   />
                 </div>
@@ -497,7 +495,7 @@ export default function PopupManagerClient({
                 // Mirrors the storefront fallback exactly, so the preview
                 // does not promise something different from the real popup.
                 <div className="mb-4 flex justify-center">
-                  <SkeletonImage
+                  <Image
                     src="/kanzie-icon.png"
                     alt="KANZIE"
                     width={256}

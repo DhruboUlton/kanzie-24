@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import SkeletonImage from "@/components/SkeletonImage";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -453,7 +453,7 @@ export default function InventoryClient({
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="relative w-10 h-10 rounded-md bg-gray-100 overflow-hidden shrink-0">
                             {r.image && (
-                              <SkeletonImage
+                              <Image
                                 src={r.image}
                                 alt=""
                                 fill

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import SkeletonImage from "@/components/SkeletonImage";
+import Image from "next/image";
 import Link from "next/link";
 import { PlayCircle, X, ShoppingCart, Maximize2, Volume2, VolumeX, Loader2 } from "lucide-react";
 import { parseVideoUrl, VideoInfo } from "@/lib/video";
@@ -20,7 +20,6 @@ export default function ProductVideoPopup({ product }: { product: Product }) {
   const [isMuted, setIsMuted] = useState(true);
   const [useFallback, setUseFallback] = useState(false);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-  const [isIframeLoaded, setIsIframeLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const addItem = useCartStore((s) => s.addItem);
@@ -208,32 +207,24 @@ export default function ProductVideoPopup({ product }: { product: Product }) {
                       className="w-full h-full object-cover"
                     />
                     {!isVideoLoaded && (
-                      <div className="absolute inset-0 skeleton-shimmer-dark flex items-center justify-center pointer-events-none z-10">
-                        <Loader2 className="animate-spin text-white/80 w-4 h-4 sm:w-6 sm:h-6 z-20" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
+                        <Loader2 className="animate-spin text-white w-4 h-4 sm:w-6 sm:h-6" />
                       </div>
                     )}
                   </>
                 ) : (
-                  <>
-                    <iframe
-                      src={
-                        videoInfo.type === "youtube"
-                          ? videoInfo.embedUrl
-                          : videoInfo.type === "drive"
-                          ? videoInfo.fallbackEmbedUrl
-                          : videoInfo.src
-                      }
-                      onLoad={() => setIsIframeLoaded(true)}
-                      className="w-full h-full"
-                      allow="autoplay; encrypted-media; picture-in-picture"
-                      allowFullScreen
-                    />
-                    {!isIframeLoaded && (
-                      <div className="absolute inset-0 skeleton-shimmer-dark flex items-center justify-center pointer-events-none z-10">
-                        <Loader2 className="animate-spin text-white/80 w-4 h-4 sm:w-6 sm:h-6 z-20" />
-                      </div>
-                    )}
-                  </>
+                  <iframe
+                    src={
+                      videoInfo.type === "youtube"
+                        ? videoInfo.embedUrl
+                        : videoInfo.type === "drive"
+                        ? videoInfo.fallbackEmbedUrl
+                        : videoInfo.src
+                    }
+                    className="w-full h-full"
+                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                  />
                 )}
               </div>
             </div>
@@ -245,7 +236,7 @@ export default function ProductVideoPopup({ product }: { product: Product }) {
                     href={`/products/${product.slug}`}
                     className="relative shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded overflow-hidden bg-paper"
                   >
-                    <SkeletonImage
+                    <Image
                       src={product.images[0] || PRODUCT_IMAGE_PLACEHOLDER}
                       alt={product.name}
                       fill
