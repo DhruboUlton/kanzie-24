@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import SkeletonImage from "@/components/SkeletonImage";
+import SkeletonVideo from "@/components/SkeletonVideo";
 import {
   Plus,
   Trash2,
@@ -972,7 +973,7 @@ export default function ProductForm({
                         : "border-gray-200 hover:border-gray-300"
                     }`}
                   >
-                    <Image
+                    <SkeletonImage
                       src={img}
                       alt={`Photo ${i + 1}`}
                       fill
@@ -1128,12 +1129,13 @@ export default function ProductForm({
                 {parsedVideo && (
                   <div className="rounded-lg overflow-hidden border border-gray-200 bg-black aspect-video max-h-48 relative flex items-center justify-center">
                     {parsedVideo.type === "direct" ? (
-                      <video
+                      <SkeletonVideo
                         src={parsedVideo.src}
                         controls
                         playsInline
                         preload="metadata"
                         className="w-full h-full object-contain"
+                        containerClassName="w-full h-full flex items-center justify-center"
                       />
                     ) : parsedVideo.type === "youtube" ? (
                       <iframe
@@ -1226,12 +1228,13 @@ export default function ProductForm({
                 {parsedPopupVideo && (
                   <div className="rounded-lg overflow-hidden border border-gray-200 bg-black aspect-video max-h-48 relative flex items-center justify-center">
                     {parsedPopupVideo.type === "direct" ? (
-                      <video
+                      <SkeletonVideo
                         src={parsedPopupVideo.src}
                         controls
                         playsInline
                         preload="metadata"
                         className="w-full h-full object-contain"
+                        containerClassName="w-full h-full flex items-center justify-center"
                       />
                     ) : parsedPopupVideo.type === "youtube" ? (
                       <iframe

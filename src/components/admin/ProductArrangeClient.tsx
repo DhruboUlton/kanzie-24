@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import SkeletonImage from "@/components/SkeletonImage";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -224,7 +224,7 @@ export default function ProductArrangeClient({
                   <GripVertical className="w-4 h-4 text-gray-300 shrink-0 cursor-grab hidden sm:block" />
 
                   <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-gray-100 shrink-0">
-                    <Image src={p.image} alt={p.name} fill sizes="44px" className="object-cover" />
+                    <SkeletonImage src={p.image} alt={p.name} fill sizes="44px" className="object-cover" />
                   </div>
 
                   <div className="min-w-0 flex-1">

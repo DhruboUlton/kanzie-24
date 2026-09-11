@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import SkeletonImage from "@/components/SkeletonImage";
 import {
   Images,
   Upload,
@@ -194,14 +195,12 @@ export default function HeroBannerSlidesFields({
                 <div className="flex items-start gap-3 p-3">
                   <div className="relative w-32 sm:w-44 h-20 rounded-md bg-[repeating-conic-gradient(#f3f4f6_0%_25%,#ffffff_0%_50%)] bg-[length:12px_12px] overflow-hidden shrink-0">
                     {slide.src.trim() ? (
-                      // Plain <img>: the source may be an upload served from
-                      // outside the app root, or an arbitrary pasted URL —
-                      // neither resolves through the image optimizer.
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <SkeletonImage
                         src={slide.src}
                         alt=""
-                        className="absolute inset-0 w-full h-full object-cover"
+                        fill
+                        unoptimized={!slide.src.startsWith("/")}
+                        className="object-cover"
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center text-[10px] text-gray-400 px-2 text-center">

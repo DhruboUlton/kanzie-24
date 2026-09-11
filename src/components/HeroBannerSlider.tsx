@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import SkeletonImage from "@/components/SkeletonImage";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -129,12 +129,13 @@ export default function HeroBannerSlider({
                 transition: "opacity 600ms ease-out",
               }}
             >
-              <Image
+              <SkeletonImage
                 src={slide.src}
                 alt={slide.alt}
                 fill
                 sizes="100vw"
                 priority={i === 0}
+                dark
                 className="object-cover"
               />
 

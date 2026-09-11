@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import SkeletonImage from "@/components/SkeletonImage";
 import {
   Plus,
   Search,
@@ -228,7 +228,7 @@ export default async function AdminProductsPage(props: {
                   <div key={product.id || product.slug} className="p-4 space-y-3 hover:bg-gray-50/50 transition-colors">
                     <div className="flex items-start gap-3">
                       <div className="relative w-14 h-14 rounded-lg bg-gray-100 overflow-hidden border border-gray-200 shrink-0">
-                        <Image
+                        <SkeletonImage
                           src={primaryImg}
                           alt={product.name}
                           fill
@@ -378,7 +378,7 @@ export default async function AdminProductsPage(props: {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3.5">
                             <div className="relative w-12 h-12 rounded-lg bg-gray-100 overflow-hidden border border-gray-200 shrink-0">
-                              <Image
+                              <SkeletonImage
                                 src={primaryImg}
                                 alt={product.name}
                                 fill

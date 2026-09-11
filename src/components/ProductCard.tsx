@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import SkeletonImage from "@/components/SkeletonImage";
 import { PRODUCT_IMAGE_PLACEHOLDER, Product } from "@/lib/products";
 import { formatPrice } from "@/lib/format";
 import { resolveAvailability, resolvePricing } from "@/lib/product-pricing";
@@ -37,7 +37,7 @@ export default function ProductCard({
             </>
           )}
 
-          <Image
+          <SkeletonImage
             src={product.images[0] || PRODUCT_IMAGE_PLACEHOLDER}
             alt={product.name}
             fill
@@ -46,7 +46,7 @@ export default function ProductCard({
                 ? "(min-width: 640px) 25vw, 50vw"
                 : "(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
             }
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            className="object-cover transition-all duration-500 group-hover:scale-105"
           />
         </div>
         <div className={compact ? "mt-2.5" : "mt-4"}>

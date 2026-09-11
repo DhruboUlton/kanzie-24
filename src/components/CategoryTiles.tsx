@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import SkeletonImage from "@/components/SkeletonImage";
 import { Category, Product } from "@/lib/products";
 
 export default function CategoryTiles({
@@ -30,7 +30,7 @@ export default function CategoryTiles({
               className="group relative shrink-0 w-[70%] sm:w-64 lg:w-72 aspect-[4/5] snap-start rounded-lg overflow-hidden bg-paper"
             >
               {cover && (
-                <Image
+                <SkeletonImage
                   src={cover}
                   // The tile prints the category name right below, so a
                   // matching alt makes a screen reader say it twice. The
@@ -38,7 +38,7 @@ export default function CategoryTiles({
                   alt=""
                   fill
                   sizes="(min-width: 640px) 288px, 70vw"
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  className="object-cover transition-all duration-500 group-hover:scale-105"
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/0 to-black/0" />

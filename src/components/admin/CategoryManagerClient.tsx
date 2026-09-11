@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import SkeletonImage from "@/components/SkeletonImage";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -498,13 +499,14 @@ export default function CategoryManagerClient({
                     {/* Whether a cover is set is the thing you want to see at
                         a glance; an empty frame says "still borrowing a
                         product photo". */}
-                    <span className="shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
+                    <span className="relative shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
                       {cat.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <SkeletonImage
                           src={cat.imageUrl}
                           alt=""
-                          className="w-full h-full object-cover"
+                          fill
+                          unoptimized={!cat.imageUrl.startsWith("/")}
+                          className="object-cover"
                         />
                       ) : (
                         <ImageIcon className="w-3.5 h-3.5 text-gray-300" />

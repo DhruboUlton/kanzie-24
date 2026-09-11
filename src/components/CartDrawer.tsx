@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import SkeletonImage from "@/components/SkeletonImage";
 import Link from "next/link";
 import { X, Minus, Plus, Trash2 } from "lucide-react";
 import { useCartStore, cartTotalCents } from "@/lib/cart-store";
@@ -51,7 +51,7 @@ export default function CartDrawer() {
               {items.map((item) => (
                 <div key={item.productId} className="flex gap-4">
                   <div className="w-20 h-20 shrink-0 bg-paper rounded overflow-hidden relative">
-                    <Image
+                    <SkeletonImage
                       src={item.image}
                       alt={item.name}
                       fill
