@@ -50,7 +50,8 @@ export default function PackingSlip({ order }: { order: any }) {
             <p className="font-bold text-sm text-black">{order.customerName}</p>
             <p className="text-gray-700">{order.customerAddress}</p>
             <p className="text-gray-700">
-              {order.customerCity}, Bangladesh
+              {order.customerCity}
+              {order.customerPostalCode ? ` - ${order.customerPostalCode}` : ""}, Bangladesh
             </p>
             <p className="font-mono mt-1">Phone: {order.customerPhone}</p>
             <p className="text-gray-600">Email: {order.customerEmail}</p>

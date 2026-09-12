@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getProductBySlug } from "@/lib/products";
 import { createPendingOrder } from "@/lib/orders";
+import { shippingFeeCents } from "@/lib/shipping";
 import { CouponError } from "@/lib/coupons-shared";
 import { UnavailableProductError } from "@/lib/orders";
 
@@ -17,11 +18,16 @@ const bodySchema = z.object({
     .min(1),
   customer: z.object({
     name: z.string().min(1).max(100),
-    email: z.string().email().max(200),
+    email: z.string().email().max(200).optional().or(z.literal("")),
     phone: z.string().min(6).max(20),
     address: z.string().min(1).max(200),
     city: z.string().min(1).max(100),
+    postalCode: z.string().max(20).optional(),
   }),
+  shippingMethod: z
+    .enum(["inside_dhaka", "outside_dhaka"])
+    .optional()
+    .default("inside_dhaka"),
   couponCode: z.string().trim().optional(),
 });
 
@@ -66,6 +72,13 @@ export async function POST(req: NextRequest) {
   }
 
   const tran_id = `KZ-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
+  const shippingMethod = parsed.data.shippingMethod;
+  // Derived here from the method the client named, never taken as a price:
+  // the browser chooses which rate applies, the server decides what it costs.
+  const shippingCents = shippingFeeCents(shippingMethod);
+  const customerEmail =
+    parsed.data.customer.email?.trim() ||
+    `${parsed.data.customer.phone.replace(/[^0-9]/g, "") || "guest"}@customer.local`;
 
   // No online payment — the order is recorded as PENDING and an admin
   // calls the customer to confirm it (see /adpnl/orders). tran_id doubles
@@ -75,9 +88,13 @@ export async function POST(req: NextRequest) {
   try {
     const order = await createPendingOrder({
       tranId: tran_id,
-      customer: parsed.data.customer,
+      customer: {
+        ...parsed.data.customer,
+        email: customerEmail,
+      },
       items: parsed.data.items,
       couponCode: parsed.data.couponCode,
+      shippingMethod,
     });
 
     if (!order) {
@@ -93,7 +110,8 @@ export async function POST(req: NextRequest) {
     // should be shown the figure that is in the order.
     return NextResponse.json({
       orderId: order.tranId,
-      subtotalCents: order.totalAmountCents + order.discountAmountCents,
+      subtotalCents: order.totalAmountCents + order.discountAmountCents - shippingCents,
+      shippingAmountCents: shippingCents,
       discountAmountCents: order.discountAmountCents,
       totalAmountCents: order.totalAmountCents,
       couponCode: order.couponCode,

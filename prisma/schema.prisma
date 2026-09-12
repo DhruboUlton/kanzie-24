@@ -180,6 +180,11 @@ model Order {
   customerPhone       String
   customerAddress     String        @db.Text
   customerCity        String
+  customerPostalCode  String?
+  // Delivery charged on this order. Null means the order predates delivery
+  // charging, which is not the same as zero (free delivery), so the admin
+  // breakdown can tell "no line" from "a line that came to nothing".
+  shippingAmountCents Int?
   trackingNumber      String?
   adminNotes          String?       @db.Text
   // Who rang the customer, and when. Set once the order reaches CALLED and

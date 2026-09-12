@@ -35,6 +35,22 @@ export default function OrderDetailClient({
   canFraudCheck?: boolean;
 }) {
   const router = useRouter();
+  // Summed from the lines rather than read back out of the total: the total
+  // now carries a delivery charge, and deriving the subtotal from it printed
+  // a figure the item table above could not account for. Delivery is what is
+  // left once the lines and the discount are taken off, which is also how an
+  // order placed before delivery was charged reports zero.
+  const itemsSubtotalCents: number = (order.items ?? []).reduce(
+    (sum: number, item: any) => sum + (item.totalPriceCents ?? 0),
+    0,
+  );
+  const deliveryCents =
+    typeof order.shippingAmountCents === "number"
+      ? order.shippingAmountCents
+      : Math.max(
+          0,
+          order.totalAmountCents + order.discountAmountCents - itemsSubtotalCents,
+        );
   const [loading, setLoading] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState(order.trackingNumber || "");
   const [note, setNote] = useState("");
@@ -349,30 +365,36 @@ export default function OrderDetailClient({
 
             {/* Total Footer */}
             <div className="p-6 bg-gray-50 border-t border-gray-100 space-y-2">
+              <div className="flex justify-between items-center text-xs text-gray-500">
+                <span>Items Subtotal</span>
+                <span className="font-semibold text-gray-700">
+                  {formatPrice(itemsSubtotalCents)}
+                </span>
+              </div>
               {order.discountAmountCents > 0 && (
-                <>
-                  <div className="flex justify-between items-center text-xs text-gray-500">
-                    <span>Items Subtotal</span>
-                    <span className="font-semibold text-gray-700">
-                      {formatPrice(order.totalAmountCents + order.discountAmountCents)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs text-emerald-600 font-medium">
-                    <span className="flex items-center gap-1.5">
-                      <span className="font-bold">Coupon Applied:</span>
-                      {order.couponCode && (
-                        <span className="font-mono bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[11px] text-emerald-800">
-                          {order.couponCode}
-                        </span>
-                      )}
-                    </span>
-                    <span>-{formatPrice(order.discountAmountCents)}</span>
-                  </div>
-                </>
+                <div className="flex justify-between items-center text-xs text-emerald-600 font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-bold">Coupon Applied:</span>
+                    {order.couponCode && (
+                      <span className="font-mono bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[11px] text-emerald-800">
+                        {order.couponCode}
+                      </span>
+                    )}
+                  </span>
+                  <span>-{formatPrice(order.discountAmountCents)}</span>
+                </div>
+              )}
+              {deliveryCents > 0 && (
+                <div className="flex justify-between items-center text-xs text-gray-500">
+                  <span>Delivery</span>
+                  <span className="font-semibold text-gray-700">
+                    {formatPrice(deliveryCents)}
+                  </span>
+                </div>
               )}
               <div className="flex justify-between items-center pt-2 border-t border-gray-200/60">
                 <span className="text-xs font-bold text-gray-500 uppercase">
-                  Grand Total (Inc. delivery)
+                  Grand Total
                 </span>
                 <span className="text-xl font-extrabold text-gray-900 font-display">
                   {formatPrice(order.totalAmountCents)}
@@ -479,7 +501,8 @@ export default function OrderDetailClient({
                   {order.customerAddress}
                 </p>
                 <p className="font-semibold text-gray-900 mt-0.5">
-                  {order.customerCity}, Bangladesh
+                  {order.customerCity}
+              {order.customerPostalCode ? ` - ${order.customerPostalCode}` : ""}, Bangladesh
                 </p>
               </div>
             </div>

@@ -1,4 +1,10 @@
 import { db } from "@/lib/db";
+import {
+  DEFAULT_SHIPPING_METHOD,
+  shippingFeeCents,
+  shippingLabel,
+  type ShippingMethod,
+} from "@/lib/shipping";
 import { getProductBySlug } from "@/lib/products";
 import { recordStockChange } from "@/lib/inventory";
 import { STOCK_COMMITTED_STATUSES, holdsCouponRedemption } from "@/lib/order-status";
@@ -35,6 +41,7 @@ export type CustomerInput = {
   phone: string;
   address: string;
   city: string;
+  postalCode?: string;
 };
 
 export async function createPendingOrder(params: {
@@ -42,6 +49,7 @@ export async function createPendingOrder(params: {
   customer: CustomerInput;
   items: CreateOrderItemInput[];
   couponCode?: string;
+  shippingMethod?: ShippingMethod;
 }) {
   let subtotalCents = 0;
   const lineItemsData: {
@@ -102,7 +110,22 @@ export async function createPendingOrder(params: {
     appliedCouponCode = validation.coupon.code;
   }
 
-  const finalTotalAmountCents = Math.max(0, subtotalCents - discountAmountCents);
+  // Derived from the method, never accepted as an amount, so no caller can
+  // hand this function a delivery price of its own choosing.
+  const method = params.shippingMethod ?? DEFAULT_SHIPPING_METHOD;
+  const shippingCents = shippingFeeCents(method);
+
+  const finalTotalAmountCents = Math.max(
+    0,
+    subtotalCents - discountAmountCents + shippingCents,
+  );
+  const orderNote = [
+    "Order initiated via checkout (Cash on Delivery)",
+    `Shipping: ${shippingLabel(method)}`,
+    appliedCouponCode ? `Coupon: ${appliedCouponCode}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   try {
     const order = await db.$transaction(async (tx) => {
@@ -120,15 +143,15 @@ export async function createPendingOrder(params: {
           customerPhone: params.customer.phone,
           customerAddress: params.customer.address,
           customerCity: params.customer.city,
+          customerPostalCode: params.customer.postalCode?.trim() || null,
+          shippingAmountCents: shippingCents,
           items: {
             create: lineItemsData,
           },
           events: {
             create: {
               status: "PENDING",
-              note: appliedCouponCode
-                ? `Order initiated via checkout with coupon ${appliedCouponCode}`
-                : "Order initiated via checkout",
+              note: orderNote,
             },
           },
         },
