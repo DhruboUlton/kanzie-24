@@ -104,9 +104,14 @@ function OrderRecap({
                   )}
                 </div>
                 {item.combo && (
-                  <p className="text-[11px] text-black/60 truncate max-w-[200px]">
-                    {item.combo.items.map((s) => s.name).join(" + ")}
-                  </p>
+                  <ul className="mt-0.5 space-y-0.5 text-[11px] text-black/60">
+                    {item.combo.items.map((s, sIdx) => (
+                      <li key={sIdx} className="flex gap-1.5">
+                        <span aria-hidden="true">&bull;</span>
+                        <span className="line-clamp-2">{s.name}</span>
+                      </li>
+                    ))}
+                  </ul>
                 )}
                 <p className="text-xs text-black/55">Qty: {item.qty}</p>
               </div>
@@ -644,9 +649,14 @@ export default function CheckoutPage() {
                     <div>
                       <p className="font-medium text-xs text-ink line-clamp-1">{item.name}</p>
                       {item.combo && (
-                        <p className="text-[10px] text-black/60 truncate max-w-[180px]">
-                          {item.combo.items.map((s) => s.name).join(" + ")}
-                        </p>
+                        <ul className="mt-0.5 space-y-0.5 text-[10px] text-black/60">
+                          {item.combo.items.map((s, sIdx) => (
+                            <li key={sIdx} className="flex gap-1.5">
+                              <span aria-hidden="true">&bull;</span>
+                              <span className="line-clamp-2">{s.name}</span>
+                            </li>
+                          ))}
+                        </ul>
                       )}
                     </div>
                   </div>
@@ -1170,9 +1180,14 @@ export default function CheckoutPage() {
                         {item.name}
                       </p>
                       {item.combo && (
-                        <p className="text-[10px] text-black/60 truncate max-w-[220px]">
-                          {item.combo.items.map((s) => s.name).join(" + ")}
-                        </p>
+                        <ul className="mt-0.5 space-y-0.5 text-[10px] text-black/60">
+                          {item.combo.items.map((s, sIdx) => (
+                            <li key={sIdx} className="flex gap-1.5">
+                              <span aria-hidden="true">&bull;</span>
+                              <span className="line-clamp-2">{s.name}</span>
+                            </li>
+                          ))}
+                        </ul>
                       )}
                     </div>
                   </div>

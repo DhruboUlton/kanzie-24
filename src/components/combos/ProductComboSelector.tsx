@@ -3,17 +3,7 @@
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import {
-  Plus,
-  Flame,
-  Truck,
-  Package,
-  ShieldCheck,
-  RotateCcw,
-  Sparkles,
-  ShoppingBag,
-  Check,
-} from "lucide-react";
+import { Plus } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { useCartStore, setBuyNowItem } from "@/lib/cart-store";
 import { Product } from "@/lib/products";
@@ -423,15 +413,25 @@ export default function ProductComboSelector({
                           </div>
                         </div>
                       ) : (
-                        // Empty Slot
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center shrink-0">
+                        // Empty slot. The plus is a real button rather than an
+                        // ornament beside one: it is the thing a customer aims
+                        // at, and it used to swallow the click silently.
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openPickerForSlot(tier.id, slotIdx);
+                          }}
+                          aria-label={`Choose item #${slotIdx + 1}`}
+                          className="group flex items-center gap-3 text-left cursor-pointer"
+                        >
+                          <span className="w-8 h-8 rounded-full bg-black group-hover:bg-neutral-800 text-white flex items-center justify-center shrink-0 transition-colors">
                             <Plus size={16} strokeWidth={2.5} />
-                          </div>
-                          <span className="text-xs font-semibold text-black/60">
+                          </span>
+                          <span className="text-xs font-semibold text-black/60 group-hover:text-black transition-colors">
                             Item #{slotIdx + 1}
                           </span>
-                        </div>
+                        </button>
                       )}
 
                       {/* Action Button for slot */}
@@ -470,39 +470,15 @@ export default function ProductComboSelector({
           {availability.purchasable ? "ADD TO CART" : availability.label.toUpperCase()}
         </button>
 
-        {/* CHECK STOCK IN OUTLET / BUY NOW */}
+        {/* BUY NOW */}
         <button
           type="button"
           disabled={!availability.purchasable}
           onClick={handleBuyNow}
           className="w-full py-3.5 bg-[#F06C4E] hover:bg-[#E25939] active:scale-[0.99] text-white font-extrabold text-sm tracking-widest rounded-lg transition-all uppercase shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          CHECK STOCK IN OUTLET
+          {availability.purchasable ? "BUY NOW" : availability.label.toUpperCase()}
         </button>
-      </div>
-
-      {/* Trust Badges matching screenshot */}
-      <div className="pt-4 grid grid-cols-3 gap-2 text-center border-t border-black/10">
-        <div className="flex flex-col items-center gap-1.5 p-2">
-          <Truck className="w-5 h-5 text-black/70" />
-          <span className="text-[11px] font-semibold text-black/80 leading-tight">
-            Cash on<br />Delivery
-          </span>
-        </div>
-
-        <div className="flex flex-col items-center gap-1.5 p-2">
-          <Package className="w-5 h-5 text-black/70" />
-          <span className="text-[11px] font-semibold text-black/80 leading-tight">
-            Premium<br />Packaging
-          </span>
-        </div>
-
-        <div className="flex flex-col items-center gap-1.5 p-2">
-          <ShieldCheck className="w-5 h-5 text-black/70" />
-          <span className="text-[11px] font-semibold text-black/80 leading-tight">
-            6 Months<br />Warranty
-          </span>
-        </div>
       </div>
 
       {/* Product Selection Modal */}

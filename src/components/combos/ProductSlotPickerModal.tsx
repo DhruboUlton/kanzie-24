@@ -90,17 +90,23 @@ export default function ProductSlotPickerModal({
             filtered.map((p) => {
               const isAlreadySelected =
                 !allowSameProduct && currentlySelectedIds.includes(p.id);
+              // A sold-out product used to be pickable here and only failed at
+              // checkout, on a bundle the customer had already finished
+              // building. The server still rejects it; this stops it being
+              // offered in the first place.
+              const isOutOfStock = !p.inStock;
+              const isDisabled = isOutOfStock || isAlreadySelected;
 
               return (
                 <div
                   key={p.id}
                   className={`pt-2 first:pt-0 flex items-center justify-between gap-3 p-2 rounded-xl transition-all ${
-                    isAlreadySelected
-                      ? "opacity-40 cursor-not-allowed"
+                    isDisabled
+                      ? "opacity-50 cursor-not-allowed"
                       : "hover:bg-paper/80 cursor-pointer"
                   }`}
                   onClick={() => {
-                    if (!isAlreadySelected) {
+                    if (!isDisabled) {
                       onSelect(p);
                       onClose();
                     }
@@ -117,9 +123,16 @@ export default function ProductSlotPickerModal({
                       />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="text-sm font-semibold text-black line-clamp-1 leading-snug">
-                        {p.name}
-                      </h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-semibold text-black line-clamp-1 leading-snug">
+                          {p.name}
+                        </h4>
+                        {isOutOfStock && (
+                          <span className="shrink-0 px-1.5 py-0.5 bg-black/70 text-white text-[10px] font-bold uppercase tracking-wide rounded">
+                            Out of stock
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 mt-0.5 text-xs text-black/60">
                         <span className="font-mono font-medium text-black">
                           {formatPrice(p.effectivePriceCents)}
@@ -127,20 +140,26 @@ export default function ProductSlotPickerModal({
                         <span>&middot;</span>
                         <span>SKU: {p.sku}</span>
                       </div>
-                      {isAlreadySelected && (
-                        <p className="text-[11px] text-amber-600 font-medium">
-                          Already selected in another slot
+                      {isOutOfStock ? (
+                        <p className="text-[11px] text-black/50 font-medium">
+                          Currently unavailable
                         </p>
+                      ) : (
+                        isAlreadySelected && (
+                          <p className="text-[11px] text-amber-600 font-medium">
+                            Already selected in another slot
+                          </p>
+                        )
                       )}
                     </div>
                   </div>
 
                   <button
                     type="button"
-                    disabled={isAlreadySelected}
+                    disabled={isDisabled}
                     className="px-3.5 py-1.5 bg-black hover:bg-neutral-800 disabled:bg-neutral-200 text-white disabled:text-neutral-500 text-xs font-bold rounded-full shrink-0 transition-colors"
                   >
-                    Select
+                    {isOutOfStock ? "Sold out" : "Select"}
                   </button>
                 </div>
               );
