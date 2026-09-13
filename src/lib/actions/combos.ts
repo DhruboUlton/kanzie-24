@@ -46,6 +46,23 @@ const comboInputSchema = z.object({
 
 export type ComboFormValues = z.infer<typeof comboInputSchema>;
 
+// Every write below has to reach the storefront, not just the admin list.
+// A combo is *displayed* on /products/[slug], which is prerendered from
+// generateStaticParams with `revalidate = 1800`, so without an explicit
+// invalidation a new or edited offer stays invisible for up to half an hour
+// after it is saved.
+//
+// The "(storefront)" route group is load-bearing: revalidatePath matches on
+// the route file structure rather than the public URL, and the bare
+// "/products/[slug]" pattern silently matches nothing — the call succeeds and
+// every product page keeps serving its pre-change copy.
+function revalidateComboSurfaces(id?: string) {
+  revalidatePath("/adpnl/combos");
+  if (id) revalidatePath(`/adpnl/combos/${id}`);
+  revalidatePath("/products");
+  revalidatePath("/(storefront)/products/[slug]", "page");
+}
+
 export async function createComboAction(raw: unknown): Promise<ActionResult<{ id: string }>> {
   try {
     const ctx = await requirePermission("COMBOS_MANAGE");
@@ -89,8 +106,7 @@ export async function createComboAction(raw: unknown): Promise<ActionResult<{ id
       description: `Created combo promotion "${combo.name}" with ${tiers.length} tiers and ${productIds.length} eligible products.`,
     });
 
-    revalidatePath("/adpnl/combos");
-    revalidatePath("/products");
+    revalidateComboSurfaces();
     return { success: true, data: { id: combo.id } };
   } catch (error) {
     const authErr = authErrorResult(error);
@@ -168,9 +184,7 @@ export async function updateComboAction(
       description: `Updated combo promotion "${comboData.name}".`,
     });
 
-    revalidatePath("/adpnl/combos");
-    revalidatePath(`/adpnl/combos/${id}`);
-    revalidatePath("/products");
+    revalidateComboSurfaces(id);
     return { success: true, data: { id } };
   } catch (error) {
     const authErr = authErrorResult(error);
@@ -197,8 +211,7 @@ export async function deleteComboAction(id: string): Promise<ActionResult> {
       description: `Deleted combo promotion "${existing.name}".`,
     });
 
-    revalidatePath("/adpnl/combos");
-    revalidatePath("/products");
+    revalidateComboSurfaces();
     return { success: true };
   } catch (error) {
     const authErr = authErrorResult(error);
@@ -228,9 +241,7 @@ export async function toggleComboActiveAction(
       description: `${isActive ? "Activated" : "Deactivated"} combo promotion "${updated.name}".`,
     });
 
-    revalidatePath("/adpnl/combos");
-    revalidatePath(`/adpnl/combos/${id}`);
-    revalidatePath("/products");
+    revalidateComboSurfaces(id);
     return { success: true };
   } catch (error) {
     const authErr = authErrorResult(error);
