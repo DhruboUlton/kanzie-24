@@ -16,6 +16,7 @@ import {
   Phone,
   PhoneCall,
   PhoneOutgoing,
+  Flame,
 } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import {
@@ -343,6 +344,14 @@ export default function OrderDetailClient({
                         >
                           {item.productName}
                         </Link>
+                      )}
+                      {item.comboName && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold rounded">
+                            <Flame className="w-3 h-3 text-amber-600" />
+                            <span>{item.comboName} ({item.comboDiscountPercent}% OFF)</span>
+                          </span>
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4 text-xs font-mono text-gray-500">

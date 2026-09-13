@@ -60,12 +60,37 @@ export default function CartDrawer() {
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold leading-snug line-clamp-2">
-                      {item.name}
-                    </p>
-                    <p className="text-accent text-sm font-semibold mt-1">
-                      {formatPrice(item.priceCents)}
-                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-sm font-semibold leading-snug line-clamp-2">
+                        {item.name}
+                      </p>
+                      {item.combo && (
+                        <span className="px-1.5 py-0.5 bg-red-600 text-white text-[10px] font-bold rounded">
+                          {item.combo.discountPercent}% OFF
+                        </span>
+                      )}
+                    </div>
+
+                    {item.combo && (
+                      <div className="mt-1 text-xs text-black/60 space-y-0.5">
+                        {item.combo.items.map((sub, sIdx) => (
+                          <div key={sIdx} className="truncate">
+                            &bull; {sub.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-accent text-sm font-semibold font-mono">
+                        {formatPrice(item.priceCents)}
+                      </span>
+                      {item.combo && item.combo.originalTotalCents > item.priceCents && (
+                        <span className="text-xs text-black/40 line-through font-mono">
+                          {formatPrice(item.combo.originalTotalCents)}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3 mt-2">
                       <div className="flex items-center border border-black/15 rounded">
                         <button

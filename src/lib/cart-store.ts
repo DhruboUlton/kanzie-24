@@ -3,6 +3,15 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+export type CartComboBundleItem = {
+  productId: string;
+  slug: string;
+  name: string;
+  image: string;
+  priceCents: number;
+  qty: number;
+};
+
 export type CartItem = {
   productId: string;
   slug: string;
@@ -10,6 +19,15 @@ export type CartItem = {
   priceCents: number;
   image: string;
   qty: number;
+  combo?: {
+    comboId: string;
+    tierId: string;
+    comboName: string;
+    tierLabel: string;
+    discountPercent: number;
+    originalTotalCents: number;
+    items: CartComboBundleItem[];
+  };
 };
 
 type CartState = {

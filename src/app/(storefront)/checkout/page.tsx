@@ -95,7 +95,19 @@ function OrderRecap({
                 )}
               </div>
               <div>
-                <p className="font-medium text-ink line-clamp-1">{item.name}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="font-medium text-ink line-clamp-1">{item.name}</p>
+                  {item.combo && (
+                    <span className="px-1.5 py-0.5 bg-red-600 text-white text-[10px] font-bold rounded">
+                      {item.combo.discountPercent}% OFF
+                    </span>
+                  )}
+                </div>
+                {item.combo && (
+                  <p className="text-[11px] text-black/60 truncate max-w-[200px]">
+                    {item.combo.items.map((s) => s.name).join(" + ")}
+                  </p>
+                )}
                 <p className="text-xs text-black/55">Qty: {item.qty}</p>
               </div>
             </div>
@@ -393,11 +405,29 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
+      const standardItems = items
+        .filter((i) => !i.combo)
+        .map((i) => ({ slug: i.slug, qty: i.qty }));
+
+      const comboBundles = items
+        .filter((i) => Boolean(i.combo))
+        .map((i) => ({
+          comboId: i.combo!.comboId,
+          tierId: i.combo!.tierId,
+          qty: i.qty,
+          items: i.combo!.items.map((sub) => ({
+            productId: sub.productId,
+            slug: sub.slug,
+            qty: sub.qty,
+          })),
+        }));
+
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: items.map((i) => ({ slug: i.slug, qty: i.qty })),
+          items: standardItems,
+          combos: comboBundles,
           customer: {
             name: fullName,
             phone,
@@ -613,6 +643,11 @@ export default function CheckoutPage() {
                     </div>
                     <div>
                       <p className="font-medium text-xs text-ink line-clamp-1">{item.name}</p>
+                      {item.combo && (
+                        <p className="text-[10px] text-black/60 truncate max-w-[180px]">
+                          {item.combo.items.map((s) => s.name).join(" + ")}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <span className="text-xs font-mono font-semibold text-ink">
@@ -1134,6 +1169,11 @@ export default function CheckoutPage() {
                       <p className="font-semibold text-xs text-ink leading-snug line-clamp-2 uppercase">
                         {item.name}
                       </p>
+                      {item.combo && (
+                        <p className="text-[10px] text-black/60 truncate max-w-[220px]">
+                          {item.combo.items.map((s) => s.name).join(" + ")}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <span className="text-sm font-mono font-medium text-ink shrink-0">

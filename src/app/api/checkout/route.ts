@@ -6,30 +6,54 @@ import { createPendingOrder } from "@/lib/orders";
 import { shippingFeeCents } from "@/lib/shipping";
 import { CouponError } from "@/lib/coupons-shared";
 import { UnavailableProductError } from "@/lib/orders";
+import { ComboValidationError } from "@/lib/combos";
 
-const bodySchema = z.object({
-  items: z
-    .array(
-      z.object({
-        slug: z.string(),
-        qty: z.number().int().min(1).max(50),
-      }),
-    )
-    .min(1),
-  customer: z.object({
-    name: z.string().min(1).max(100),
-    email: z.string().email().max(200).optional().or(z.literal("")),
-    phone: z.string().min(6).max(20),
-    address: z.string().min(1).max(200),
-    city: z.string().min(1).max(100),
-    postalCode: z.string().max(20).optional(),
-  }),
-  shippingMethod: z
-    .enum(["inside_dhaka", "outside_dhaka"])
-    .optional()
-    .default("inside_dhaka"),
-  couponCode: z.string().trim().optional(),
-});
+const bodySchema = z
+  .object({
+    items: z
+      .array(
+        z.object({
+          slug: z.string(),
+          qty: z.number().int().min(1).max(50),
+        }),
+      )
+      .default([]),
+    combos: z
+      .array(
+        z.object({
+          comboId: z.string(),
+          tierId: z.string(),
+          qty: z.number().int().min(1).max(20).default(1),
+          items: z
+            .array(
+              z.object({
+                productId: z.string(),
+                slug: z.string().optional(),
+                qty: z.number().int().min(1).max(10).default(1),
+              }),
+            )
+            .min(1),
+        }),
+      )
+      .default([]),
+    customer: z.object({
+      name: z.string().min(1).max(100),
+      email: z.string().email().max(200).optional().or(z.literal("")),
+      phone: z.string().min(6).max(20),
+      address: z.string().min(1).max(200),
+      city: z.string().min(1).max(100),
+      postalCode: z.string().max(20).optional(),
+    }),
+    shippingMethod: z
+      .enum(["inside_dhaka", "outside_dhaka"])
+      .optional()
+      .default("inside_dhaka"),
+    couponCode: z.string().trim().optional(),
+  })
+  .refine((d) => d.items.length > 0 || d.combos.length > 0, {
+    message: "Your cart is empty.",
+    path: ["items"],
+  });
 
 // Prices are always re-looked-up server-side from the product catalog —
 // never trust priceCents sent by the client.
@@ -93,6 +117,7 @@ export async function POST(req: NextRequest) {
         email: customerEmail,
       },
       items: parsed.data.items,
+      combos: parsed.data.combos,
       couponCode: parsed.data.couponCode,
       shippingMethod,
     });
@@ -117,12 +142,11 @@ export async function POST(req: NextRequest) {
       couponCode: order.couponCode,
     });
   } catch (error) {
-    // A coupon problem is worth telling the customer about; anything else is
-    // an internal fault, and echoing its message back would leak the shape of
-    // the database or the stack into a public response.
-    // A coupon or availability problem is the customer's to see and act on;
-    // anything else is an internal fault whose message stays on the server.
-    if (error instanceof CouponError || error instanceof UnavailableProductError) {
+    if (
+      error instanceof CouponError ||
+      error instanceof UnavailableProductError ||
+      error instanceof ComboValidationError
+    ) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     console.error("Checkout failed:", error);

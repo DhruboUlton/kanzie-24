@@ -17,6 +17,7 @@ import {
 } from "@/lib/coupons";
 import { CouponError } from "@/lib/coupons-shared";
 import { resolveAvailability, resolvePricing } from "@/lib/product-pricing";
+import { validateComboForCheckout, ComboValidationError } from "@/lib/combos";
 
 /**
  * A problem with the basket the customer is allowed to read: a product that
@@ -35,6 +36,13 @@ export type CreateOrderItemInput = {
   qty: number;
 };
 
+export type CreateComboOrderInput = {
+  comboId: string;
+  tierId: string;
+  qty: number;
+  items: { productId: string; qty: number }[];
+};
+
 export type CustomerInput = {
   name: string;
   email: string;
@@ -47,7 +55,8 @@ export type CustomerInput = {
 export async function createPendingOrder(params: {
   tranId: string;
   customer: CustomerInput;
-  items: CreateOrderItemInput[];
+  items?: CreateOrderItemInput[];
+  combos?: CreateComboOrderInput[];
   couponCode?: string;
   shippingMethod?: ShippingMethod;
 }) {
@@ -60,9 +69,59 @@ export async function createPendingOrder(params: {
     unitPriceCents: number;
     qty: number;
     totalPriceCents: number;
+    comboId?: string;
+    comboName?: string;
+    comboGroupId?: string;
+    comboTierQuantity?: number;
+    comboDiscountPercent?: number;
+    originalUnitPriceCents?: number;
   }[] = [];
 
-  for (const item of params.items) {
+  const comboNotes: string[] = [];
+
+  // 1. Process Combo Bundles
+  if (params.combos && params.combos.length > 0) {
+    for (let cIdx = 0; cIdx < params.combos.length; cIdx++) {
+      const comboInput = params.combos[cIdx];
+      const comboBundleQty = Math.max(1, comboInput.qty || 1);
+      const validated = await validateComboForCheckout({
+        comboId: comboInput.comboId,
+        tierId: comboInput.tierId,
+        items: comboInput.items,
+        bundleQty: comboBundleQty,
+      });
+
+      comboNotes.push(`Combo: ${validated.combo.name} (${validated.tier.label}) x${comboBundleQty}`);
+
+      for (let q = 0; q < comboBundleQty; q++) {
+        const comboGroupId = `cb_${params.tranId}_${cIdx}_${q}`;
+        for (const itemPrice of validated.pricing.itemPrices) {
+          const product = validated.products.get(itemPrice.productId);
+          if (!product) continue;
+
+          subtotalCents += itemPrice.discountedPriceCents;
+          lineItemsData.push({
+            productId: product.id && product.id.length > 5 ? product.id : undefined,
+            productName: product.name,
+            productSku: product.sku,
+            productSlug: product.slug,
+            unitPriceCents: itemPrice.discountedPriceCents,
+            qty: 1,
+            totalPriceCents: itemPrice.discountedPriceCents,
+            comboId: validated.combo.id,
+            comboName: validated.combo.name,
+            comboGroupId,
+            comboTierQuantity: validated.tier.quantity,
+            comboDiscountPercent: validated.tier.discountPercent,
+            originalUnitPriceCents: itemPrice.originalPriceCents,
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Process Standard Line Items
+  for (const item of params.items || []) {
     const product = await getProductBySlug(item.slug);
     if (!product) {
       throw new Error(`Product not found: ${item.slug}`);
@@ -123,6 +182,7 @@ export async function createPendingOrder(params: {
     "Order initiated via checkout (Cash on Delivery)",
     `Shipping: ${shippingLabel(method)}`,
     appliedCouponCode ? `Coupon: ${appliedCouponCode}` : null,
+    ...comboNotes,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -180,7 +240,11 @@ export async function createPendingOrder(params: {
     // Only a coupon problem is the customer's to see and act on. Matching on
     // the error type rather than on the word "Coupon" appearing in the text
     // keeps an unrelated database message from being shown as one.
-    if (error instanceof CouponError || error instanceof UnavailableProductError) {
+    if (
+      error instanceof CouponError ||
+      error instanceof UnavailableProductError ||
+      error instanceof ComboValidationError
+    ) {
       throw error;
     }
     return null;

@@ -7,6 +7,8 @@ import {
 } from "@/lib/products";
 import { formatPrice } from "@/lib/format";
 import AddToCartButton from "@/components/AddToCartButton";
+import ProductComboSelector from "@/components/combos/ProductComboSelector";
+import { getActiveComboForProduct } from "@/lib/combos";
 import ProductCard from "@/components/ProductCard";
 import ProductGallery from "@/components/ProductGallery";
 import ProductDescription from "@/components/ProductDescription";
@@ -83,9 +85,12 @@ export default async function ProductPage(
   const pricing = resolvePricing(product);
   const availability = resolveAvailability(product);
 
-  const related = (await getProductsByCategory(product.category)).filter(
-    (p) => p.id !== product.id,
-  );
+  const [related, activeCombo] = await Promise.all([
+    getProductsByCategory(product.category).then((list) =>
+      list.filter((p) => p.id !== product.id),
+    ),
+    getActiveComboForProduct(product.id),
+  ]);
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
@@ -163,7 +168,11 @@ export default async function ProductPage(
           </div>
 
           <div className="mt-8">
-            <AddToCartButton product={product} />
+            {activeCombo ? (
+              <ProductComboSelector product={product} combo={activeCombo} />
+            ) : (
+              <AddToCartButton product={product} />
+            )}
           </div>
 
           <table className="mt-10 w-full text-sm">

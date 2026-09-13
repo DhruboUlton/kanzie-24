@@ -66,6 +66,9 @@ export const PERMISSIONS = {
 
   POPUP_VIEW: "See popup settings and content",
   POPUP_MANAGE: "Change popup content and display rules",
+
+  COMBOS_VIEW: "See promotional combos and tiers",
+  COMBOS_MANAGE: "Create, edit and delete promotional combos",
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -115,6 +118,7 @@ export const PERMISSION_GROUPS: { label: string; keys: Permission[] }[] = [
   { label: "Coupons", keys: ["COUPONS_VIEW", "COUPONS_MANAGE"] },
   { label: "Media", keys: ["MEDIA_VIEW", "MEDIA_UPLOAD", "MEDIA_DELETE"] },
   { label: "Pop up", keys: ["POPUP_VIEW", "POPUP_MANAGE"] },
+  { label: "Combos", keys: ["COMBOS_VIEW", "COMBOS_MANAGE"] },
 ];
 
 // The role every system starts with. OWNER is special in code as well as
@@ -185,6 +189,8 @@ export const SYSTEM_ROLES: {
       "MEDIA_UPLOAD",
       "POPUP_VIEW",
       "POPUP_MANAGE",
+      "COMBOS_VIEW",
+      "COMBOS_MANAGE",
     ],
   },
 ];

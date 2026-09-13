@@ -51,15 +51,37 @@ export default function CartPage() {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <Link
-                  href={`/products/${item.slug}`}
-                  className="font-display tracking-wide hover:text-accent"
-                >
-                  {item.name}
-                </Link>
-                <p className="text-accent font-semibold mt-1">
-                  {formatPrice(item.priceCents)}
-                </p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-display tracking-wide text-lg">
+                    {item.name}
+                  </span>
+                  {item.combo && (
+                    <span className="px-2 py-0.5 bg-red-600 text-white text-xs font-bold rounded">
+                      {item.combo.discountPercent}% OFF
+                    </span>
+                  )}
+                </div>
+
+                {item.combo && (
+                  <div className="mt-1.5 text-xs text-black/60 space-y-0.5">
+                    {item.combo.items.map((sub, sIdx) => (
+                      <div key={sIdx}>
+                        &bull; {sub.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-accent font-semibold text-base font-mono">
+                    {formatPrice(item.priceCents)}
+                  </span>
+                  {item.combo && item.combo.originalTotalCents > item.priceCents && (
+                    <span className="text-xs text-black/40 line-through font-mono">
+                      {formatPrice(item.combo.originalTotalCents)}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-4 mt-3">
                   <div className="flex items-center border border-black/15 rounded">
                     <button

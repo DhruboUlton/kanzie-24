@@ -156,6 +156,7 @@ model Product {
   orderItems          OrderItem[]
   stockMovements      StockMovement[]
   productMedia        ProductMedia[]
+  comboProducts       ComboProduct[]
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
@@ -226,10 +227,18 @@ model OrderItem {
   // the freed SKU and would otherwise inherit this history.
   productDeletedAt   DateTime?
   productDeletedBy   String?
+  comboId            String?
+  comboName          String?
+  comboGroupId       String?
+  comboTierQuantity  Int?
+  comboDiscountPercent Int?
+  originalUnitPriceCents Int?
   createdAt       DateTime @default(now())
 
   @@index([orderId])
   @@index([productId])
+  @@index([comboId])
+  @@index([comboGroupId])
 }
 
 model OrderEvent {
@@ -358,3 +367,54 @@ model ProductMedia {
   @@index([productId, sortOrder])
   @@index([mediaId])
 }
+
+model Combo {
+  id               String         @id @default(cuid())
+  name             String
+  headline         String         @default("BUY MORE GET MORE 🔥")
+  subtext          String?
+  allowSameProduct Boolean        @default(true)
+  isActive         Boolean        @default(true)
+  priority         Int            @default(0)
+  startDate        DateTime?
+  endDate          DateTime?
+  tiers            ComboTier[]
+  products         ComboProduct[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([isActive, priority])
+  @@index([createdAt])
+}
+
+model ComboProduct {
+  id        String   @id @default(cuid())
+  comboId   String
+  combo     Combo    @relation(fields: [comboId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([comboId, productId])
+  @@index([comboId])
+  @@index([productId])
+}
+
+model ComboTier {
+  id              String   @id @default(cuid())
+  comboId         String
+  combo           Combo    @relation(fields: [comboId], references: [id], onDelete: Cascade)
+  quantity        Int
+  discountPercent Int
+  label           String
+  badgeText       String
+  subtext         String?
+  isPopular       Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([comboId, quantity])
+  @@index([comboId, quantity])
+}
+

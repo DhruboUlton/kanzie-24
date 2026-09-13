@@ -22,6 +22,9 @@ export default function AdminHeader({
     if (pathname.startsWith("/adpnl/coupons/usage")) return "Coupon Usage History";
     if (pathname.startsWith("/adpnl/coupons/")) return "Coupon Details";
     if (pathname.startsWith("/adpnl/coupons")) return "Coupons & Discounts";
+    if (pathname.startsWith("/adpnl/combos/new")) return "Create Combo Offer";
+    if (pathname.startsWith("/adpnl/combos/")) return "Edit Combo Offer";
+    if (pathname.startsWith("/adpnl/combos")) return "Combo Promotions";
     if (pathname.startsWith("/adpnl/analytics")) return "Analytics";
     if (pathname.startsWith("/adpnl/inventory")) return "Inventory";
     if (pathname.startsWith("/adpnl/staff")) return "Staff";

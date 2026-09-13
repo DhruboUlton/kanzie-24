@@ -44,7 +44,11 @@ export type ActivityAction =
   | "REVIEW_CREATED"
   | "REVIEW_UPDATED"
   | "REVIEW_DELETED"
-  | "POPUP_UPDATED";
+  | "POPUP_UPDATED"
+  | "COMBO_CREATED"
+  | "COMBO_UPDATED"
+  | "COMBO_DELETED"
+  | "COMBO_STATUS_TOGGLED";
 
 export type ActivityEntity =
   | "STAFF"
@@ -59,7 +63,8 @@ export type ActivityEntity =
   | "COUPON"
   | "MEDIA"
   | "REVIEW"
-  | "POPUP";
+  | "POPUP"
+  | "COMBO";
 
 export type ActivityLogRow = {
   id: string;

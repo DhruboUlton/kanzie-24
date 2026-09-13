@@ -21,6 +21,7 @@ import {
   Boxes,
   Plug,
   TicketPercent,
+  Flame,
   MessageSquareQuote,
   AppWindow,
   X,
@@ -43,6 +44,7 @@ type NavItem = {
 const STORE_NAV: NavItem[] = [
   { href: "/adpnl", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/adpnl/products", label: "Products", icon: Package, permission: "PRODUCTS_VIEW" },
+  { href: "/adpnl/combos", label: "Combos", icon: Flame, permission: "COMBOS_VIEW" },
   { href: "/adpnl/media", label: "Media Library", icon: Images, permission: "MEDIA_VIEW" },
   { href: "/adpnl/orders", label: "Orders", icon: ShoppingCart, permission: "ORDERS_VIEW" },
   { href: "/adpnl/coupons", label: "Coupons", icon: TicketPercent, permission: "COUPONS_VIEW" },
