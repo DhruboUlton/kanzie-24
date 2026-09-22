@@ -26,10 +26,22 @@ async function readConfig(): Promise<{ token: string; chatId: string } | null> {
     const stored = byKey.get(TELEGRAM_KEYS.token);
     const chatId = byKey.get(TELEGRAM_KEYS.chatId);
     if (!stored || !chatId) return null;
-    return { token: decrypt(stored), chatId };
+
+    try {
+      return { token: decrypt(stored), chatId };
+    } catch {
+      // A token encrypted under a different key than this server derives.
+      // Said nothing at all once, and the notifications looked simply broken
+      // for an hour: the rows are present, so every "is it configured" check
+      // passes, and only the decrypt fails. Worth a line in the log.
+      console.warn(
+        "Telegram: bot token is present but does not decrypt with this server's key. " +
+          "It was encrypted elsewhere — re-save it, or check ENCRYPTION_KEY.",
+      );
+      return null;
+    }
   } catch {
-    // Unconfigured, or the key changed and the ciphertext no longer opens.
-    // Either way there is nobody to notify; the order still stands.
+    // Database unreachable. There is nobody to notify; the order still stands.
     return null;
   }
 }
