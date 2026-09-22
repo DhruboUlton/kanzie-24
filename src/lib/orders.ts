@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { notifyNewOrder } from "@/lib/telegram";
 import {
   DEFAULT_SHIPPING_METHOD,
   shippingFeeCents,
@@ -233,6 +234,10 @@ export async function createPendingOrder(params: {
 
       return createdOrder;
     });
+
+    // Fire-and-forget: the owner's Telegram ping must never hold up, or fail,
+    // a sale that is already committed. notifyNewOrder swallows its own errors.
+    void notifyNewOrder(order);
 
     return order;
   } catch (error) {
