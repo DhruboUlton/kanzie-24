@@ -117,3 +117,44 @@ export async function sendTelegram(text: string): Promise<boolean> {
 export async function notifyNewOrder(order: NotifiableOrder): Promise<void> {
   await sendTelegram(buildMessage(order));
 }
+
+/**
+ * Whether this server can read the config, without sending anything and
+ * without revealing the token. Distinguishes "no rows" from "rows present
+ * but this server's key cannot open them", which is the failure a silent
+ * fire-and-forget notifier otherwise hides completely.
+ */
+export async function telegramStatus(): Promise<{
+  configured: boolean;
+  tokenRow: boolean;
+  chatIdRow: boolean;
+  decrypts: boolean;
+  chatId: string | null;
+}> {
+  let tokenRow = false;
+  let chatIdRow = false;
+  let decrypts = false;
+  let chatId: string | null = null;
+
+  try {
+    const rows = await db.siteSetting.findMany({
+      where: { key: { in: [TELEGRAM_KEYS.token, TELEGRAM_KEYS.chatId] } },
+    });
+    const byKey = new Map(rows.map((r) => [r.key, r.value]));
+    const stored = byKey.get(TELEGRAM_KEYS.token);
+    chatId = byKey.get(TELEGRAM_KEYS.chatId) ?? null;
+    tokenRow = Boolean(stored);
+    chatIdRow = Boolean(chatId);
+    if (stored) {
+      try {
+        decrypts = decrypt(stored).length > 0;
+      } catch {
+        decrypts = false;
+      }
+    }
+  } catch {
+    // Database unreachable; every flag stays false.
+  }
+
+  return { configured: tokenRow && chatIdRow && decrypts, tokenRow, chatIdRow, decrypts, chatId };
+}
