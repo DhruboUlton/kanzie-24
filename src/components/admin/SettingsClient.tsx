@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Settings, Save, CheckCircle2, AlertCircle, Loader2, Bell, Phone, Mail, AppWindow, ShieldCheck, Clock } from "lucide-react";
+import { Settings, Save, CheckCircle2, AlertCircle, Loader2, Bell, Phone, Mail, AppWindow, ShieldCheck, Clock, Send, MessageCircle, KeyRound } from "lucide-react";
 import { updateSettingsAction } from "@/lib/actions/settings";
+import { updateTelegramAction, sendTelegramTestAction } from "@/lib/actions/telegram";
 import ImageField from "@/components/admin/ImageField";
 import {
   DEFAULT_IDLE_MINUTES,
@@ -13,10 +14,22 @@ import {
   clampIdleMinutes,
 } from "@/lib/session-policy-shared";
 
+type TelegramStatus = {
+  configured: boolean;
+  tokenRow: boolean;
+  chatIdRow: boolean;
+  decrypts: boolean;
+  chatId: string | null;
+};
+
 export default function SettingsClient({
   initialSettings,
+  telegram = null,
+  canManageTelegram = false,
 }: {
   initialSettings: Record<string, string>;
+  telegram?: TelegramStatus | null;
+  canManageTelegram?: boolean;
 }) {
   const router = useRouter();
   const [announcementText, setAnnouncementText] = useState(
@@ -51,6 +64,41 @@ export default function SettingsClient({
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Telegram. The token is write-only: a stored one is never sent to the
+  // browser, so the field stays empty and an empty field means "keep it".
+  const [tgChatId, setTgChatId] = useState(telegram?.chatId || "");
+  const [tgToken, setTgToken] = useState("");
+  const [tgBusy, setTgBusy] = useState<null | "save" | "test">(null);
+  const [tgMessage, setTgMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [tgSaved, setTgSaved] = useState(Boolean(telegram?.configured));
+
+  const handleTelegramSave = async () => {
+    setTgBusy("save");
+    setTgMessage(null);
+    const res = await updateTelegramAction({ chatId: tgChatId, token: tgToken || undefined });
+    setTgBusy(null);
+    if (res.success) {
+      setTgToken("");
+      setTgSaved(true);
+      setTgMessage({ ok: true, text: "Saved." });
+      router.refresh();
+    } else {
+      setTgMessage({ ok: false, text: res.error || "Could not save." });
+    }
+  };
+
+  const handleTelegramTest = async () => {
+    setTgBusy("test");
+    setTgMessage(null);
+    const res = await sendTelegramTestAction();
+    setTgBusy(null);
+    setTgMessage(
+      res.success
+        ? { ok: true, text: "Sent. Check the chat." }
+        : { ok: false, text: res.error || "Could not send." },
+    );
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -306,6 +354,98 @@ export default function SettingsClient({
           </p>
         </div>
       </div>
+
+      {/* Order notifications */}
+      {canManageTelegram && (
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs space-y-4">
+          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+            <Send className="w-4 h-4 text-accent" />
+            <span>Telegram Order Alerts</span>
+          </h3>
+
+          <p className="text-[11px] text-gray-500">
+            A message the moment a customer places an order. Point it at a
+            group and everyone in that group is notified &mdash; add or remove
+            staff in Telegram, nothing to change here.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="tg-chat-id" className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                <MessageCircle className="w-3.5 h-3.5 text-gray-400" />
+                <span>Chat ID</span>
+              </label>
+              <input
+                id="tg-chat-id"
+                type="text"
+                value={tgChatId}
+                onChange={(e) => setTgChatId(e.target.value)}
+                placeholder="5228633561"
+                className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:border-[#c0282b]"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">
+                A number. Groups start with a minus sign.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="tg-token" className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-gray-400" />
+                <span>Bot Token</span>
+              </label>
+              <input
+                id="tg-token"
+                type="password"
+                autoComplete="new-password"
+                value={tgToken}
+                onChange={(e) => setTgToken(e.target.value)}
+                placeholder={tgSaved ? "Saved — leave blank to keep" : "123456:ABC-DEF…"}
+                className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:border-[#c0282b]"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">
+                From @BotFather. Stored encrypted and never shown again.
+              </p>
+            </div>
+          </div>
+
+          {telegram && telegram.tokenRow && !telegram.decrypts && (
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              A token is stored but this server cannot read it &mdash; it was
+              encrypted elsewhere. Paste the token again to fix it.
+            </p>
+          )}
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handleTelegramSave}
+              disabled={tgBusy !== null}
+              className="px-4 py-2 bg-[#c0282b] hover:bg-[#a02225] disabled:opacity-50 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors"
+            >
+              {tgBusy === "save" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              <span>Save</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleTelegramTest}
+              disabled={tgBusy !== null || !tgSaved}
+              title={tgSaved ? undefined : "Save a token and chat ID first"}
+              className="px-4 py-2 border border-gray-300 hover:bg-gray-50 disabled:opacity-50 text-gray-700 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors"
+            >
+              {tgBusy === "test" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              <span>Send test message</span>
+            </button>
+
+            {tgMessage && (
+              <span className={`text-xs font-semibold flex items-center gap-1 ${tgMessage.ok ? "text-green-700" : "text-red-600"}`}>
+                {tgMessage.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />}
+                {tgMessage.text}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </form>
   );
 }

@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { decrypt } from "@/lib/crypto";
+import { decrypt, encrypt } from "@/lib/crypto";
 import { formatPrice } from "@/lib/format";
 import { absoluteUrl } from "@/lib/site-config";
 
@@ -169,4 +169,34 @@ export async function telegramStatus(): Promise<{
   }
 
   return { configured: tokenRow && chatIdRow && decrypts, tokenRow, chatIdRow, decrypts, chatId };
+}
+
+/**
+ * Stores the bot token and chat id. The token is encrypted here, by the
+ * server that will have to read it back — which is the point of entering it
+ * through the admin rather than seeding the row from somewhere else: a value
+ * encrypted against a different key decrypts nowhere and fails silently.
+ *
+ * An omitted token leaves the stored one alone, so the chat id can be changed
+ * without re-pasting the secret.
+ */
+export async function saveTelegramConfig(input: {
+  token?: string;
+  chatId: string;
+}): Promise<void> {
+  const chatId = input.chatId.trim();
+  await db.siteSetting.upsert({
+    where: { key: TELEGRAM_KEYS.chatId },
+    create: { key: TELEGRAM_KEYS.chatId, value: chatId },
+    update: { value: chatId },
+  });
+
+  const token = input.token?.trim();
+  if (!token) return;
+  const value = encrypt(token);
+  await db.siteSetting.upsert({
+    where: { key: TELEGRAM_KEYS.token },
+    create: { key: TELEGRAM_KEYS.token, value },
+    update: { value },
+  });
 }
