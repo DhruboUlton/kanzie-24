@@ -27,14 +27,12 @@ export default function ProductCard({
           )}
 
           {!availability.purchasable && (
-            <>
-              {/* Dimmed rather than hidden: an unavailable product is still
-                  worth browsing, it just cannot be bought. */}
-              <span className="absolute inset-0 z-10 bg-white/60" />
-              <span className="absolute top-3 right-3 z-20 bg-ink text-white text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">
-                {availability.label}
-              </span>
-            </>
+            /* The badge carries the message on its own. A white veil over the
+               photo used to as well, which washed out the product shot — the
+               one thing the card is there to show. */
+            <span className="absolute top-3 right-3 z-20 bg-ink text-white text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">
+              {availability.label}
+            </span>
           )}
 
           <Image

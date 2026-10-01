@@ -66,8 +66,8 @@ export default function ProductForm({
     initialData?.categoryId || categories[0]?.id || ""
   );
 
-  const [priceTaka, setPriceTaka] = useState<number>(
-    initialData?.priceCents ? initialData.priceCents / 100 : 9999
+  const [priceTaka, setPriceTaka] = useState<string>(
+    initialData?.priceCents ? String(initialData.priceCents / 100) : "9999"
   );
   const [compareAtPriceTaka, setCompareAtPriceTaka] = useState<number | string>(
     initialData?.compareAtPriceCents ? initialData.compareAtPriceCents / 100 : ""
@@ -136,8 +136,8 @@ export default function ProductForm({
     String(initialData?.categoryOrder ?? 0)
   );
   const [soldOut, setSoldOut] = useState<boolean>(initialData?.soldOut ?? false);
-  const [stockQty, setStockQty] = useState<number>(
-    initialData?.stockQty ?? 10
+  const [stockQty, setStockQty] = useState<string>(
+    String(initialData?.stockQty ?? 10)
   );
 
   // Everything the admin is about to save, priced by the same function the
@@ -636,7 +636,7 @@ export default function ProductForm({
                   min={1}
                   step="any"
                   value={priceTaka}
-                  onChange={(e) => setPriceTaka(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setPriceTaka(e.target.value)}
                   placeholder="9999"
                   className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:border-[#c0282b]"
                 />
@@ -763,7 +763,7 @@ export default function ProductForm({
                 type="number"
                 min={0}
                 value={stockQty}
-                onChange={(e) => setStockQty(parseInt(e.target.value) || 0)}
+                onChange={(e) => setStockQty(e.target.value)}
                 className="w-full px-3.5 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-[#c0282b]"
               />
             </div>
