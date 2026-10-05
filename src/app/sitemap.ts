@@ -14,27 +14,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getCategories(),
   ]);
 
-  const now = new Date();
+  const dateOf = (p: (typeof products)[number]) => p.updatedAt ?? p.createdAt;
+
+  // Listing pages change when a product does, so they take the newest product
+  // date. Stamping "now" made every crawl look like an edit and teaches Google
+  // to ignore lastmod. changefreq/priority are dropped: Google ignores both.
+  const newest = products.map(dateOf).filter((d): d is Date => !!d).sort((a, b) => +b - +a)[0];
 
   const staticPages: MetadataRoute.Sitemap = [
-    { url: absoluteUrl("/"), lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: absoluteUrl("/products"), lastModified: now, changeFrequency: "daily", priority: 0.9 },
+    { url: absoluteUrl("/"), lastModified: newest },
+    { url: absoluteUrl("/products"), lastModified: newest },
   ];
 
   const categoryPages: MetadataRoute.Sitemap = categories.map((category) => ({
     url: absoluteUrl(`/products?category=${category.slug}`),
-    lastModified: now,
-    changeFrequency: "weekly",
-    priority: 0.8,
+    lastModified: newest,
   }));
 
   const productPages: MetadataRoute.Sitemap = products.map((product) => ({
     url: absoluteUrl(`/products/${product.slug}`),
     // The real edit date, so a crawler that has seen the page before can tell
     // whether the price or copy actually moved.
-    lastModified: product.updatedAt ?? product.createdAt ?? now,
-    changeFrequency: "weekly",
-    priority: 0.7,
+    lastModified: dateOf(product),
   }));
 
   return [...staticPages, ...categoryPages, ...productPages];

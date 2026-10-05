@@ -7,6 +7,10 @@ import { SITE_URL } from "@/lib/site-config";
 // store.
 const DISALLOWED = ["/adpnl", "/api", "/cart", "/checkout", "/track"];
 
+// Product photos are served from /api/uploads, so the /api disallow above would
+// hide them from Google Images and Merchant listings. The longer path wins.
+const ALLOWED = ["/", "/api/uploads/"];
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
@@ -29,11 +33,10 @@ export default function robots(): MetadataRoute.Robots {
           "Bingbot",
           "meta-externalagent",
         ],
-        allow: "/",
+        allow: ALLOWED,
         disallow: DISALLOWED,
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
   };
 }
