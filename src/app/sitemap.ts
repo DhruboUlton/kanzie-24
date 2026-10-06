@@ -24,6 +24,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: absoluteUrl("/"), lastModified: newest },
     { url: absoluteUrl("/products"), lastModified: newest },
+    { url: absoluteUrl("/contact") },
+    { url: absoluteUrl("/about") },
+    { url: absoluteUrl("/terms") },
   ];
 
   const categoryPages: MetadataRoute.Sitemap = categories.map((category) => ({
