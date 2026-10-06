@@ -52,5 +52,10 @@
     "safari >= 15.4",
     "ios_saf >= 15.4",
     "not dead"
-  ]
+  ],
+  "overrides": {
+    "@tailwindcss/typography": {
+      "postcss-selector-parser": "^7.1.6"
+    }
+  }
 }
