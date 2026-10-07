@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   FolderTree,
   Settings,
+  DatabaseZap,
   ExternalLink,
   LogOut,
   ShieldAlert,
@@ -58,6 +59,7 @@ const STORE_NAV: NavItem[] = [
   { href: "/adpnl/fraud-check", label: "Fraud Check", icon: ShieldAlert },
   { href: "/adpnl/integrations", label: "Integrations", icon: Plug, permission: "INTEGRATIONS_VIEW" },
   { href: "/adpnl/settings", label: "Settings", icon: Settings, permission: "SETTINGS_VIEW" },
+  { href: "/adpnl/cache", label: "Cache Status", icon: DatabaseZap, permission: "SETTINGS_VIEW" },
 ];
 
 const STAFF_NAV: NavItem[] = [
