@@ -84,5 +84,5 @@ export async function getSiteIdentity(): Promise<SiteIdentity> {
 export const getCachedSiteIdentity = unstable_cache(
   getSiteIdentity,
   ["site-chrome:identity"],
-  { revalidate: 1800, tags: [SITE_CHROME_TAG] },
+  { revalidate: false, tags: [SITE_CHROME_TAG] },
 );

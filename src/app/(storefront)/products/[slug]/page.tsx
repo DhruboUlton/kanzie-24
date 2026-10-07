@@ -19,14 +19,19 @@ import { breadcrumbSchema, jsonLdGraph, productSchema } from "@/lib/structured-d
 import { SITE_NAME, absoluteUrl } from "@/lib/site-config";
 import type { Metadata } from "next";
 
-// Rendered once and reused, rather than rebuilt from the database on every
-// visit. Everything this page shows — price, stock, the ADD TO CART flag —
-// is already revalidated at its source: adjustStockAction, the product
-// create/update actions and the CSV import all call
-// revalidatePath(`/products/${slug}`), so an edit reaches the page as fast
-// as it did when this was force-dynamic. The window is a backstop for a
-// write path that ever forgets to, not the mechanism.
-export const revalidate = 1800;
+// Rendered once and kept until something changes, never rebuilt on a timer.
+// Every write that touches what this page shows refreshes it at the source:
+// product create/update/archive, stock adjustments, the CSV import, combo
+// saves, and an order being confirmed or cancelled (which moves stock).
+// They refresh every product page, not just the one edited, because each
+// page also lists related products with their prices and stock.
+//
+// A timer used to back this up, and it meant the first visitor after a quiet
+// half hour was served the old copy while a new one was built behind them.
+//
+// One thing no save covers: a combo's start or end date passing. A dated
+// combo appears or expires when it, or a product, is next saved.
+export const revalidate = false;
 
 // Listing the slugs is what actually turns this route into a cached one —
 // without it the segment stays dynamic and `revalidate` above has nothing to

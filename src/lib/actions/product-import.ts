@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
-import { CATALOG_TAG } from "@/lib/cache-tags";
+import { CATALOG_TAG, PRODUCT_PAGES } from "@/lib/cache-tags";
 import { db } from "@/lib/db";
 import { requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
@@ -458,7 +458,6 @@ export async function commitProductCsvAction(
   let created = 0;
   let updated = 0;
   const failed: { sku: string; message: string }[] = [];
-  const touchedSlugs: string[] = [];
 
   // Row at a time: a bad row should not roll back the good ones.
   for (const write of writes) {
@@ -466,7 +465,6 @@ export async function commitProductCsvAction(
       if (write.kind === "create") {
         const product = await db.product.create({ data: write.data });
         created++;
-        touchedSlugs.push(product.slug);
         await logActivity({
           actor: ctx,
           action: "PRODUCT_CREATED",
@@ -478,7 +476,6 @@ export async function commitProductCsvAction(
       } else {
         const product = await db.product.update({ where: { id: write.id }, data: write.data });
         updated++;
-        touchedSlugs.push(product.slug, write.slug);
         await logActivity({
           actor: ctx,
           action: "PRODUCT_UPDATED",
@@ -500,9 +497,7 @@ export async function commitProductCsvAction(
   revalidatePath("/products");
   updateTag(CATALOG_TAG);
   revalidatePath("/adpnl/products");
-  for (const slug of new Set(touchedSlugs)) {
-    revalidatePath(`/products/${slug}`);
-  }
+  revalidatePath(PRODUCT_PAGES, "page");
 
   return { ok: true, created, updated, failed };
 }

@@ -1,5 +1,7 @@
+import { revalidatePath, updateTag } from "next/cache";
 import { db } from "@/lib/db";
 import { notifyNewOrder } from "@/lib/telegram";
+import { CATALOG_TAG, PRODUCT_PAGES } from "@/lib/cache-tags";
 import {
   DEFAULT_SHIPPING_METHOD,
   shippingFeeCents,
@@ -277,6 +279,14 @@ async function applyOrderStock(
       // has nothing to move; the order itself still updates.
     }
   }
+
+  // Stock just moved, so the shop's sold-out badges and ADD TO CART buttons
+  // may be wrong now. Product pages are cached until told otherwise, and
+  // this is the only place an order changes stock.
+  revalidatePath("/");
+  revalidatePath("/products");
+  updateTag(CATALOG_TAG);
+  revalidatePath(PRODUCT_PAGES, "page");
 }
 
 export async function updateOrderStatus(

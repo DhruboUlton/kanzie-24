@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
-import { CATALOG_TAG } from "@/lib/cache-tags";
+import { CATALOG_TAG, PRODUCT_PAGES } from "@/lib/cache-tags";
 import { db } from "@/lib/db";
 import { requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
@@ -17,14 +17,14 @@ type Result = { success: boolean; error?: string };
 
 // Every write revalidates the storefront too — stock drives the ADD TO CART
 // button, so a correction that stops at the admin panel is half-applied.
-function revalidateStock(slug?: string) {
+function revalidateStock() {
   revalidatePath("/adpnl/inventory");
   revalidatePath("/adpnl/products");
   revalidatePath("/adpnl");
   revalidatePath("/");
   revalidatePath("/products");
   updateTag(CATALOG_TAG);
-  if (slug) revalidatePath(`/products/${slug}`);
+  revalidatePath(PRODUCT_PAGES, "page");
 }
 
 export async function adjustStockAction(input: {
@@ -55,7 +55,7 @@ export async function adjustStockAction(input: {
   try {
     const product = await db.product.findUnique({
       where: { id: input.productId },
-      select: { slug: true, stockQty: true },
+      select: { stockQty: true },
     });
     if (!product) return { success: false, error: "Product not found" };
 
@@ -86,7 +86,7 @@ export async function adjustStockAction(input: {
       metadata: { mode: input.mode, value, reason: input.reason, after },
     });
 
-    revalidateStock(product.slug);
+    revalidateStock();
     return { success: true, after };
   } catch (error: any) {
     return { success: false, error: error?.message || "Failed to adjust stock" };

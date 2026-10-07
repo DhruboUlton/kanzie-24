@@ -269,9 +269,11 @@ export async function getCategoryTree(): Promise<CategoryNode[]> {
  * The admin panel deliberately keeps calling the uncached functions above:
  * an editor has to see what they just saved. For everyone else, each write
  * path calls updateTag(CATALOG_TAG), so an edit replaces these at once
- * rather than waiting out the window.
+ * rather than waiting out a window.
  */
-const CATALOG_CACHE = { revalidate: 1800, tags: [CATALOG_TAG] };
+// No timer: product pages are kept until a save purges them, and a timer here
+// would put one back on every page that reads this.
+const CATALOG_CACHE = { revalidate: false as const, tags: [CATALOG_TAG] };
 
 export const getCachedCategories = unstable_cache(
   getCategories,

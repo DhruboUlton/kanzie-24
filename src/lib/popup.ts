@@ -157,5 +157,5 @@ export async function getPopupConfig(): Promise<PopupConfig> {
 export const getCachedPopupConfig = unstable_cache(
   getPopupConfig,
   ["site-chrome:popup"],
-  { revalidate: 1800, tags: [SITE_CHROME_TAG] },
+  { revalidate: false, tags: [SITE_CHROME_TAG] },
 );

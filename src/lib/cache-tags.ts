@@ -11,3 +11,10 @@ export const CATALOG_TAG = "catalog";
 
 /** Nav, tracking snippets and the pop-up — the shell every page renders. */
 export const SITE_CHROME_TAG = "site-chrome";
+
+/**
+ * Every product page, for revalidatePath(PRODUCT_PAGES, "page"). The route
+ * group has to be in it: revalidatePath matches the file structure, and
+ * "/products/[slug]" alone silently matches nothing.
+ */
+export const PRODUCT_PAGES = "/(storefront)/products/[slug]";

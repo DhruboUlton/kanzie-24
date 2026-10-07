@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { authErrorResult, requirePermission } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
+import { PRODUCT_PAGES } from "@/lib/cache-tags";
 
 type ActionResult<T = unknown> = {
   success: boolean;
@@ -60,7 +61,7 @@ function revalidateComboSurfaces(id?: string) {
   revalidatePath("/adpnl/combos");
   if (id) revalidatePath(`/adpnl/combos/${id}`);
   revalidatePath("/products");
-  revalidatePath("/(storefront)/products/[slug]", "page");
+  revalidatePath(PRODUCT_PAGES, "page");
 }
 
 export async function createComboAction(raw: unknown): Promise<ActionResult<{ id: string }>> {

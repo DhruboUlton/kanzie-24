@@ -35,5 +35,5 @@ export async function getEnabledIntegrations(): Promise<Integration[]> {
 export const getCachedEnabledIntegrations = unstable_cache(
   getEnabledIntegrations,
   ["site-chrome:integrations"],
-  { revalidate: 1800, tags: [SITE_CHROME_TAG] },
+  { revalidate: false, tags: [SITE_CHROME_TAG] },
 );

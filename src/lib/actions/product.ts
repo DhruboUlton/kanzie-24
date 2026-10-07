@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath, updateTag } from "next/cache";
-import { CATALOG_TAG } from "@/lib/cache-tags";
+import { CATALOG_TAG, PRODUCT_PAGES } from "@/lib/cache-tags";
 import { db } from "@/lib/db";
 import { requirePermission, authErrorResult } from "@/lib/auth";
 import { logActivity } from "@/lib/activity-log";
@@ -113,7 +113,7 @@ export async function createProductAction(data: any) {
     revalidatePath("/");
     revalidatePath("/products");
     updateTag(CATALOG_TAG);
-    revalidatePath(`/products/${slug}`);
+    revalidatePath(PRODUCT_PAGES, "page");
     revalidatePath("/adpnl/products");
 
     await logActivity({
@@ -238,7 +238,7 @@ export async function updateProductAction(id: string, data: any) {
     revalidatePath("/");
     revalidatePath("/products");
     updateTag(CATALOG_TAG);
-    revalidatePath(`/products/${slug}`);
+    revalidatePath(PRODUCT_PAGES, "page");
     revalidatePath("/adpnl/products");
 
     await logActivity({
@@ -309,7 +309,7 @@ export async function archiveProductAction(id: string) {
     revalidatePath("/");
     revalidatePath("/products");
     updateTag(CATALOG_TAG);
-    revalidatePath(`/products/${product.slug}`);
+    revalidatePath(PRODUCT_PAGES, "page");
     revalidatePath("/adpnl/products");
 
     await logActivity({
@@ -343,7 +343,7 @@ export async function restoreProductAction(id: string) {
     revalidatePath("/");
     revalidatePath("/products");
     updateTag(CATALOG_TAG);
-    revalidatePath(`/products/${product.slug}`);
+    revalidatePath(PRODUCT_PAGES, "page");
     revalidatePath("/adpnl/products");
 
     await logActivity({
@@ -447,7 +447,7 @@ export async function deleteProductAction(id: string) {
     revalidatePath("/");
     revalidatePath("/products");
     updateTag(CATALOG_TAG);
-    revalidatePath(`/products/${product.slug}`);
+    revalidatePath(PRODUCT_PAGES, "page");
     revalidatePath("/adpnl/products");
     revalidatePath("/adpnl/orders");
     revalidatePath("/adpnl/inventory");

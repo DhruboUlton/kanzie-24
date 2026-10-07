@@ -21,7 +21,7 @@ const readAnnouncement = unstable_cache(
     };
   },
   ["site-chrome:announcement"],
-  { revalidate: 1800, tags: [SITE_CHROME_TAG] },
+  { revalidate: false, tags: [SITE_CHROME_TAG] },
 );
 
 export default async function AnnouncementBar() {
