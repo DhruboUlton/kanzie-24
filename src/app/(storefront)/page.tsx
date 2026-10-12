@@ -3,7 +3,11 @@ import Hero from "@/components/Hero";
 import { getHeroContent } from "@/lib/hero";
 import { getBodyBannerContent } from "@/lib/body-banner";
 import { getBrandStrip } from "@/lib/brand-strip";
+import { getVideoBanner } from "@/lib/video-banner";
+import { getReels } from "@/lib/reels";
 import FeatureBanner from "@/components/FeatureBanner";
+import VideoBanner from "@/components/VideoBanner";
+import Reels from "@/components/Reels";
 import ProductCard from "@/components/ProductCard";
 import CategoryTiles from "@/components/CategoryTiles";
 import BrandLogoStrip from "@/components/BrandLogoStrip";
@@ -26,6 +30,8 @@ export default async function Home() {
     heroContent,
     bodyBanner,
     brandStrip,
+    videoBanner,
+    reels,
     testimonials,
   ] = await Promise.all([
     getFeaturedProducts(),
@@ -35,6 +41,8 @@ export default async function Home() {
     getHeroContent(),
     getBodyBannerContent(),
     getBrandStrip(),
+    getVideoBanner(),
+    getReels(),
     getTestimonials(true),
   ]);
 
@@ -80,6 +88,8 @@ export default async function Home() {
           were chosen to get a product rail below. */}
       <CategoryTiles categories={categories} products={allProducts} />
 
+      <VideoBanner content={videoBanner} />
+
       {railCategories.map((category) => {
         const categoryProducts = allProducts
           .filter((p) => p.category === category.slug)
@@ -113,6 +123,8 @@ export default async function Home() {
           </section>
         );
       })}
+
+      {reels.reels.length > 0 && <Reels content={reels} />}
 
       <Testimonials items={testimonials} />
       <ArticleTeasers />
