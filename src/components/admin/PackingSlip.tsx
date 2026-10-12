@@ -3,6 +3,9 @@
 import { Printer } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 
+const SHOP_PHONE = "+8801876150005";
+const SHOP_EMAIL = "info@kanzie.com";
+
 export default function PackingSlip({ order }: { order: any }) {
   const handlePrint = () => {
     window.print();
@@ -22,11 +25,29 @@ export default function PackingSlip({ order }: { order: any }) {
       {/* Hidden container that only shows on print */}
       <div className="hidden print:block fixed inset-0 bg-white p-8 z-50 text-black">
         <div className="border-b-2 border-black pb-4 mb-6 flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-black tracking-wider">KANZIE</h1>
-            <p className="text-xs uppercase tracking-widest text-gray-600">
-              RC Construction Toys &middot; Packing Slip
-            </p>
+          <div className="flex items-start gap-3">
+            {/* The red mark from kanzie-icon.png, cropped to just the mark:
+                the file carries a wide white margin that would otherwise push
+                the name away from it. A plain img, not next/image, because
+                this block is display:none until printing and a lazy image
+                inside it would print blank. */}
+            <div className="relative shrink-0 overflow-hidden" style={{ width: 32, height: 48 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/kanzie-icon.png"
+                alt=""
+                className="absolute max-w-none"
+                style={{ width: 108, left: -33.5, top: -23.5 }}
+              />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black tracking-wider leading-none">KANZIE</h1>
+              <p className="mt-1.5 text-xs uppercase tracking-widest text-gray-600">
+                RC Construction Toys &middot; Packing Slip
+              </p>
+              <p className="mt-2 text-xs text-gray-700">Phone: {SHOP_PHONE}</p>
+              <p className="text-xs text-gray-700">Email: {SHOP_EMAIL}</p>
+            </div>
           </div>
           <div className="text-right text-xs">
             <p className="font-bold text-sm">ORDER #{order.tranId}</p>
@@ -106,7 +127,7 @@ export default function PackingSlip({ order }: { order: any }) {
         <div className="flex justify-between items-start pt-4 border-t border-black">
           <div className="text-xs text-gray-500 max-w-sm">
             <p className="font-bold text-gray-800">Thank you for choosing KANZIE!</p>
-            <p>For questions or support, contact support@kanzie.com</p>
+            <p>For questions or support, contact {SHOP_EMAIL}</p>
           </div>
           <div className="text-right text-sm">
             <span className="font-bold text-gray-600 mr-4">Grand Total:</span>
