@@ -2,14 +2,12 @@ import "server-only";
 import { resolveCourierCredentials, CourierCredentials } from "@/lib/courier-credentials";
 
 // Looks up a Bangladeshi phone number's delivery history across Pathao,
-// RedX, and Steadfast — the three couriers customers most often place
-// COD orders through — so the admin can spot a serial return/no-show
-// before shipping. Ported from the merchant-panel flows each courier's
-// own dashboard uses (there is no public "fraud check" API): Pathao is a
-// real login + bearer-token endpoint, RedX is the same shape but against
-// an undocumented internal admin route, and Steadfast has no API at all —
-// it's a plain cookie-session login and an HTML/JSON scrape. All three are
-// therefore best-effort and can break if a courier changes its site.
+// RedX and Steadfast so the admin can spot a serial return/no-show before
+// shipping. Pathao and RedX are ported from the flows each courier's own
+// merchant dashboard uses (a login + bearer token; RedX's route is
+// undocumented), so both are best-effort and can break if a courier changes
+// its site. Steadfast uses its official, documented API with an API key and
+// secret key instead.
 //
 // Credentials are the store's own merchant account with each courier, not
 // per-customer secrets — set via /adpnl/fraud-check (encrypted at rest,
@@ -30,6 +28,8 @@ export type CourierResult =
         total: number;
         deliveredPercentage: number;
         returnPercentage: number;
+        /** Steadfast only: fraud reports other merchants filed on this number. */
+        fraudReports?: number;
       };
     }
   | { status: false; message: string };
@@ -89,8 +89,14 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function buildStats(success: number, total: number): CourierResult {
-  const cancel = Math.max(total - success, 0);
+// cancel defaults to "everything not delivered"; pass it when the courier
+// reports cancellations itself, since its total may include parcels still
+// on the way.
+function buildStats(
+  success: number,
+  total: number,
+  cancel = Math.max(total - success, 0),
+): CourierResult {
   return {
     status: true,
     message: "Successful.",
@@ -246,182 +252,80 @@ async function checkRedx(phone: string, creds: CourierCredentials): Promise<Cour
 }
 
 // ── Steadfast ──────────────────────────────────────────────────────
-// No API at all — this simulates a human login: fetch the login page,
-// pull the CSRF token out of the HTML, POST the form, carry the session
-// cookie, then hit the fraud-check page directly.
+// Official API: https://documenter.getpostman.com/view/26211192/2sAYJ1mhpk
+// One GET with the two keys as headers — no login, no token. Never retried:
+// Steadfast locks the account for 60 minutes after 10 failed attempts in 5,
+// so after a key is rejected the next few minutes of checks answer from
+// memory instead of spending more of those attempts.
 
-const STEADFAST_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36";
+const STEADFAST_API = "https://portal.packzy.com/api/v1";
+const STEADFAST_REJECT_PAUSE_MS = 5 * 60_000;
+let steadfastRejected: { until: number; message: string } | null = null;
 
-type CookieJar = Record<string, string>;
-
-function parseSetCookies(res: Response): CookieJar {
-  const jar: CookieJar = {};
-  const getSetCookie = (res.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie;
-  const raws = typeof getSetCookie === "function"
-    ? getSetCookie.call(res.headers)
-    : res.headers.get("set-cookie")
-      ? [res.headers.get("set-cookie") as string]
-      : [];
-
-  for (const raw of raws) {
-    const pair = raw.split(";")[0];
-    const eq = pair.indexOf("=");
-    if (eq === -1) continue;
-    const name = pair.slice(0, eq).trim();
-    const value = pair.slice(eq + 1).trim();
-    if (name) jar[name] = value;
-  }
-  return jar;
-}
-
-function cookieHeader(jar: CookieJar): string {
-  return Object.entries(jar)
-    .map(([k, v]) => `${k}=${v}`)
-    .join("; ");
-}
-
-/**
- * "HTTP 403 (blocked by Cloudflare)" rather than a bare number. Steadfast
- * sits behind Cloudflare, which challenges datacenter traffic it dislikes —
- * the most likely reason a check that works from a home connection fails
- * from the shop's server — so that case is named outright.
- */
-export function describeSteadfastResponse(res: Response): string {
-  const challenged =
-    res.headers.get("cf-mitigated") === "challenge" ||
-    (res.status === 403 && res.headers.get("server") === "cloudflare");
-  return `HTTP ${res.status}${challenged ? " (blocked by Cloudflare)" : ""}`;
-}
-
-/** The session cookies, or a sentence saying exactly which step failed. */
-async function loginSteadfast(creds: CourierCredentials): Promise<CookieJar | string> {
-  const email = creds.steadfastUser;
-  const password = creds.steadfastPassword;
-  if (!email || !password) return "Steadfast credentials not configured.";
-
-  const loginPage = await fetch("https://steadfast.com.bd/login", {
-    headers: { "User-Agent": STEADFAST_UA },
-    signal: timeoutSignal(),
-  });
-  if (!loginPage.ok) {
-    return `Steadfast refused the login page: ${describeSteadfastResponse(loginPage)}.`;
-  }
-  const html = await loginPage.text();
-  const token = html.match(/<input type="hidden" name="_token" value="(.*?)"/)?.[1];
-  if (!token) return "Steadfast's login page has changed (no form token found).";
-
-  const initialCookies = parseSetCookies(loginPage);
-
-  // Manual redirect so we can read the Set-Cookie header directly off the
-  // login POST's response rather than following to whatever page it
-  // points at — the cookies are what we need, not the destination.
-  const loginRes = await fetch("https://steadfast.com.bd/login", {
-    method: "POST",
-    redirect: "manual",
-    headers: {
-      "User-Agent": STEADFAST_UA,
-      "Content-Type": "application/x-www-form-urlencoded",
-      Cookie: cookieHeader(initialCookies),
-    },
-    body: new URLSearchParams({ _token: token, email, password }).toString(),
-    signal: timeoutSignal(),
-  });
-
-  if (loginRes.status >= 400) {
-    return `Steadfast login failed: ${describeSteadfastResponse(loginRes)}.`;
-  }
-  // A wrong email or password is not an error status: Laravel redirects
-  // straight back to /login. That used to count as success, and the dead
-  // session was then cached for the full token window, failing every check.
-  const location = loginRes.headers.get("location") ?? "";
-  if (/\/login\/?$/.test(new URL(location, "https://steadfast.com.bd").pathname)) {
-    return "Steadfast rejected the email or password. Check them in Courier settings.";
-  }
-
-  return { ...initialCookies, ...parseSetCookies(loginRes) };
-}
-
-async function logoutSteadfast(jar: CookieJar): Promise<void> {
-  try {
-    const res = await fetch("https://steadfast.com.bd/user/frauds/check", {
-      headers: { "User-Agent": STEADFAST_UA, Cookie: cookieHeader(jar) },
-      signal: timeoutSignal(),
-    });
-    if (!res.ok) return;
-    const html = await res.text();
-    const csrfToken = html.match(/<meta name="csrf-token" content="(.*?)"/)?.[1];
-    if (!csrfToken) return;
-    await fetch("https://steadfast.com.bd/logout", {
-      method: "POST",
-      headers: {
-        "User-Agent": STEADFAST_UA,
-        "Content-Type": "application/x-www-form-urlencoded",
-        Cookie: cookieHeader(jar),
-      },
-      body: new URLSearchParams({ _token: csrfToken }).toString(),
-      signal: timeoutSignal(),
-    });
-  } catch {
-    // Best-effort cleanup only — a failed logout doesn't block the check.
+function steadfastError(status: number, body: { attempts_left?: unknown; message?: unknown } | null): string {
+  switch (status) {
+    case 401: {
+      const left =
+        typeof body?.attempts_left === "number" ? ` ${body.attempts_left} attempts left before a 60-minute lockout.` : "";
+      return `Steadfast rejected the API key or secret key.${left} Re-enter both and try again.`;
+    }
+    case 403:
+      return "Steadfast refused access: the account is inactive or its verification (KYC) is incomplete.";
+    case 404:
+      return "Steadfast's fraud check address was not found (404). Their API may have changed.";
+    case 429:
+      return "Steadfast is rate-limiting this account. Try again in a minute.";
+    default:
+      return body?.message ? `Steadfast: ${body.message}` : `Steadfast returned an error (${status}).`;
   }
 }
 
 async function checkSteadfast(phone: string, creds: CourierCredentials): Promise<CourierResult> {
-  if (!creds.steadfastUser || !creds.steadfastPassword) {
+  const apiKey = creds.steadfastApiKey;
+  const secretKey = creds.steadfastSecretKey;
+  if (!apiKey || !secretKey) {
     return { status: false, message: "Steadfast credentials not configured." };
   }
 
-  let jar = cacheGet<CookieJar>("steadfast_cookie");
-  if (!jar) {
-    const login = await loginSteadfast(creds);
-    if (typeof login === "string") return { status: false, message: login };
-    jar = login;
-    cacheSet("steadfast_cookie", jar, TOKEN_CACHE_MINUTES);
+  if (steadfastRejected) {
+    if (Date.now() < steadfastRejected.until) return { status: false, message: steadfastRejected.message };
+    steadfastRejected = null;
   }
 
-  let res: Response | null = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    res = await fetch(`https://steadfast.com.bd/user/frauds/check/${phone}`, {
-      headers: { "User-Agent": STEADFAST_UA, Cookie: cookieHeader(jar) },
-      signal: timeoutSignal(),
-    });
-    if (res.ok) break;
+  const res = await fetch(`${STEADFAST_API}/fraud_check/${phone}`, {
+    headers: { "Api-Key": apiKey, "Secret-Key": secretKey, Accept: "application/json" },
+    signal: timeoutSignal(),
+    cache: "no-store",
+  });
+  const body = await safeJson(res);
+
+  if (!res.ok) {
+    const message = steadfastError(res.status, body);
+    if (res.status === 401) steadfastRejected = { until: Date.now() + STEADFAST_REJECT_PAUSE_MS, message };
+    return { status: false, message };
   }
 
-  if (!res || !res.ok) {
-    tokenCache.delete("steadfast_cookie");
-    const error = await safeJson(res);
-    return {
-      status: false,
-      message: error?.message ?? (res ? `Steadfast answered ${describeSteadfastResponse(res)}.` : "Unknown error occurred."),
-    };
+  // A 200 that isn't the documented shape (an HTML page, a changed API)
+  // must not read as "0 parcels, clean customer".
+  if (typeof body?.total_parcels !== "number") {
+    return { status: false, message: "Steadfast sent an unexpected reply." };
   }
 
-  // An expired or rejected session is redirected to the login page, which
-  // fetch follows and reports as a healthy 200 of HTML.
-  if (new URL(res.url).pathname.replace(/\/$/, "") === "/login") {
-    tokenCache.delete("steadfast_cookie");
-    return { status: false, message: "Steadfast logged the session out. Try the check again." };
+  const stats = buildStats(
+    Number(body.total_delivered) || 0,
+    body.total_parcels,
+    Number(body.total_cancelled) || 0,
+  );
+  if (stats.status && Array.isArray(body.total_fraud_reports)) {
+    stats.data.fraudReports = body.total_fraud_reports.length;
   }
-
-  const object = await safeJson(res);
-  if (!object || Object.keys(object).length === 0) {
-    await logoutSteadfast(jar);
-    tokenCache.delete("steadfast_cookie");
-    return { status: false, message: "Something went wrong. Try again" };
-  }
-
-  const success = Number(object.total_delivered) || 0;
-  const cancel = Number(object.total_cancelled) || 0;
-  return buildStats(success, success + cancel);
+  return stats;
 }
 
 // ── Combined check ─────────────────────────────────────────────────
-// Runs all three couriers in parallel (not sequential) so total latency
-// is bounded by the slowest single call, not the sum of all three, and
-// wraps each in its own try/catch so one timing out or throwing never
-// takes the other two down with it.
+// Runs all three couriers in parallel (not sequential) so total latency is
+// bounded by the slower call, not the sum, and wraps each in its own
+// try/catch so one timing out or throwing never takes the other down.
 
 async function safeCheck(fn: () => Promise<CourierResult>, label: string): Promise<CourierResult> {
   try {

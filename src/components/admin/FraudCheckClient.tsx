@@ -36,6 +36,9 @@ function riskLevel(result: CourierResult): {
   if (!result.status) {
     return { label: "Unavailable", className: "bg-gray-100 text-gray-500", icon: ShieldQuestion };
   }
+  if (result.data.fraudReports) {
+    return { label: "Reported", className: "bg-red-50 text-red-700", icon: ShieldX };
+  }
   if (result.data.total === 0) {
     return { label: "No history", className: "bg-gray-100 text-gray-500", icon: ShieldQuestion };
   }
@@ -90,12 +93,19 @@ function CourierCard({ label, result }: { label: string; result: CourierResult }
       ) : (
         <p className="text-xs text-gray-500">{result.message}</p>
       )}
+
+      {result.status && !!result.data.fraudReports && (
+        <p className="text-xs font-semibold text-red-700">
+          {result.data.fraudReports} fraud report{result.data.fraudReports === 1 ? "" : "s"} from
+          other merchants
+        </p>
+      )}
     </div>
   );
 }
 
 type CredentialField = {
-  key: "pathao" | "redx" | "steadfast";
+  key: "pathao" | "redx";
   label: string;
   idLabel: string;
   idType: "text" | "tel" | "email";
@@ -120,30 +130,24 @@ const CREDENTIAL_FIELDS: CredentialField[] = [
     idPlaceholder: "01XXXXXXXXX",
     idValueKey: "phone",
   },
-  {
-    key: "steadfast",
-    label: "Steadfast",
-    idLabel: "Steadfast Email",
-    idType: "email",
-    idPlaceholder: "you@example.com",
-    idValueKey: "user",
-  },
 ];
 
 function CourierCredentialsPanel({ initialStatus }: { initialStatus: CourierCredentialsStatus }) {
   const router = useRouter();
+  const steadfastConfigured =
+    initialStatus.steadfast.hasApiKey && initialStatus.steadfast.hasSecretKey;
   const allConfigured =
     initialStatus.pathao.hasPassword &&
     initialStatus.redx.hasPassword &&
-    initialStatus.steadfast.hasPassword;
+    steadfastConfigured;
 
   const [open, setOpen] = useState(!allConfigured);
   const [ids, setIds] = useState({
     pathao: initialStatus.pathao.user,
     redx: initialStatus.redx.phone,
-    steadfast: initialStatus.steadfast.user,
   });
-  const [passwords, setPasswords] = useState({ pathao: "", redx: "", steadfast: "" });
+  const [passwords, setPasswords] = useState({ pathao: "", redx: "" });
+  const [steadfastKeys, setSteadfastKeys] = useState({ apiKey: "", secretKey: "" });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -160,13 +164,14 @@ function CourierCredentialsPanel({ initialStatus }: { initialStatus: CourierCred
         pathaoPassword: passwords.pathao || undefined,
         redxPhone: ids.redx,
         redxPassword: passwords.redx || undefined,
-        steadfastUser: ids.steadfast,
-        steadfastPassword: passwords.steadfast || undefined,
+        steadfastApiKey: steadfastKeys.apiKey || undefined,
+        steadfastSecretKey: steadfastKeys.secretKey || undefined,
       });
 
       if (res.success) {
         setSaveSuccess(true);
-        setPasswords({ pathao: "", redx: "", steadfast: "" });
+        setPasswords({ pathao: "", redx: "" });
+        setSteadfastKeys({ apiKey: "", secretKey: "" });
         router.refresh();
         setTimeout(() => setSaveSuccess(false), 4000);
       } else {
@@ -190,7 +195,7 @@ function CourierCredentialsPanel({ initialStatus }: { initialStatus: CourierCred
           <KeyRound className="w-4 h-4 text-accent" />
           <h3 className="text-sm font-bold text-gray-900">Courier Credentials</h3>
           <span className="text-[11px] text-gray-400">
-            {allConfigured ? "All three configured" : "Setup needed"}
+            {allConfigured ? "All configured" : "Setup needed"}
           </span>
         </div>
         {open ? (
@@ -203,9 +208,10 @@ function CourierCredentialsPanel({ initialStatus }: { initialStatus: CourierCred
       {open && (
         <form onSubmit={handleSave} className="px-6 pb-6 space-y-5 border-t border-gray-100 pt-5">
           <p className="text-[11px] text-gray-400 -mt-2">
-            Your store&apos;s own merchant login with each courier — used to look up a customer&apos;s
-            delivery history. Passwords are encrypted before they&apos;re stored and never shown
-            again; leave a password field blank to keep the one already saved.
+            Your store&apos;s own merchant account with each courier — used to look up a customer&apos;s
+            delivery history. Passwords and keys are encrypted before they&apos;re stored and never
+            shown again; leave a field blank to keep the one already saved. Steadfast&apos;s API key
+            and secret key are under API in the Steadfast merchant panel.
           </p>
 
           {saveSuccess && (
@@ -268,6 +274,38 @@ function CourierCredentialsPanel({ initialStatus }: { initialStatus: CourierCred
                 </div>
               );
             })}
+
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-gray-900">Steadfast</p>
+                <span
+                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                    steadfastConfigured ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  {steadfastConfigured ? "Configured" : "Not set"}
+                </span>
+              </div>
+
+              {(
+                [
+                  ["apiKey", "API Key", initialStatus.steadfast.hasApiKey],
+                  ["secretKey", "Secret Key", initialStatus.steadfast.hasSecretKey],
+                ] as const
+              ).map(([key, label, saved]) => (
+                <div key={key}>
+                  <label className="block text-[11px] font-semibold text-gray-700 mb-1">{label}</label>
+                  <input
+                    type="password"
+                    value={steadfastKeys[key]}
+                    onChange={(e) => setSteadfastKeys((v) => ({ ...v, [key]: e.target.value }))}
+                    placeholder={saved ? "•••••••• (saved)" : "Not set"}
+                    autoComplete="off"
+                    className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-mono focus:outline-none focus:border-[#c0282b]"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
 
           <button
@@ -326,7 +364,7 @@ export default function FraudCheckClient({
           Fraud Checking
         </h2>
         <p className="text-xs text-gray-500 mt-0.5">
-          Look up a customer&apos;s delivery history across Pathao, RedX, and Steadfast before
+          Look up a customer&apos;s delivery history across Pathao, RedX and Steadfast before
           confirming a COD order.
         </p>
       </div>
@@ -358,8 +396,8 @@ export default function FraudCheckClient({
           </button>
         </div>
         <p className="text-[11px] text-gray-400 mt-1.5">
-          Bangladeshi mobile number, e.g. 01712345678. Checks run against all three couriers at
-          once.
+          Bangladeshi mobile number, e.g. 01712345678. Checks run against all three couriers
+          at once.
         </p>
       </form>
 

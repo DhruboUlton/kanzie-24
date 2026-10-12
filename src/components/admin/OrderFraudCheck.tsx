@@ -7,9 +7,9 @@ import type { CourierResult, FraudCheckResult } from "@/lib/fraud-check";
 
 // Per-order courier history, fetched on demand.
 //
-// The check is three merchant logins and three lookups against Pathao, RedX
-// and Steadfast, so it is never run automatically — an orders list of fifty
-// rows would be a hundred and fifty courier calls. It runs when someone asks
+// The check is a lookup against each of Pathao, RedX and Steadfast (plus
+// logins for the first two), so it is never run automatically — an orders
+// list of fifty rows would be hundreds of courier calls. It runs when someone asks
 // for this order, and the answer stays until the page reloads.
 
 type Totals = { success: number; total: number; answered: number };
@@ -126,6 +126,7 @@ export default function OrderFraudCheck({
       courierLine("RedX", result.redx),
       courierLine("Steadfast", result.steadfast),
     ].join(" · ");
+    const reports = result.steadfast.status ? result.steadfast.data.fraudReports ?? 0 : 0;
 
     if (unavailable) {
       const why = couriers(result)
@@ -150,8 +151,8 @@ export default function OrderFraudCheck({
       <button
         type="button"
         onClick={run}
-        title={`${detail}\n${t.answered} of 3 couriers replied\nClick to re-check`}
-        className={`inline-flex flex-col items-start gap-0.5 px-2.5 py-1.5 rounded-lg border text-left transition-opacity hover:opacity-80 ${tone(pct)} ${className}`}
+        title={`${detail}\n${t.answered} of 3 couriers replied${reports ? `\n${reports} Steadfast fraud report${reports === 1 ? "" : "s"}` : ""}\nClick to re-check`}
+        className={`inline-flex flex-col items-start gap-0.5 px-2.5 py-1.5 rounded-lg border text-left transition-opacity hover:opacity-80 ${reports ? tone(0) : tone(pct)} ${className}`}
       >
         <span className="text-xs font-bold whitespace-nowrap">
           {pct === null ? "No history" : `${pct}% delivered`}
@@ -159,6 +160,7 @@ export default function OrderFraudCheck({
         <span className="text-[10px] font-medium opacity-80 whitespace-nowrap">
           {t.success}/{t.total} parcels
           {t.answered < 3 ? ` · ${t.answered}/3 couriers` : ""}
+          {reports ? ` · ${reports} reported` : ""}
         </span>
       </button>
     );

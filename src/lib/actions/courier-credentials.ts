@@ -47,7 +47,7 @@ export async function updateCourierCredentialsAction(
         couriers: [
           input.pathaoUser !== undefined || input.pathaoPassword ? "pathao" : null,
           input.redxPhone !== undefined || input.redxPassword ? "redx" : null,
-          input.steadfastUser !== undefined || input.steadfastPassword ? "steadfast" : null,
+          input.steadfastApiKey || input.steadfastSecretKey ? "steadfast" : null,
         ].filter(Boolean),
       },
     });

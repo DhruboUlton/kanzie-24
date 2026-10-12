@@ -7,7 +7,6 @@ import Link from "next/link";
 import NoAccess from "@/components/admin/NoAccess";
 import { requirePageAdmin } from "@/lib/admin-guard";
 import { isOwner } from "@/lib/permissions";
-import { describeSteadfastResponse } from "@/lib/fraud-check";
 
 // One-off diagnostic: can this server compress uploaded videos itself?
 // Answers the three things only the server can — is ffmpeg here, may the app
@@ -73,23 +72,6 @@ export default async function ServerCheckPage(props: PageProps<"/adpnl/server-ch
   const x264 = ffmpeg.ok ? await tryRun("ffmpeg", ["-hide_banner", "-encoders"]) : null;
   const score = cpuScore();
 
-  // The fraud check logs in to steadfast.com.bd from this server. Loading
-  // just its login page (no credentials) shows whether Cloudflare lets this
-  // server's address through at all.
-  const steadfast = await fetch("https://steadfast.com.bd/login", {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
-    },
-    signal: AbortSignal.timeout(15_000),
-  })
-    .then(async (res) => {
-      const formToken = /name="_token"/.test(await res.text());
-      return res.ok && formToken
-        ? `yes · ${describeSteadfastResponse(res)}, login form present`
-        : `no · ${describeSteadfastResponse(res)}${res.ok ? ", login form missing" : ""}`;
-    })
-    .catch((error) => `no · ${error instanceof Error ? error.message : "request failed"}`);
 
   // The same settings the videos would be compressed with, on a synthetic
   // 5-second 1080x1920 clip, written nowhere.
@@ -118,7 +100,6 @@ export default async function ServerCheckPage(props: PageProps<"/adpnl/server-ch
     ["ffmpeg installed", ffmpeg.ok ? `yes · ${ffmpeg.out.split("\n")[0]}` : "no"],
     ["H.264 encoder", x264 ? (x264.out.includes("libx264") ? "yes (libx264)" : "no") : "—"],
     ["CPU score", `${score} MB/s sha256 (single core)`],
-    ["Steadfast reachable", steadfast],
     [
       "5-second test encode",
       encode
