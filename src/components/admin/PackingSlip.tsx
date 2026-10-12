@@ -5,7 +5,7 @@ import { formatPrice } from "@/lib/format";
 import { realCustomerEmail } from "@/lib/customer-email";
 
 const SHOP_PHONE = "+8801876150005";
-const SHOP_EMAIL = "info@kanzie.com";
+const SHOP_EMAIL = "info@kanzie.shop";
 
 export default function PackingSlip({ order }: { order: any }) {
   const handlePrint = () => {
