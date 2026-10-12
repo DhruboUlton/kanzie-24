@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { CouponUsageRowView } from "@/lib/coupons-shared";
 import { formatPrice } from "@/lib/format";
+import { realCustomerEmail } from "@/lib/customer-email";
 
 export default function CouponUsageHistoryClient({
   usages,
@@ -242,7 +243,7 @@ export default function CouponUsageHistoryClient({
                     <td className="px-5 py-3.5">
                       <div className="font-semibold text-gray-900">{u.customerName || "Customer"}</div>
                       <div className="text-[11px] text-gray-400">
-                        {u.customerPhone} {u.customerEmail && `· ${u.customerEmail}`}
+                        {u.customerPhone} {realCustomerEmail(u.customerEmail) && `· ${realCustomerEmail(u.customerEmail)}`}
                       </div>
                     </td>
 

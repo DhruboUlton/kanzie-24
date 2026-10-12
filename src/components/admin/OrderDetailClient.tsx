@@ -27,6 +27,7 @@ import {
 import PackingSlip from "@/components/admin/PackingSlip";
 import OrderFraudCheck from "@/components/admin/OrderFraudCheck";
 import { ORDER_STATUS_BADGES } from "@/lib/order-status";
+import { realCustomerEmail } from "@/lib/customer-email";
 
 export default function OrderDetailClient({
   order,
@@ -498,7 +499,7 @@ export default function OrderDetailClient({
 
               <div className="flex items-start gap-2 text-gray-700">
                 <Mail className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
-                <span>{order.customerEmail}</span>
+                <span>{realCustomerEmail(order.customerEmail) ?? "Not available"}</span>
               </div>
 
               <div className="pt-3 border-t border-gray-100">

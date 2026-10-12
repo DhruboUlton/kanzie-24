@@ -100,9 +100,9 @@ export async function POST(req: NextRequest) {
   // Derived here from the method the client named, never taken as a price:
   // the browser chooses which rate applies, the server decides what it costs.
   const shippingCents = shippingFeeCents(shippingMethod);
-  const customerEmail =
-    parsed.data.customer.email?.trim() ||
-    `${parsed.data.customer.phone.replace(/[^0-9]/g, "") || "guest"}@customer.local`;
+  // Optional. The order column is required, so "none given" is stored as an
+  // empty string rather than a made-up address; see realCustomerEmail().
+  const customerEmail = parsed.data.customer.email?.trim() ?? "";
 
   // No online payment — the order is recorded as PENDING and an admin
   // calls the customer to confirm it (see /adpnl/orders). tran_id doubles

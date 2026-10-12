@@ -21,6 +21,7 @@ import {
 import { formatPrice } from "@/lib/format";
 import { toggleCouponActiveAction } from "@/lib/actions/coupons";
 import EditCouponDialog from "./EditCouponDialog";
+import { realCustomerEmail } from "@/lib/customer-email";
 
 export default function CouponDetailClient({
   coupon,
@@ -327,7 +328,7 @@ export default function CouponDetailClient({
                     <td className="px-5 py-3.5">
                       <div className="font-semibold text-gray-900">{u.customerName || "Guest"}</div>
                       <div className="text-[11px] text-gray-400">
-                        {u.customerPhone} {u.customerEmail && `· ${u.customerEmail}`}
+                        {u.customerPhone} {realCustomerEmail(u.customerEmail) && `· ${realCustomerEmail(u.customerEmail)}`}
                       </div>
                     </td>
 

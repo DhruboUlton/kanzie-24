@@ -2,6 +2,7 @@
 
 import { Printer } from "lucide-react";
 import { formatPrice } from "@/lib/format";
+import { realCustomerEmail } from "@/lib/customer-email";
 
 const SHOP_PHONE = "+8801876150005";
 const SHOP_EMAIL = "info@kanzie.com";
@@ -75,7 +76,9 @@ export default function PackingSlip({ order }: { order: any }) {
               {order.customerPostalCode ? ` - ${order.customerPostalCode}` : ""}, Bangladesh
             </p>
             <p className="font-mono mt-1">Phone: {order.customerPhone}</p>
-            <p className="text-gray-600">Email: {order.customerEmail}</p>
+            <p className="text-gray-600">
+              Email: {realCustomerEmail(order.customerEmail) ?? "Not available"}
+            </p>
           </div>
 
           <div>

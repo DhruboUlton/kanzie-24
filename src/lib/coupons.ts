@@ -214,7 +214,7 @@ export async function redeemCouponInTransaction(
       couponCode: coupon.code,
       orderId: params.orderId,
       customerName: params.customer?.name ?? null,
-      customerEmail: params.customer?.email ?? null,
+      customerEmail: params.customer?.email || null,
       customerPhone: params.customer?.phone ?? null,
       discountAmountCents: params.discountAmountCents,
       orderSubtotalCents: params.orderSubtotalCents,

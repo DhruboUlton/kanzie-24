@@ -47,6 +47,11 @@ type AppliedCoupon = {
 
 const LOCAL_STORAGE_KEY = "kanzie_checkout_customer";
 
+// Same pattern the server checks with (zod's email), so the form never lets
+// through an address the order request would then reject.
+const EMAIL_PATTERN =
+  /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/;
+
 function OrderRecap({
   items,
   subtotalCents,
@@ -185,15 +190,12 @@ export default function CheckoutPage() {
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [saveInfo, setSaveInfo] = useState(true);
 
-  // Shipping & Billing
+  // Shipping
   const [shippingMethod, setShippingMethod] =
     useState<ShippingMethod>(DEFAULT_SHIPPING_METHOD);
-  const [billingSameAsShipping, setBillingSameAsShipping] = useState(true);
-  const [billingName, setBillingName] = useState("");
-  const [billingAddress, setBillingAddress] = useState("");
-  const [billingCity, setBillingCity] = useState("");
 
   // Coupon state
   const [couponCodeInput, setCouponCodeInput] = useState("");
@@ -204,6 +206,7 @@ export default function CheckoutPage() {
 
   // UI helpers
   const [phoneTouched, setPhoneTouched] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
   const [showPhoneHelp, setShowPhoneHelp] = useState(false);
 
   // Submitted snapshot
@@ -240,6 +243,7 @@ export default function CheckoutPage() {
         if (data.city) setCity(data.city);
         if (data.postalCode) setPostalCode(data.postalCode);
         if (data.phone) setPhone(data.phone);
+        if (data.email) setEmail(data.email);
         // Validated, not cast: a saved value naming a rate that no longer
         // exists used to be indexed straight into SHIPPING_RATES and crash
         // the page on render.
@@ -353,11 +357,15 @@ export default function CheckoutPage() {
   const phoneValid = isValidBDLocalPhone(phone);
   const phoneLooksWrong = phoneTouched && phone.length >= BD_LOCAL_LENGTH && !phoneValid;
   const fullName = [optionalName.trim(), name.trim()].filter(Boolean).join(" ");
+  // Optional, but if something is typed it has to be an address.
+  const emailValid = !email.trim() || EMAIL_PATTERN.test(email.trim());
+  const emailLooksWrong = emailTouched && !emailValid;
   const isFormValid =
     name.trim().length > 0 &&
     address.trim().length > 0 &&
     city.trim().length > 0 &&
-    phoneValid;
+    phoneValid &&
+    emailValid;
 
   async function handleCheckout(e: React.FormEvent) {
     e.preventDefault();
@@ -375,6 +383,7 @@ export default function CheckoutPage() {
             city,
             postalCode,
             phone,
+            email,
             shippingMethod,
           }),
         );
@@ -436,6 +445,7 @@ export default function CheckoutPage() {
           customer: {
             name: fullName,
             phone,
+            email: email.trim() || undefined,
             address: fullAddress,
             city: city.trim(),
             postalCode: postalCode.trim() || undefined,
@@ -884,6 +894,33 @@ export default function CheckoutPage() {
                     )}
                   </div>
 
+                  {/* Email (optional) */}
+                  <div>
+                    <label className="block text-[11px] font-medium text-black/60 uppercase tracking-wider mb-1">
+                      Email (optional)
+                    </label>
+                    <input
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      placeholder="Email (optional)"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onBlur={() => setEmailTouched(true)}
+                      className={`w-full bg-white border rounded px-3.5 py-2.5 text-sm text-ink placeholder:text-black/40 focus:outline-none transition-colors ${
+                        emailLooksWrong
+                          ? "border-red-500 ring-1 ring-red-500"
+                          : "border-black/20 focus:border-accent focus:ring-1 focus:ring-accent"
+                      }`}
+                    />
+                    {emailLooksWrong && (
+                      <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>Please enter a valid email address, or leave it empty.</span>
+                      </p>
+                    )}
+                  </div>
+
                   {/* Save info checkbox */}
                   <div className="pt-1">
                     <label className="flex items-center gap-2.5 text-xs sm:text-sm text-ink cursor-pointer select-none">
@@ -1018,115 +1055,6 @@ export default function CheckoutPage() {
                       confirm your order
                     </p>
                   </div>
-                </div>
-              </section>
-
-              {/* Billing Address Section */}
-              <section className="space-y-3">
-                <h2 className="text-xl sm:text-2xl font-bold font-display text-ink tracking-wide">
-                  Billing address
-                </h2>
-
-                <div className="border border-black/20 rounded-lg overflow-hidden divide-y divide-black/15 bg-white">
-                  <label
-                    onClick={() => setBillingSameAsShipping(true)}
-                    className={`flex items-center gap-3 p-4 cursor-pointer transition-colors ${
-                      billingSameAsShipping ? "bg-stone-50/80" : "hover:bg-stone-50/40"
-                    }`}
-                  >
-                    <div className="relative flex items-center justify-center">
-                      <input
-                        type="radio"
-                        name="billing_address"
-                        checked={billingSameAsShipping}
-                        onChange={() => setBillingSameAsShipping(true)}
-                        className="sr-only"
-                      />
-                      <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                          billingSameAsShipping ? "border-accent" : "border-black/30"
-                        }`}
-                      >
-                        {billingSameAsShipping && (
-                          <div className="w-2 h-2 rounded-full bg-accent" />
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-sm font-medium text-ink">
-                      Same as shipping address
-                    </span>
-                  </label>
-
-                  <label
-                    onClick={() => setBillingSameAsShipping(false)}
-                    className={`flex items-center gap-3 p-4 cursor-pointer transition-colors ${
-                      !billingSameAsShipping ? "bg-stone-50/80" : "hover:bg-stone-50/40"
-                    }`}
-                  >
-                    <div className="relative flex items-center justify-center">
-                      <input
-                        type="radio"
-                        name="billing_address"
-                        checked={!billingSameAsShipping}
-                        onChange={() => setBillingSameAsShipping(false)}
-                        className="sr-only"
-                      />
-                      <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                          !billingSameAsShipping ? "border-accent" : "border-black/30"
-                        }`}
-                      >
-                        {!billingSameAsShipping && (
-                          <div className="w-2 h-2 rounded-full bg-accent" />
-                        )}
-                      </div>
-                    </div>
-                    <span className="text-sm font-medium text-ink">
-                      Use a different billing address
-                    </span>
-                  </label>
-
-                  {/* Different billing address form */}
-                  {!billingSameAsShipping && (
-                    <div className="p-4 bg-stone-50/40 space-y-3 animate-in fade-in duration-200">
-                      <div>
-                        <label className="block text-[11px] font-medium text-black/60 uppercase tracking-wider mb-1">
-                          Billing Name
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Billing Name"
-                          value={billingName}
-                          onChange={(e) => setBillingName(e.target.value)}
-                          className="w-full bg-white border border-black/20 rounded px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium text-black/60 uppercase tracking-wider mb-1">
-                          Billing Address
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Billing Address"
-                          value={billingAddress}
-                          onChange={(e) => setBillingAddress(e.target.value)}
-                          className="w-full bg-white border border-black/20 rounded px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium text-black/60 uppercase tracking-wider mb-1">
-                          Billing City
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Billing City"
-                          value={billingCity}
-                          onChange={(e) => setBillingCity(e.target.value)}
-                          className="w-full bg-white border border-black/20 rounded px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent"
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
               </section>
 
