@@ -281,18 +281,35 @@ function cookieHeader(jar: CookieJar): string {
     .join("; ");
 }
 
-async function loginSteadfast(creds: CourierCredentials): Promise<CookieJar | null> {
+/**
+ * "HTTP 403 (blocked by Cloudflare)" rather than a bare number. Steadfast
+ * sits behind Cloudflare, which challenges datacenter traffic it dislikes —
+ * the most likely reason a check that works from a home connection fails
+ * from the shop's server — so that case is named outright.
+ */
+export function describeSteadfastResponse(res: Response): string {
+  const challenged =
+    res.headers.get("cf-mitigated") === "challenge" ||
+    (res.status === 403 && res.headers.get("server") === "cloudflare");
+  return `HTTP ${res.status}${challenged ? " (blocked by Cloudflare)" : ""}`;
+}
+
+/** The session cookies, or a sentence saying exactly which step failed. */
+async function loginSteadfast(creds: CourierCredentials): Promise<CookieJar | string> {
   const email = creds.steadfastUser;
   const password = creds.steadfastPassword;
-  if (!email || !password) return null;
+  if (!email || !password) return "Steadfast credentials not configured.";
 
   const loginPage = await fetch("https://steadfast.com.bd/login", {
     headers: { "User-Agent": STEADFAST_UA },
     signal: timeoutSignal(),
   });
+  if (!loginPage.ok) {
+    return `Steadfast refused the login page: ${describeSteadfastResponse(loginPage)}.`;
+  }
   const html = await loginPage.text();
   const token = html.match(/<input type="hidden" name="_token" value="(.*?)"/)?.[1];
-  if (!token) return null;
+  if (!token) return "Steadfast's login page has changed (no form token found).";
 
   const initialCookies = parseSetCookies(loginPage);
 
@@ -311,9 +328,16 @@ async function loginSteadfast(creds: CourierCredentials): Promise<CookieJar | nu
     signal: timeoutSignal(),
   });
 
-  // A redirect (successful login) or a fresh 200 both count as success,
-  // mirroring the reference check of successful()||redirect().
-  if (loginRes.status >= 400) return null;
+  if (loginRes.status >= 400) {
+    return `Steadfast login failed: ${describeSteadfastResponse(loginRes)}.`;
+  }
+  // A wrong email or password is not an error status: Laravel redirects
+  // straight back to /login. That used to count as success, and the dead
+  // session was then cached for the full token window, failing every check.
+  const location = loginRes.headers.get("location") ?? "";
+  if (/\/login\/?$/.test(new URL(location, "https://steadfast.com.bd").pathname)) {
+    return "Steadfast rejected the email or password. Check them in Courier settings.";
+  }
 
   return { ...initialCookies, ...parseSetCookies(loginRes) };
 }
@@ -350,8 +374,9 @@ async function checkSteadfast(phone: string, creds: CourierCredentials): Promise
 
   let jar = cacheGet<CookieJar>("steadfast_cookie");
   if (!jar) {
-    jar = await loginSteadfast(creds);
-    if (!jar) return { status: false, message: "Authentication failed" };
+    const login = await loginSteadfast(creds);
+    if (typeof login === "string") return { status: false, message: login };
+    jar = login;
     cacheSet("steadfast_cookie", jar, TOKEN_CACHE_MINUTES);
   }
 
@@ -367,7 +392,17 @@ async function checkSteadfast(phone: string, creds: CourierCredentials): Promise
   if (!res || !res.ok) {
     tokenCache.delete("steadfast_cookie");
     const error = await safeJson(res);
-    return { status: false, message: error?.message ?? "Unknown error occurred." };
+    return {
+      status: false,
+      message: error?.message ?? (res ? `Steadfast answered ${describeSteadfastResponse(res)}.` : "Unknown error occurred."),
+    };
+  }
+
+  // An expired or rejected session is redirected to the login page, which
+  // fetch follows and reports as a healthy 200 of HTML.
+  if (new URL(res.url).pathname.replace(/\/$/, "") === "/login") {
+    tokenCache.delete("steadfast_cookie");
+    return { status: false, message: "Steadfast logged the session out. Try the check again." };
   }
 
   const object = await safeJson(res);
